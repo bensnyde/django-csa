@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+{% load common_tags %}
+
+{% block sitetitle %}| Services{% endblock %}
+{% block heading %}Services <small>Server Hosting</small>{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a>Services</a></li>
+	<li><a href="{% url 'servers:index' service_id %}">Server Hosting</a></li>
+	<li id="server-name-breadcrumb"></li>
+{% endblock %}
+
+{% block js %}
+	<script type="text/javascript">
+        // Fetch Server details via AJAX
+		function getServer() {
+			// Destroy existing
+			$("#server-details-table").html("")
+
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result)) {
+					if(result.success == 1) {
+						// AJAX call returned success
+						$("#server-name-breadcrumb").html(result.data.server.name);
+						$("#server-title").html(result.data.server.name);
+						$.each(result.data.server, function(index,value) {
+							$("#server-details-table").append('<tr><td>'+index+'</td><td>'+value+'</td></tr>');
+						});
+					}					
+					else {
+						// AJAX call returned failed
+						$("#zones-tbody").html("<tr><td colspan=5>"+result.message+"</td></tr>");	
+					}
+				}				
+			}
+
+            // Make AJAX call to retrieve accounts
+            $.ajax({
+                url: "{%url 'servers:getserver' service_id server.id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });
+		}
+
+        // Fetch Server details via AJAX
+		function setServer() {
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result)) {
+					if(result.success == 1) {
+						// AJAX call returned success
+	                    $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+	                    getServer();
+	                    setTimeout("$('.modal.in').modal('hide');$('#flash-message').html('')",2000);
+					}					
+					else {
+						// AJAX call returned failed
+						$('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');	
+	                    if(result.hasOwnProperty('errors')) { 
+	                        // iterate through and display form validation errors
+	                        $.each(result.errors, function(k,v) {
+	                            $("#id_"+k).closest('tr').addClass("has-error");
+	                            $("#"+k+"-help").html(v);
+	                        });
+	                    }  
+					}
+				}				
+			}
+
+            // Make AJAX call to retrieve accounts
+            $.ajax({
+                url: "{%url 'servers:setserver' service_id %}",
+                data: $('#set-server-form').serialize(),
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });
+		}		
+	</script>
+{% endblock %}
+
+{% block jquery_document_ready %}
+	getServer();
+{% endblock %}
+
+{% block content %}
+ <!-- BEGIN SERVERS INDEX CONTENT -->
+
+    <!-- BEGIN SERVER DETAILS CONTENT HEADER -->
+    <div class="row page-head">
+        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3 id="server-title"></h3></div>
+        <div class="col-md-6 text-right">        
+            <div class="btn-group">
+                <a href="{% url 'tickets:create_ticket' service_id %}" role="button" class="badge">Open Support Request <i class="fa fa-plus"></i></a>
+                <a onclick="$('#mmodal').modal('show');" role="button" class="badge" data-toggle="modal">Edit Server <i class="fa fa-plus"></i></a>
+            </div>
+        </div>        
+    </div>
+    <!-- END SERVER DETAILS CONTENT HEADER -->
+
+    <!-- BEGIN SERVER DETAILS CONTAINER -->
+    <div class="row">
+		<!-- BEGIN SERVER STATS TABLE -->
+		<table class=" table table-striped table-bordered table-hover" id="server-details-table"></table>
+		<!-- END SERVER STATS TABLE -->    	
+
+		<!-- BEGIN SERVER PLUGINS -->
+   		{% if server.type == "KVM" or server.type == "XEN" %}
+			{% include "solusvm/index.html" %}
+		{% elif server.type == "VMWARE" %}
+			{% include "vmware/index.html" %}
+		{% elif server.type == "FARM" or server.type == "COLO" %}
+			{% include "zenoss/index.html" %}
+		{% endif %}	 
+		<!-- END SERVER PLUGINS -->    	
+    </div>
+    <!-- END SERVER DETAILS CONTAINER -->
+
+	<!-- BEGIN MODAL -->
+	<div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
+					<h3 id="mlabel">Set Server</h3>
+				</div>
+				<div class="modal-body form">
+					<!-- BEGIN MODAL BODY -->
+					<div id="flash-message"></div>
+					<div id="mbody" class="well">
+						<form id="set-server-form">
+							<input type="hidden" name="server_id" value="{{ server.pk }}" />
+				    		<table class="table table-striped table-bordered table-hover" id="create-contact-form-table">
+								{% for field in serverform %}
+									<tr class="form-group">
+										<td><label class="control-label">{{ field.label_tag }}</label></td>
+										<td>
+											<div class="controls">
+												{{ field|addcss:"form-control" }}
+												<span id="{{ field.html_name }}-help" class="help-inline"></span>
+											</div>            
+							        	</td>
+							        </tr>
+							    {% endfor %}
+							</table>						
+						</form>
+					</div>
+					<!-- END MODAL BODY -->
+				</div>
+				<div class="modal-footer" id="modalfooter">
+					<button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
+					<button id="msave" class="btn btn-primary" onclick="setServer()">Ok</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	<!-- END MODAL -->	    
+
+ <!-- END SERVERS INDEX CONTENT -->
+{% endblock %}

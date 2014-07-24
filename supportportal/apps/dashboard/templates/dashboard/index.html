@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block sitetitle %}| Dashboard{% endblock %}
+{% block heading %}Support Portal <small>Dashboard</small>{% endblock %}
+
+{% block js %}
+    <script type="text/javascript">
+        // Fetch Support Tickets summary via AJAX
+        function getNews() {
+            // onSuccess callback function
+            function onSuccessCallback(result) {
+                 if(!jQuery.isEmptyObject(result)) {
+                    if(result.success==1) {
+                        // AJAX call returned successful
+                        if(result.data.news.length > 0) {
+                            for(x in result.data.news) {
+                                $("#news-postings").append(' \
+                                    <!-- BEGIN POSTING --> \
+                                    <div class="list-group-item"> \
+                                        <div class="row"> \
+                                            <div class="col-md-6" style="text-indent: 10px"><strong>'+result.data.news[x].title+'</strong></div> \
+                                            <div class="col-md-6 text-right"><small>'+result.data.news[x].author+' @ '+result.data.news[x].timestamp+'</small></div> \
+                                        </div> \
+                                        <div class="row"> \
+                                            <p class="col-md-12 text-justify" style="text-indent: 6px; margin-top: 10px">'+result.data.news[x].body+'</p> \
+                                        </div> \
+                                    </div> \
+                                    <!-- END POSTING -->');
+                            }
+                        }
+                        else {
+                            // No articles returned
+                            $("#news-postings").html('<div class="alert text-center">No News</div>');
+                        }
+                    }
+                 }
+                 else {
+                    // AJAX call returned failed
+                    $("#news-postings").html('<div class="alert alert-danger text-center">'+result.message+'.</div>');
+                 }
+            }
+
+            // Make the AJAX call
+            $.ajax({
+                url: "{% url 'news:getnews' %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });        
+        }
+
+        // Fetch Support Tickets summary via AJAX
+        function getTicketsSummary() {
+            // onSuccess callback function
+            function onSuccessCallback(result) {
+                 if(!jQuery.isEmptyObject(result)) {
+                     if(result.success==1) {
+                        // AJAX call returned successful
+                         $("#tickets-user-open").html(result.data.summary.user.open);
+                         $("#tickets-user-total").html(result.data.summary.user.total);
+                         $("#tickets-company-open").html(result.data.summary.company.open);
+                         $("#tickets-company-total").html(result.data.summary.company.total);             
+                     }
+                 }
+                 else {
+                    // AJAX call returned failed
+                    // ********************** FIX ME ***************************
+                 }
+            }
+
+            // Make the AJAX call
+            $.ajax({
+                url: "{% url 'tickets:summary' %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });        
+        }
+
+        function checkDomainAvailability() {
+            // onSuccess callback function
+            function onSuccessCallback(result) { 
+                if(!jQuery.isEmptyObject(result)) {
+                    if(result.is_success == 1) {
+                        // AJAX call returned success
+                        if(result.attributes.lookup.items[0].status == "available") {
+                            $("#domain-reg-result").html("<div class='alert alert-success'>Domain is available! Place order <a target='_blank' href='http://www.cybercon.com/domain-name-registration-service.html'>here</a>.</div>");
+                        }
+                        else {
+                            $("#domain-reg-result").html("<div class='alert alert-danger'>Domain is not available.</div>");
+                        }
+                    }
+                    else {
+                        // AJAX call returned failed
+                        $("#domain-reg-result").html("<div class='alert alert-danger'>"+result.message+"</div>");
+                    }
+                }
+            }
+
+            // Only process if there is a value in the input box
+            if($("#domainreg").val()!="") {
+                // Make the AJAX call
+                $.ajax({
+                    url: "{% url 'domain:suggest' %}",
+                    data: {'domain': $("#domainreg").val()},
+                    type: "POST",
+                    success: onSuccessCallback,
+                    error: defaultErrorCallback
+                });
+            }
+        }
+    </script>
+{% endblock %}
+
+{% block jquery_document_ready %}
+    getTicketsSummary();
+    getNews();
+
+    // Process #domainreg Enter keypress
+    $("#domainreg").keypress(function(e) {
+        if(e.which == 13) {
+            checkDomainAvailability();
+        }
+    });    
+{% endblock %}
+
+{% block content %}
+ <!-- BEGIN DASHBOARD CONTENT -->
+
+     <!-- BEGIN PAGE HEAD -->
+    <div class="row page-head">
+        <div class="col-md-12"><i class="fa fa-edit"></i>&nbsp;<h3>Dashboard</h3></div>
+    </div>
+    <!-- END PAGE HEAD -->
+
+    <div class="row">
+        <!-- BEGIN LEFT COLUMN -->
+        <div class="col-md-8">
+            <!-- BEGIN DOMAIN REGISTRATION CONTAINER -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="panel panel-default">
+                      <div class="panel-heading">Domain Registration</div>
+                      <div class="panel-body">
+                        <div id="domain-reg-result"></div>
+                        <div class="input-group text-left">
+                            <input type="text" class="form-control" name="domainreg" id="domainreg" />
+                            <span class="input-group-btn">
+                                <a id="domainregsubmit" class="btn btn-primary" onclick="checkDomainAvailability();"><i class="fa fa-check"></i> Check</a>
+                            </span>
+                        </div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <!-- END DOMAIN REGISTRATION CONTAINER -->
+
+            <!-- BEGIN ADS CONTAINER -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="panel panel-default">
+                      <div class="panel-heading">20Gb SAN Space</div>
+                      <div class="panel-body">
+                        $8/mo <a href="#">Limited Availability</a>  
+                      </div>
+                    </div>     
+                </div>
+                <div class="col-md-6">
+                    <div class="panel panel-default">
+                      <div class="panel-heading">1Gb Virtual RAM</div>
+                      <div class="panel-body">
+                        $6/mo <a href="#">Limited Time Offer</a>  
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <!-- END ADS CONTAINER -->                
+
+            <!-- BEGIN NEWS CONTAINER -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="panel panel-default">
+                      <div class="panel-heading text-center" style="font-weight: bold">News & Events</div>
+                      <div class="panel-body">
+                        <!-- BEGIN NEWS POSTINGS -->
+                        <div id="news-postings" class="list-group"></div>
+                        <!-- END NEWS POSTINGS -->                       
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <!-- END NEWS CONTAINER -->
+        </div>
+        <!-- END LEFT COLUMN -->
+
+        <!-- BEGIN RIGHT COLUMN -->
+        <div class="col-md-4">
+            <!-- BEGIN TICKETS SUMMARY CONTAINER -->
+            <div id="tickets-summary-container" class="row">
+                <h4 class="text-right">Trouble Tickets</h4>
+                <table class="table table-striped table-bordered table-hover col-md-12" id="tickets-summary-table">
+                    <tr><td>My Open</td><td id="tickets-user-open"></td></tr>
+                    <tr><td>My Total</td><td id="tickets-user-total"></td></tr>                        
+                    <tr><td>Company Open</td><td id="tickets-company-open"></td></tr>
+                    <tr><td>Company Total</td><td id="tickets-company-total"></td></tr>                
+                </table>
+            </div>
+            <!-- END TICKETS SUMMARY CONTAINER -->
+
+            <!-- BEGIN PRODUCTS AND SERVICES CONTAINER -->
+            <div id="products-services-container" class="row">
+                <h4 class="text-right">Products & Services</h4>
+                <table class="table table-striped table-bordered table-hover col-md-12" id="services-table">
+                    <thead>
+                        <th>Name</th>
+                    </thead>
+                    <tbody id="services-tbody">
+                        {% for service in user.get_services %}
+                          <tr>
+                              <td><a href="{{ service.uri }}{{ service.id }}">{{ service.name }}</a></td>
+                          </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>  
+            <!-- END PRODUCTS AND SERVICES CONTAINER -->          
+        </div>    
+        <!-- END RIGHT COLUMN -->
+    </div>
+
+ <!-- END DASHBOARD CONTENT -->
+{% endblock %}

@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+
+{% block sitetitle %}| Support{% endblock %}
+{% block heading %}Support <small>Contact</small>{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a>Support</a></i></li>
+	<li>Contact</li>
+{% endblock %}
+
+{% block js %}
+	<script type="text/javascript">
+		// Makes AJAX call to supplied resource with supplied data
+		function sendPost() {
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result)) {
+					$('#flash-message').fadeIn();
+					if(result.success == 1) {
+						// AJAX call returned successful
+						$('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+					}					
+					else {
+						// AJAX call returned failed
+						$('#flash-message').html('<div class="alert alert-error">'+result.message+'</div>');
+					}
+				}				
+			}
+
+			// Make the AJAX call
+			$.ajax({
+                url: "{% url 'contact:feedback' %}",
+                data: $('#contact-form').serialize(),
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });		
+		}	
+	</script>
+{% endblock %}
+
+{% block content %}
+ <!-- BEGIN CONTACTUS CONTENT -->
+
+	<!-- BEING CONTACTUS CONTAINER -->
+	     <!-- BEGIN CONTAINER HEAD -->
+	    <div class="row page-head">
+	        <div class="col-md-12"><i class="fa fa-edit"></i>&nbsp;<h3>Contact Us</h3></div>
+	    </div>
+	    <!-- END CONTAINER HEAD -->
+	    <!-- BEGIN CONTAINER BODY -->
+	    	<!-- BEGIN ADDRESS CONTAINER -->
+			<div class=" well">
+				<div class="row">
+					<!-- BEGIN LEFT COLUMN -->
+					<div class="col-md-6">
+						<h4>Cybercon Incorporated</h4>
+						<div style="padding-left: 20px">
+							<h5 style="font-weight: bold">Address</h5>	
+							<div style="padding-left: 20px">				
+								<address>
+									210 N. Tucker Blvd Suite 700<br />
+									Saint Louis, MO 63101<br />
+								</address>
+							</div>
+
+							<h5 style="font-weight: bold">Phone</h5>	
+							<div style="padding-left: 20px">				
+								<abbr title="Phone">P:</abbr> (314) 621-9991<br />
+								<abbr title="Fax">F:</abbr> (314) 241-1777<br />
+							</div>
+
+							<h5 style="font-weight: bold">Email</h5>	
+							<div style="padding-left: 20px">	
+								<abbr title="Email">E:</abbr> <a href="mailto:support@cybercon.com">support@cybercon.com</a><br />					
+							</div>			
+
+							<h5 style="font-weight: bold">Website</h5>	
+							<div style="padding-left: 20px">	
+								<abbr title="Website">W:</abbr> <a href="http://www.cybercon.com" alt="Cybercon" target="_blank">http://www.cybercon.com</a><br />		
+							</div>	
+						</div>
+					</div>
+					<!-- END LEFT COLUMN -->
+					<!-- BEGIN RIGHT COLUMN -->
+					<div class="col-md-6">
+						<div class="thumbnail">
+							<img src="http://www.cybercon.com/images/map210tucker.jpg" alt="Cybercon" style="margin-top: 20px" />
+							<div class="caption" style="text-align: center">Corner of Tucker Boulevard and Pine Street</div>
+						</div>
+					</div>					
+					<!-- END RIGHT COLUMN -->				
+				</div>
+			</div>
+			<!-- END ADDRESS CONTAINER -->
+			<!-- BEGIN CONTACT FORM CONTAINER -->
+			<div class="row">
+				<form id="contact-form" class="form-horizontal col-md-12" role="form">
+					{% csrf_token %}
+					{% for field in contact_form %}
+						<div class="form-group">
+							<label class="control-label col-md-2">{{ field.label }}</label>
+							<div class="controls col-md-10">
+								{{ field }}
+								<span id="{{ field.label }}-help" class="help-block"></span>
+							</div>
+						</div>
+					{% endfor %}
+
+					<div class="row">
+						<div class="col-md-12">
+							<div class="col-md-offset-2 col-md-10">
+								<button class="btn btn-primary" onclick="sendPost()"><i class="fa fa-envelope"></i> Send</button>
+							</div>
+						</div>
+					</div>
+
+				</form> 
+			</div>
+			<!-- END CONTACT FORM CONTAINER -->
+	    <!-- END CONTAINER BODY -->  
+    <!-- END CONTACTUS CONTAINER --> 
+
+ <!-- END CONTACTUS CONTENT -->
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+
+{% block sitetitle %}| Support{% endblock %}
+{% block heading %}Support <small>Trouble Tickets</small>{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a>Support</a></li>
+    <li><a href="{% url 'tickets:index' %}">Tickets</a></li>
+    <li>Create Ticket</li>
+{% endblock %}
+
+{% block content %}
+ <!-- BEGIN NEW TICKET CONTENT -->
+
+     <!-- BEGIN CONTAINER HEAD -->
+    <div class="row page-head">
+        <div class="col-md-12"><i class="fa fa-plus"></i>&nbsp;<h3>Create Ticket</h3></div>
+    </div>
+    <!-- END CONTAINER HEAD -->
+
+    <!-- BEGIN CONTAINER BODY -->
+    <div class="row">
+        {% if form_errors %}
+            {{ form_errors }}
+        {% endif %}
+        <!-- BEGIN NEW TICKET FORM -->
+        <form role="form" id="new_ticket_form" name="new_ticket_form" class="col-md-12 form form-horizontal" enctype="multipart/form-data" method="POST" action="{% url 'tickets:create_ticket' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="control-label col-md-3">Summary</label> 
+                <div class="controls col-md-6">
+                    <input type="text" maxlength="64" class="form-control" id="id_ticket_summary" name="description" />
+                    <span class="help-block"></span>
+                </div>                             
+            </div>
+            <div class="form-group">
+                <label class="control-label col-md-3">Priority</label> 
+                <div class="controls col-md-6">
+                    <select class="form-control" id="id_priority" name="priority" autocomplete="off">
+                        <OPTION value="Low">Low</OPTION>
+                        <OPTION value="Normal">Normal</OPTION>
+                        <OPTION value="Urgent">Urgent</OPTION>
+                    </select>
+                </div>             
+            </div>
+            <div class="form-group">
+                <label class="control-label col-md-3">Service</label> 
+                <div class="controls col-md-6">
+                    <select class="form-control" id="id_service" name="service" autocomplete="off">
+                        {% for service in user.get_services %}
+                            <OPTION value='{{ service.id }}' {% if service.id == service_id %}SELECTED{% endif %}>{{ service.name }}</OPTION>
+                        {% endfor %}
+                        <OPTION value="0">Other</OPTION>
+                    </select>
+                </div>             
+            </div>            
+            <div class="form-group">
+                <label class="control-label col-md-3">Contacts</label> 
+                <div class="controls col-md-6">
+                    <select multiple="multiple" class="form-control" id="id_ticket_contacts" name="contacts" >
+                        {% for contact in fellow_contacts %}
+                            <option value="{{ contact.id }}">{{ contact.get_full_name }}</option>
+                        {% endfor %}                                
+                    </select>                                                                    
+                </div>                                          
+            </div>                    
+            <div class="form-group {% if new_post_form.contents.errors %}error{% endif %}">
+                <label class="control-label col-md-3">Description</label>    
+                <div class="controls col-md-9">
+                    <textarea class="form-control" id="id_contents" name="contents" rows="6"></textarea>
+                </div>            
+            </div>        
+            <div class="form-group">
+                <label class="control-label col-md-3 {% if new_post_form.attachment.errors %}error{% endif %}">Attachment</label>                      
+                <div class="controls col-md-6">
+                    <div class="fileupload fileupload-new" data-provides="fileupload">
+                        <input type="file" name="attachment" />
+                    </div>
+                </div>            
+            </div>                                    
+            <div class="form-actions fluid">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="col-md-offset-3 col-md-9">
+                            <button type="submit" class="btn"><i class="fa fa-check"></i> Submit</button>
+                            <button type="button" class="btn" onclick="window.location='{% url 'tickets:index' %}';">Cancel</button>                              
+                        </div>
+                    </div>
+                </div>
+            </div>        
+        </form>  
+        <!-- END NEW TICKET FORM -->                  
+    </div>
+    <!-- END CONTAINER BODY -->
+
+ <!-- END NEW TICKET CONTENT -->
+{% endblock %}

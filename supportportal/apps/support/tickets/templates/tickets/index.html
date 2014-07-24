@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+
+{% block sitetitle %}| Support{% endblock %}
+{% block heading %}Support <small>Trouble Tickets</small>{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a>Support</a></i></li>
+    <li>Tickets</a></li>
+{% endblock %}
+
+{% block css %}
+    <link rel="stylesheet" href="{% static '/assets/plugins/data-tables/DT_bootstrap.css' %}" />
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="{% static '/assets/plugins/data-tables/jquery.dataTables.js' %}"></script>
+    <script type="text/javascript" src="{% static '/assets/plugins/data-tables/DT_bootstrap.js' %}"></script>
+    <script type="text/javascript">
+    	// Fetch Tickets listing via AJAX
+        function getTickets() {
+        	// Destroy existing
+            $("#tickets-table").dataTable().fnDestroy();
+            $("#tickets-tbody").html("");    
+
+            // onSuccess callback function
+            function onSuccessCallback(result) {
+                if(!jQuery.isEmptyObject(result)) {
+                    if(result.success == 1) {
+                    	// AJAX call returned successful
+                        for(x in result.data.tickets) {
+                            var flagged = "";
+                            if(result.data.tickets[x].flagged) {
+                                flagged = '<img src="http://smc.hyson.com/images/flag.gif" />';
+                            }
+
+                            $("#tickets-tbody").append(' \
+                                <tr data-id="'+result.data.tickets[x].id+'"> \
+                                    <td>'+result.data.tickets[x].id+'</td> \
+                                    <td>'+result.data.tickets[x].description+'</td> \
+                                    <td>'+result.data.tickets[x].author+'</td> \
+                                    <td>'+result.data.tickets[x].date+'</td> \
+                                    <td>'+result.data.tickets[x].priority+flagged+'</td> \
+                                </tr>'
+                            );
+                        }
+
+                        // Initialize Datatable object
+                        $("#tickets-table").dataTable({"aoColumnDefs": [],"aaSorting": [[4, 'desc']]});
+                    }                    
+                    else {
+                    	// AJAX call returned failed
+                        $("#tickets-tbody").html("<tr><td colspan=5>"+result.message+"</td></tr>");    
+                    }
+                }            	
+            }
+
+            // Make the AJAX call
+            $.ajax({
+                url: "{%url 'tickets:gettickets' %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });
+        }
+    </script>
+{% endblock %}
+
+{% block jquery_document_ready %}
+    getTickets();
+
+    // hosts event bindings
+    $('#tickets-table').on('click', 'tr', function () {
+        window.location = "{% url 'tickets:detail' 0 %}".replace('0', $(this).data('id'));
+    });       
+{% endblock %}
+    
+{% block content %}
+ <!-- BEGIN TICKETS INDEX CONTENT -->
+
+    <!-- BEGIN CONTENT HEAD -->
+    <div class="row page-head">
+        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Trouble Tickets</h3></div>
+        <div class="col-md-6 text-right">        
+            <div class="btn-group">
+                <a href="{% url 'tickets:create_ticket' %}" role="button" id="create-ticket-button" class="badge" data-toggle="modal">Create Ticket <i class="fa fa-plus"></i></a>
+            </div>
+        </div>
+    </div>
+    <!-- END CONTENT HEAD -->
+
+    <!-- BEGIN CONTENT BODY -->
+    <div class="row">
+        <!-- BEING TICKETS TABLE -->
+        <table class="table table-striped table-bordered table-hover col-md-12" id="tickets-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Description</th>
+                    <th>Author</th>
+                    <th>Date</th>
+                    <th>Priority</th>
+                </tr>
+            </thead>
+            <tbody id="tickets-tbody"></tbody>
+        </table>
+        <!-- END TICKETS TABLE -->
+    </div>
+    <!-- END CONTENT BODY -->
+
+ <!-- END TICKETS INDEX CONTENT -->
+{% endblock %}

@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+
+{% block sitetitle %}| Support{% endblock %}
+{% block heading %}Support <small>Trouble Tickets</small>{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a>Support</a></li>
+	<li><a href="{% url 'tickets:index' %}">Tickets</a></li>
+	<li id="ticket_id">#{{ ticket_id }}</li>
+{% endblock %}
+
+{% block js %}
+	<script type="text/javascript">
+        // Set Ticket's Contact list via AJAX
+		function setContacts() {
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result)) {
+					$('#flash-message').fadeIn();
+					if(result.success == 1) {
+						// AJAX call returned successful
+						;$('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>')
+						$('#flash-message').fadeOut()
+						$('#modify-cc-list').fadeOut();
+						setTimeout(getTicket(), 1000);
+						$('.modal.in').modal('hide');
+					}					
+					else {
+						// AJAX call returned failed
+						$('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+					}
+				}				
+			}
+
+			// Make the AJAX call
+			$.ajax({
+                url: "{% url 'tickets:set_contacts' %}",
+                data: {"contacts[]": $("#id_ticket_contacts").val(), "ticket_id": "{{ ticket_id }}"},
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });			
+		}	
+
+		// Fetch Ticket via AJAX
+		function getTicket() {
+			// Destroy existing
+			$("#posts-list").html("");
+			$("#contacts-list").html("");
+			$("#id_ticket_contacts").html("");
+
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result)) {
+					if(result.success == 1) {
+						// AJAX call returned successful
+						$("#ticket-description").html(result.data.ticket.description);
+						$("#ticket-status").html(result.data.ticket.status);
+						$("#ticket-priority").html(result.data.ticket.priority);
+						$("#ticket-author").html(result.data.ticket.author);
+						$("#ticket-service").html(result.data.ticket.service);
+
+						// Ticket contacts
+						for(x in result.data.ticket.cc_list.current_contacts) {
+							$("#id_ticket_contacts").append('<option value="'+result.data.ticket.cc_list.current_contacts[x].id+'" selected="selected">'+result.data.ticket.cc_list.current_contacts[x].name+'</option>');
+							$("#contacts-list").append(result.data.ticket.cc_list.current_contacts[x].email+'<br />');
+						}
+						for(x in result.data.ticket.cc_list.potential_contacts) {
+							$("#id_ticket_contacts").append('<option value="'+result.data.ticket.cc_list.potential_contacts[x].id+'">'+result.data.ticket.cc_list.potential_contacts[x].name+'</option>');
+						}
+
+						// Posts
+						for(x in result.data.ticket.posts) {
+							var attachment = ""
+							if(result.data.ticket.posts[x].attachment) {
+								attachment = ' \
+								<div class="pull-right"> \
+									<small>Attachment: <a href="'+result.data.ticket.posts[x].attachment.url+'">'+result.data.ticket.posts[x].attachment.name+' ('+result.data.ticket.posts[x].attachment.size+'b)</a></small> \
+								</div>';
+							}
+
+							var admin = "";
+							var flag = "";
+							var visibility = "panel panel-primary";
+							{% if user.is_staff %}
+								admin = '<div class="pull-right"><label>Toggle</label> <a onclick="togglePost(\'flag\', \''+result.data.ticket.posts[x].id+'\')">Flagged</a> | <a onclick="togglePost(\'visibility\', \''+result.data.ticket.posts[x].id+'\')">Visibility</a></div>';
+								if(result.data.ticket.posts[x].flagged==1) {
+									flag = '<i class="fa fa-flag"></i>';
+								}
+								if(result.data.ticket.posts[x].visible==0) {
+									visibility = 'panel';
+								}								
+							{% endif %}
+
+							$("#posts-list").append(' \
+								<! -- BEGIN POST '+result.data.ticket.posts[x].id+' --> \
+								<li> \
+									<div class="'+visibility+'"> \
+										<div class="panel-heading"> \
+											'+attachment+flag+' \
+											<h3 style="display: inline" class="panel-title"><a href="#" class="name">'+result.data.ticket.posts[x].author+'</a></h3> \
+											<small>@ '+result.data.ticket.posts[x].date+'</small> \
+										</div>'+admin+' \
+										<div class="panel-body">'+result.data.ticket.posts[x].contents+'</div> \
+									</div> \
+								</li> \
+								<! -- END POST '+result.data.ticket.posts[x].id+' -->'
+							);
+						}
+					}					
+					else {
+						// AJAX call returned failed
+						// ********************FIX ME********************************
+					}
+				}				
+			}
+
+			// Make the AJAX call
+			$.ajax({
+                url: "{% url 'tickets:getticket' ticket_id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });				
+		}      
+
+		{% if user.is_staff %}
+			// Fetch Ticket via AJAX
+			function togglePost(item, post_id) {
+				// onSuccess callback function
+				function onSuccessCallback(result) {
+					if(!jQuery.isEmptyObject(result)) {
+						if(result.success == 1) {
+							// AJAX call returned successful
+							$('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+							getTicket();
+							$('#flash-message').fadeOut();
+						}					
+						else {
+							// AJAX call returned failed
+							// ********************FIX ME********************************
+						}
+					}				
+				}	
+
+				var url;
+				if(item=="visibility") {
+					url = "{% url 'tickets:togglevisibility' %}";
+				}
+				else if(item=="flag") {
+					url = "{% url 'tickets:toggleflag' %}";
+				}
+
+				$.ajax({
+	                url: url,
+	                data: {post_id: post_id},
+	                type: "POST",
+	                success: onSuccessCallback,
+	                error: defaultErrorCallback
+	            });		
+			}    
+		{% endif %}		        	
+	</script>
+
+{% endblock %}
+
+{% block jquery_document_ready %}
+	getTicket();
+{% endblock %}
+
+{% block content %}
+ <!-- BEGIN TICKETS DETAIL CONTENT -->
+
+ 	<div id="flash-message"></div>
+
+ 	<!-- BEGIN CONTENT HEADER -->
+    <div class="row page-head">
+        <div class="col-md-12"><i class="fa fa-edit"></i>&nbsp;<h3>Ticket #{{ ticket_id }}</h3></div>
+    </div> 	
+    <!-- END CONTENT HEADER -->
+
+	<!-- BEGIN TICKET DETAILS CONTAINER -->
+    <div class="well">
+    	<div class="row">
+    		<!-- BEGIN LEFT COL -->
+    		<div class="col-md-8">
+				<h3 id="ticket-description"></h3>
+				<div class="row">
+					<label class="col-md-4" style="text-indent: 20px"><a onclick="$('#mmodal').modal('show');">+&nbsp;Contacts</a></label>	
+					<div class="col-md-6 col-offset-md-2" id="contacts-list"></div>
+				</div>					
+			</div>
+			<!-- END LEFT COL -->
+
+			<!-- BEGIN RIGHT COL -->
+	    	<div class="col-md-4">	    	
+	    		<div class="row">
+					<label class="col-md-4 control-label">Status</label>
+					<div class="col-md-8 controls" id="ticket-status"></div>
+				</div>
+				<div class="row">
+					<label class="col-md-4 control-label">Priority</label>
+					<div class="col-md-8 controls" id="ticket-priority"></div>
+				</div>
+				<div class="row">
+					<label class="control-label col-md-4">Author</label>							
+					<div class="controls col-md-8" id="ticket-author"></div>
+				</div>
+				<div class="row">
+					<label class="control-label col-md-4">Service</label> 					        	
+					<div class="controls col-md-8" id="ticket-service"></div>     
+				</div> 																		
+			</div>
+			<!-- END RIGHT COL -->
+		</div>    
+    </div>
+    <!-- END TICKET DETAILS CONTAINER -->
+
+    <!-- BEGIN POSTS CONTAINER -->
+    <div class="row">
+		<!-- BEGIN POSTS LISTING -->
+		<ul id="posts-list" class="list-unstyled"></ul>
+		<!-- END POSTS LISTING -->
+
+		<!-- BEGIN TICKET REPLY FORM -->
+		<form role="form" class="form-horizontal" id="fileupload" action="{% url 'tickets:setpost' %}" method="POST" enctype="multipart/form-data">
+			{% csrf_token %}
+			<input type="hidden" name="ticket_id" value="{{ ticket_id }}" />	
+
+	        <div class="form-group">
+	        	<textarea class="form-control col-md-12" id="id_contents" name="contents" rows="10"></textarea>	
+
+				<div class="col-offset-md-2 col-md-4" style="margin-top: 16px">
+					<label class="control-label col-md-6">Attachment</label> 					        	
+					<div class="controls col-md-6">
+						<div class="fileupload fileupload-new" data-provides="fileupload">
+							<input type="file" name="attachment" />
+						</div>
+					</div>     
+				</div>					
+	        </div>	
+
+			<div class="row form-actions">
+				<div class="col-md-offset-2 col-md-8">
+					<button type="submit" class="btn"><i class="fa fa-check"></i> Submit</button>
+					<button type="button" class="btn" onclick="window.location='{% url 'tickets:index' %}';">Cancel</button>                              
+				</div>
+			</div>
+		</form>
+		<!-- END TICKET REPLY FORM -->
+	</div>
+	<!-- END POSTS CONTAINER -->
+
+    <!-- BEGIN MODAL -->
+    <div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <!-- BEGIN MODAL HEADER -->
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
+                    <h3 id="mlabel">Ticket Contacts</h3>
+                </div>
+                <!-- END MODAL HEADER -->
+                <!-- BEGIN MODAL BODY -->
+                <div class="modal-body">
+                    <div id="mbody">
+                    	<div class="row">
+                    		<div class="col-md-7">
+                    			<div>Selected contacts will notified on updates.</div>
+                    		</div>
+                    		<div class="col-md-5">
+                    			<select multiple="multiple" class="multi-select col-md-12 form-control" id="id_ticket_contacts" name="contacts[]"></select>
+                    		</div>	
+                    </div>
+                </div>
+                <!-- END MODAL BODY -->
+                <!-- BEGIN MODAL FOOTER -->
+                <div class="modal-footer" id="modalfooter">
+                    <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
+                    <button id="msave" class="btn btn-primary" onclick="setContacts()">Ok</button>
+                </div>
+                <!-- END MODAL FOOTER -->
+            </div>
+        </div>
+    </div>
+    <!-- END MODAL -->	
+
+ <!-- END TICKETS DETAIL CONTENT -->
+{% endblock %}

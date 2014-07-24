@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+{% load common_tags %}
+
+{% block sitetitle %}| Services{% endblock %}
+{% block heading %}Services <small>IP Space</small>{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a>Services</a></i></li>
+    <li>
+        <a href="{% url 'ip:index' service_id %}">IP Space</a>
+    </li>
+    {% if parent %}
+        <li>
+        {% if network %}
+            <a href="{% url 'ip:index' service_id parent %}">{{ parent }}</a>
+        {% else %}
+            {{ parent }}
+        {% endif %}
+        </li>
+    {% endif %}
+    {% if network %}
+        <li>{{ network }}</li>
+    {% endif %}
+{% endblock %}
+
+{% block css %}
+    <link rel="stylesheet" href="{% static '/assets/plugins/data-tables/DT_bootstrap.css' %}" />
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="{% static '/assets/plugins/data-tables/jquery.dataTables.js' %}"></script>
+    <script type="text/javascript" src="{% static '/assets/plugins/data-tables/DT_bootstrap.js' %}"></script>
+
+    <script type="text/javascript">
+        // Default Success Callback function for AJAX calls
+        function defaultSuccessCallback(result) {
+            if(!jQuery.isEmptyObject(result)) {
+                $('#flash-message').fadeIn();
+                if(result.success == 1) {
+                    $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+                    getHosts();
+                    setTimeout("$('.modal.in').modal('hide')",2000);
+                }
+                else {
+                    $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+                    $.each(result.errors, function(k,v) {
+                        $("#"+k).val(v);
+                    });                       
+                }
+                setTimeout("$('#flash-message').fadeOut()",2000);
+            }   
+        }        
+
+        // Fetch Host details via AJAX
+        function getHostDetails(ipaddr) {
+            // Destroy existing
+            $('#mlabel').html(ipaddr);
+            $('#flash-message').html("");
+            $('#ip_description').html("");
+            $('#ip_ptr').val("");
+
+
+            // onSuccess callback function
+            function onSuccessCallback(result) {
+                if(!jQuery.isEmptyObject(result)) {
+                    if(result["success"] == 1) {
+                        // AJAX call returned successful
+                        $('#ip_description').val(result["data"]["host"]["description"]);
+                        $('#ip_ptr').val(result["data"]["host"]["ptr"]);
+                    }
+                }                
+            }
+
+            // Make AJAX call to retrieve Host details
+            $.ajax({
+                url: "{% url 'ip:gethost' service_id %}",
+                data: {"network": "{{ parent }}", "address": ipaddr},
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });                      
+        }
+
+        // Set Host details via AJAX
+        function setHostDetails() {
+            $.ajax({
+                url: "{% url 'ip:sethost' service_id %}",
+                data: $("#set-host-form").serialize(),
+                type: "POST",
+                success: defaultSuccessCallback,
+                error: defaultErrorCallback
+            }); 
+        }
+
+        var numhosts = 0;
+        // Fetch Networks
+        function getNetworks() {
+            // Destroy existing
+            $("#networks-list-table").dataTable().fnDestroy();
+            $("#networks-list-tbody").html("");
+
+            // onSuccess callback function
+            function onSuccessCallback(result) {
+                if(!jQuery.isEmptyObject(result)) {
+                    if(result.success == 1) {
+                        // AJAX call returned successful
+                        for(x in result.data.networks) {
+                            $("#networks-list-tbody").append(' \
+                                <tr> \
+                                    <td>'+result.data.networks[x].address+'</td> \
+                                    <td>/'+result.data.networks[x].cidr+'</td> \
+                                    <td>'+result.data.networks[x].subnet+'</td> \
+                                    <td>'+result.data.networks[x].vlan+'</td> \
+                                    <td>'+result.data.networks[x].description+'</td> \
+                                </tr>'
+                            );
+
+                            {% if parent %}
+                                for(y in result.data.networks[x].usable_hosts) {
+                                    $("#ip_address").append('<OPTION>'+result.data.networks[x].usable_hosts[y]+'</OPTION>');
+                                }
+                            {% endif %}                            
+                        }
+                    }
+                    else {
+                        // AJAX call returned failed
+                        $("#networks-list-tbody").html("<tr><td colspan=5>"+result.message+"</td></tr>");
+                    } 
+
+                    // Initialize datatable
+                    $("#networks-list-table").dataTable({"aaSorting": [[0, 'asc']]});                
+                }
+            }
+
+            // Make AJAX call to retrieve Networks
+            $.ajax({
+                url: "{% url 'ip:getnetworks' service_id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });        
+        }
+
+        // Fetch Hosts for specified parent Network 
+        function getHosts() {
+            // Destroy existing
+            $("#ip-list-table").dataTable().fnDestroy();
+            $("#ip-list-tbody").html("");
+
+            // onSuccess callback function
+            function onSuccessCallback(result) {
+                if(!jQuery.isEmptyObject(result)) {
+                    if(result.success == 1) {
+                        // AJAX call returned successful
+                        for(x in result.data.hosts) {
+                            $("#ip-list-tbody").append(' \
+                                <tr> \
+                                    <td>'+result.data.hosts[x].address+'</td> \
+                                    <td>'+result.data.hosts[x].ptr+'</td> \
+                                    <td>'+result.data.hosts[x].description+'</td> \
+                                </tr>'
+                            );
+                        }                                              
+                    }
+                    else {
+                        // AJAX call returned failed
+                        $("#ip-list-tbody").html("<tr><td colspan=3>"+result.message+"</td></tr>");
+                    } 
+
+                    // Initialize Datatable
+                    $("#ip-list-table").dataTable({"aaSorting": [[0, 'asc']]});                                
+                }
+            }            
+
+            // Make AJAX call to retrieve Hosts
+            $.ajax({
+                url: "{% url 'ip:gethosts' service_id %}",
+                data: {"parent": "{{ parent }}"},
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });     
+        }
+
+        function setNetwork() {
+            $.ajax({
+                url: "{% url 'ip:setnetwork' service_id %}",
+                data: $("#set-network-address-form").serialize(),
+                type: "POST",
+                success: defaultSuccessCallback,
+                error: defaultErrorCallback
+            });            
+        }      
+
+        function buildHostModal() {
+
+            $('#mmodal').modal('show');
+        }        
+
+    </script>    
+{% endblock %}
+
+{% block jquery_document_ready %}
+    {% if parent %} getHosts(); {% endif %}
+
+
+    getNetworks();     
+
+    // networks event bindings
+    $('#networks-list-table').on('click', 'tr', function () {
+        // Grab the address and cidr or the selected row and build a URL string (BE CAREFUL)
+        window.location = "{% url 'ip:index' service_id %}" + encodeURIComponent($(this).find("td").eq(0).html() + $(this).find("td").eq(1).html()); 
+    });
+
+    // hosts event bindings
+    $('#ip-list-table').on('click', 'tr', function () {
+        $("#ip_address").val($(this).find("td").eq(0).html());
+        getHostDetails($(this).find("td").eq(0).html());
+        $("#mmodal").modal("show");
+    });     
+
+    // hosts event bindings
+    $('#ip_address').on('change', function() {
+        getHostDetails($(this).val());
+    });         
+{% endblock %}    
+
+{% block content %}
+ <!-- BEGIN IP INDEX CONTENT -->
+
+    <!-- BEGIN CONTENT HEADER -->
+    <div class="row page-head">
+        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Networks</h3></div>
+        <div class="col-md-6 text-right">        
+            <div class="btn-group">
+                <a onclick="getHostDetails($('#ip_address').val());$('#mmodal2').modal('show');" role="button" class="badge" data-toggle="modal">Create Network Address <i class="fa fa-plus"></i></a>                
+            </div>
+        </div>        
+    </div>
+    <!-- END CONTENT HEADER -->
+
+    <!-- BEGIN NETWORKS CONTAINER -->
+    <div class="row">
+        <!-- BEGIN NETWORKS TABLE -->
+        <table class="table table-hover" id="networks-list-table">
+            <thead>
+                <tr>
+                    <th>Network Address</th>
+                    <th>CIDR</th>
+                    <th>Netmask</th>
+                    <th>Vlan</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody id="networks-list-tbody"></tbody>
+        </table>
+        <!-- END NETWORKS TABLE -->
+    </div>
+    <!-- END NETWORKS CONTAINER  -->
+
+    {% if parent %}
+        <!-- BEGIN CONTENT HEADER -->
+        <div class="row page-head">
+            <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Hosts</h3></div>
+            <div class="col-md-6 text-right">        
+                <div class="btn-group">
+                    <a onclick="buildHostModal()" role="button" class="badge" data-toggle="modal">Create Host Address <i class="fa fa-plus"></i></a>                
+                </div>
+            </div>        
+        </div>
+        <!-- END CONTENT HEADER -->
+
+        <!-- BEGIN HOSTS CONTAINER -->
+        <div class="row">
+            <!-- BEGIN HOSTS TABLE -->
+            <table class="table table-hover" id="ip-list-table">
+                <thead>
+                    <tr>
+                        <th>IP Address</th>
+                        <th>Hostname (PTR)</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody id="ip-list-tbody"></tbody>
+            </table>
+            <!-- END HOSTS TABLE -->
+        </div>
+        <!-- END HOSTS CONTAINER -->
+    {% endif %}
+
+    <!-- BEGIN MODAL -->
+    <div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <!-- BEGIN MODAL HEADER -->
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
+                    <h3 id="mlabel">Set Host Address</h3>
+                </div>
+                <!-- END MODAL HEADER -->
+                <!-- BEGIN MODAL BODY -->
+                <div class="modal-body">
+                    <div id="flash-message"></div>
+                    <div id="mbody" class="well">
+                        <form role="form" class="form form-horizontal form-bordered" id="set-host-form">
+                            <input type="hidden" name="network" value="{{ parent }}" />
+                            <table class="table table-bordered table-hover" id="add-ip-form-table">
+                                <tr><td>IP Address</td><td><select class="form-control" name="address" id="ip_address" autocomplete="off"></select></td></tr>
+                                <tr><td>Hostname (PTR)</td><td><input type="text" name="ptr" id="ip_ptr" class="form-control" maxlength="64" value="" /></td></tr>
+                                <tr><td>Description</td><td><input type="text" name="description" id="ip_description" class="form-control" maxlength="256" value="" /></td></tr>
+                            </table>
+                        </form>
+                    </div>
+                </div>
+                <!-- END MODAL BODY -->
+                <!-- BEGIN MODAL FOOTER -->
+                <div class="modal-footer" id="modalfooter">
+                    <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
+                    <button id="msave" class="btn btn-primary" onclick="setHostDetails()">Ok</button>
+                </div>
+                <!-- END MODAL FOOTER -->
+            </div>
+        </div>
+    </div>
+    <!-- END MODAL -->
+
+    <!-- BEGIN MODAL -->
+    <div id="mmodal2" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <!-- BEGIN MODAL HEADER -->
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
+                    <h3 id="mlabel">Set Network Address</h3>
+                </div>
+                <!-- END MODAL HEADER -->
+                <!-- BEGIN MODAL BODY -->
+                <div class="modal-body">
+                    <div id="flash-message"></div>
+                    <div id="mbody" class="well">
+                        <form id="set-network-address-form">
+                            <table class="table table-striped table-bordered table-hover" id="set-network-address-table">
+                                {% for field in networkaddressform %}
+                                    <tr class="form-group">
+                                        <td><label class="control-label">{{ field.label_tag }}</label></td>
+                                        <td>
+                                            <div class="controls">
+                                                {{ field|addcss:"form-control" }}
+                                                <span id="{{ field.html_name }}-help" class="help-inline"></span>
+                                            </div>            
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </table>                        
+                        </form>  
+                    </div>
+                </div>
+                <!-- END MODAL BODY -->
+                <!-- BEGIN MODAL FOOTER -->
+                <div class="modal-footer" id="modalfooter">
+                    <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
+                    <button id="msave" class="btn btn-primary" onclick="setNetwork()">Ok</button>
+                </div>
+                <!-- END MODAL FOOTER -->
+            </div>
+        </div>
+    </div>
+    <!-- END MODAL -->    
+
+    <div class="text-center">
+        <a href="{% url 'ip:request_space' %}"><button class="btn btn-primary" id="tickets-create"> Request Additional IP Space </button></a>
+    </div>
+
+ <!-- END IP INDEX CONTENT -->
+{% endblock %}

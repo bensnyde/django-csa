@@ -1,0 +1,454 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+{% load common_tags %}
+
+{% block sitetitle %}| Accounts{% endblock %}
+{% block heading %}Company Profile <small>{{ company_detail.name }}</small>{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a>Accounts</a></li>
+	<li><a>Company</a></li>
+	<li>{{ company_detail.name }}</li>
+{% endblock %}
+
+{% block css %}
+	<link rel="stylesheet" href="{% static '/assets/plugins/data-tables/DT_bootstrap.css' %}" />
+{% endblock %}
+
+{% block js %}
+	<script type="text/javascript" src="{% static '/assets/plugins/data-tables/jquery.dataTables.js' %}"></script>
+	<script type="text/javascript" src="{% static '/assets/plugins/data-tables/DT_bootstrap.js' %}"></script>
+
+	<script type="text/javascript">
+		// Makes AJAX call to supplied resource with supplied data
+		function sendPost(url, data) {
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result)) {
+					$('#flash-message').fadeIn();
+					if(result.success == 1) {
+						// AJAX call returned successful
+						$('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+						setTimeout(null,1000);
+						window.location = "{% url 'companies:detail' company_detail.id %}";
+					}					
+					else {
+						// AJAX call returned failed
+						$('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+						$.each(result.errors, function(k,v) {
+                            $("#id_"+k).parents('tr').addClass("has-error");
+                            $("#"+k+"-help").html(v);
+						});
+					}
+				}				
+			}
+
+			// Make the AJAX call
+			$.ajax({
+                url: url,
+                data: data,
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });		
+		}
+
+		// Fetches Feeds listings via AJAX 
+		function getFeeds() {
+			// Destroy existing
+			$("#activity-feed").html("");
+			$("#recent-users-feed").html("");
+
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result)) {
+					if(result.success == 1) {
+						// AJAX call returned successful
+						for(x in result.data.feeds.activities) {
+							$("#activity-feed").append(' \
+								<li class="list-style-none"> \
+									<a href="#"> \
+										<div class="col1"> \
+											<div class="cont"> \
+												<div class="cont-col1"> \
+													<div class="label label-success"> \
+														<i class="icon-bell"></i> \
+													</div> \
+												</div> \
+												<div class="cont-col2"> \
+													<div class="desc"> \
+														'+result.data.feeds.activities[x].actor+' '+result.data.feeds.activities[x].action+' \
+													</div> \
+												</div> \
+											</div> \
+										</div> \
+										<div class="col2"> \
+											<div class="date"> \
+												'+result.data.feeds.activities[x].timestamp+' \
+											</div> \
+										</div> \
+									</a> \
+								</li>'
+							);
+						}
+
+						// Process recent_users feed
+						for(x in result.data.feeds.recent_users) {
+							$("#recent-users-feed").append(' \
+								<li> \
+									<a href="#"> \
+										<div class="col1"> \
+											<div class="cont"> \
+												<div class="cont-col1"> \
+													<div class="label label-success"> \
+														<i class="icon-bell"></i> \
+													</div> \
+												</div> \
+												<div class="cont-col2"> \
+													<div class="desc"> \
+														<a href="{% url 'contacts:detail' 1 %}/'+result.data.feeds.recent_users[x].id+'">'+result.data.feeds.recent_users[x].name+'</a> \
+													</div> \
+												</div> \
+											</div> \
+										</div> \
+										<div class="col2"> \
+											<div class="date">'+result.data.feeds.recent_users[x].timesince+'</div> \
+										</div> \
+									</a> \
+								</li>'
+							);
+						}
+					}					
+					else {
+						// AJAX call returned failed
+						$("#feeds-portlet-body").html(result.message);
+					}
+				}				
+			}
+
+			// Make the AJAX call
+			$.ajax({
+                url: "{% url 'companies:getfeeds' company_detail.id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });		
+		}
+
+		// Fetch company profile via AJAX
+		function getProfile() {
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result)) {
+					if(result.success == 1) {
+						// AJAX call returned successful
+						$("#company-profile-title").html(result.data.company.name);
+						$("#company-profile-notes").html(result.data.company.description);
+						$("#company-profile-address").append(' \
+							 <span>'+result.data.company.address1+'</span><br /> \
+							 <span>'+result.data.company.address2+'</span><br /> \
+							 <span>'+result.data.company.city+', '+result.data.company.state+' '+result.data.company.zip+'</span><br />');
+
+						if(result.data.company.phone != "") {
+							$("#company-profile-contact").append('<abbr title="Phone">P:</abbr> '+ result.data.company.phone +'<br />');
+						}
+
+						if(result.data.company.fax != "") {
+							$("#company-profile-contact").append('<abbr title="Fax">F:</abbr> '+ result.data.company.fax +'<br />');
+						}
+
+						if(result.data.company.website != "") {
+							$("#company-profile-website").append('<a href="'+result.data.company.website+'" target="_blank">'+ result.data.company.website +'</a><br />');
+						}						
+					}					
+					else {
+						// AJAX call returned failed
+						$("#company-address").html(result.message);
+					}
+				}				
+			}
+
+			// Make the AJAX call
+			$.ajax({
+                url: "{% url 'companies:get' company_detail.id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });		
+		}
+
+		// Fetch company contacts via AJAX
+		function getContacts() {
+			// Destroy existing
+			$("#company-contacts-table").dataTable().fnDestroy();
+			$("#company-contacts-tbody").html("");	
+
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result)) {
+					if(result.success == 1) {
+						// AJAX call returned successful
+						for(x in result.data.contacts) {
+							$("#company-contacts-tbody").append(' \
+						        <tr data-id="'+result.data.contacts[x].id+'"> \
+						        	<td>'+result.data.contacts[x].first_name+'</td> \
+						        	<td>'+result.data.contacts[x].last_name+'</td> \
+						        	<td>'+result.data.contacts[x].email+'</td> \
+						        	<td>'+result.data.contacts[x].role+'</td> \
+						        </tr>'
+						    );
+						}
+
+						// Initialize datatable
+						$("#company-contacts-table").dataTable({"aoColumnDefs": [], "aaSorting": [[0, 'asc']]});
+					}					
+					else {
+						// AJAX call returned failed						
+						$("#contacts-listing").html(result.message)
+					}
+				}				
+			}
+
+			// Make the AJAX call
+			$.ajax({
+                url: "{% url 'companies:getcontacts' company_detail.id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });		
+		}
+
+		// Build and display Company Profile modal
+		function build_company_profile_modal() {
+			var modal_title = "Company Profile";
+			var modal_body = $("#company_edit_profile_container").html();
+			var modal_onclick_action = "sendPost('{% url 'companies:set' company_detail.id %}', $('#company-edit-form').serialize())";
+
+			buildModal(modal_title, modal_body, modal_onclick_action); 
+		}
+
+		// Build and display Create Contact modal
+		function build_company_create_contact_modal() {
+			var modal_title = "Create Contact";
+			var modal_body = $("#company_create_contact_container").html();
+			var modal_onclick_action = "sendPost(\"{% url 'contacts:create' %}\", $('#create-contact-form').serialize())";
+			
+			buildModal(modal_title, modal_body, modal_onclick_action); 
+		}	
+	</script>	
+{% endblock %}
+
+{% block jquery_document_ready %}
+	getProfile();
+	getFeeds();
+	getContacts();
+
+	// Contacts table click bindings
+	$('#company-contacts-tbody').on('click', 'tr', function () {
+	    // redirect to user profile, swap in selected contact's ID with placeholder ID of 0
+		window.location = "{% url 'contacts:detail' 0 %}".replace('/0/', '/'+$(this).data('id')+'/');
+	});
+{% endblock %}
+
+{% block content %}
+ <!-- BEGIN COMPANY CONTENT -->
+
+ 	<!-- BEGIN COMPANY PROFILE CONTAINER -->
+		<!-- BEGIN CONTAINER HEAD -->
+	    <div class="row page-head">
+	        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Profile</h3></div>
+	        {% if user.is_admin %}
+		        <div class="col-md-6 text-right">        
+		            <div class="btn-group">
+		                <a onclick="build_company_profile_modal();" role="button" class="badge" data-toggle="modal">Edit Profile <i class="fa fa-plus"></i></a>
+		            </div>
+		        </div>
+	        {% endif %}        
+	    </div>    
+	    <!-- END CONTAINER HEAD -->
+	    <!-- BEGIN CONTAINER BODY -->
+	    <div class="col-md-12">
+	    	<div class="row">
+	    		<div class="col-md-7">
+					<address id="company-address">
+						<h4 id="company-profile-title">Acme Testing Company, LLC</h4>
+						<div style="margin: 10px 0 10px 20px">
+							<h5 style="font-weight: bold">Address</h5>
+							<div id="company-profile-address" style="padding-left: 20px"></div>
+
+							<h5 style="font-weight: bold">Contact</h5>
+							<div id="company-profile-contact" style="padding-left: 20px"></div>
+
+							<h5 style="font-weight: bold">Website</h5>
+							<div id="company-profile-website" style="padding-left: 20px"></div>
+						</div>
+					</address> 
+				</div>
+				<div class="col-md-5">
+					<div class="row">
+						<label class="control-label col-md-6">Status:</label> <span class="col-md-6" id="company-profile-status"></span>
+					</div>
+					<div class="row">
+						<label class="control-label col-md-6">Since:</label> <span class="col-md-6" id="company-profile-since"></span>
+					</div>
+					<div class="row">						
+						<label class="control-label col-md-6">Original Primary:</label> <span class="col-md-6" id="company-profile-original-contact"></span>
+					</div>
+					<div class="row">						
+						<label class="control-label col-md-6">Current Primary:</label> <span class="col-md-6" id="company-profile-current-contact"></span>
+					</div>				
+				</div>
+			</div>  
+			<div class="row" style="margin-bottom: 20px">
+				<div class="col-md-12">
+					<label class="control-label">Company Notes:</label><br />
+					<div id="company-profile-notes" class="text-justify" style="margin: 0 20px 0 20px"></div>				
+				</div>
+			</div>
+	    </div>
+	    <!-- END CONTAINER BODY -->
+    <!-- END COMPANY PROFILE CONTAINER -->
+
+
+    <!-- BEING COMPANY CONTACTS CONTAINER -->
+	    <!-- BEGIN CONTAINER HEAD -->
+	    <div class="row page-head">
+	        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Contacts</h3></div>
+	        {% if user.is_admin %}
+		        <div class="col-md-6 text-right">        
+		            <div class="btn-group">
+		                <a onclick="build_company_create_contact_modal();" role="button" class="badge" data-toggle="modal">Add Contact <i class="fa fa-plus"></i></a>
+		            </div>
+		        </div>
+	        {% endif %}
+	    </div>
+	    <!-- END CONTAINER HEAD -->
+	    <!-- BEGIN CONTAINER BODY -->
+		<div class="row" id="contacts-listing">
+			<table class="table table-striped table-bordered table-hover" id="company-contacts-table">
+				<thead>
+					<tr>
+						<th>First Name</th>
+						<th>Last Name</th>
+						<th>Email Address</th>
+						<th>Role</th>
+					</tr>
+				</thead>
+				<tbody id="company-contacts-tbody"></tbody>
+			</table>
+		</div>	
+		<!-- END CONTAINER BODY -->
+	<!-- END COMPANY CONTACTS CONTAINER -->
+
+	<!-- BEING COMPANY HISTORY CONTAINER -->
+	     <!-- BEGIN CONTAINER HEAD -->
+	    <div class="row page-head">
+	        <div class="col-md-12"><i class="fa fa-edit"></i>&nbsp;<h3>History</h3></div>
+	    </div>
+	    <!-- END CONTAINER HEAD -->
+	    <!-- BEGIN CONTAINER BODY -->
+	    <div class="row">
+			<div class="tabbable tabbable-custom">
+				<ul class="nav nav-tabs">
+					<li class="active"><a href="#activites-tab" data-toggle="tab">Activities</a></li>
+					<li><a href="#recent-users-tab" data-toggle="tab">Recent Users</a></li>
+				</ul>
+				<div class="tab-content" style="height: 100px">
+					<!-- BEGIN ACTIVITIES TAB -->
+					<div class="tab-pane active" id="activites-tab">
+						<div data-rail-visible="1" data-always-visible="1" data-height="200px" class="scroller" style="position: absolute; overflow:auto">
+							<ul class="feeds list-unstyled" id="activity-feed"></ul>
+						</div>
+					</div>
+					<!-- END ACTIVITIES TAB -->
+					<!-- BEGIN RECENT USERS TAB -->
+					<div class="tab-pane" id="recent-users-tab">
+						<div data-rail-visible="1" data-always-visible="1" data-height="200px" class="scroller">
+							<ul class="feeds list-unstyled" id="recent-users-feed"></ul>
+						</div>
+					</div>
+					<!-- END RECENT USERS TAB -->
+				</div>
+			</div>
+	    </div>
+	    <!-- END CONTAINER BODY -->  
+    <!-- END COMPANY HISTORY CONTAINER -->  			
+
+	<!-- BEGIN MODAL -->
+	<div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
+					<h3 id="mlabel"></h3>
+				</div>
+				<div class="modal-body form">
+					<!-- BEGIN MODAL BODY -->
+					<div id="flash-message"></div>
+					<div id="mbody" class="well"></div>
+					<!-- END MODAL BODY -->
+				</div>
+				<div class="modal-footer" id="modalfooter">
+					<button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
+					<button id="msave" class="btn btn-primary">Ok</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	<!-- END MODAL -->
+
+	<!-- BEGIN EDIT COMPANY PROFILE CONTAINER -->
+	<div class="hidden" id="company_edit_profile_container">
+		<!-- BEGIN COMPANY PROFILE FORM-->
+		<form action="{% url 'companies:set' company_detail.id %}" method="POST" class="form-horizontal form-bordered" id="company-edit-form">
+			{% csrf_token %}
+			<table class="table table-striped table-bordered table-hover" id="company-profile-form-table">
+				{% for field in company_form %}		
+					<tr class="form-group">
+						<td><label class="control-label">{{ field.label_tag }}</label></td>
+						<td>   
+							<div class="controls">
+								{{ field|addcss:"form-control" }}
+								<span id="{{ field.html_name }}-help" class="help-inline"></span>
+							</div>         
+						</td>   
+			        </tr>				
+			    {% endfor %}		
+		    </table>				    							
+		</form>
+		<!--END COMPANY PROFILE FORM -->
+	</div>
+	<!-- END EDIT COMPANY PROFILE CONTAINER -->
+
+	<!-- BEGIN CREATE CONTACT CONTAINER -->
+	<div class="hidden" id="company_create_contact_container">
+		<!-- BEGIN CREATE CONTACT FORM-->
+		<form action="{% url 'companies:set' company_detail.id %}" method="POST" class="form-horizontal form-bordered" id="create-contact-form">
+			{% csrf_token %}
+			<input type="hidden" name="company" value="{{ company_detail.id }}" />
+			<div id="form-error-container"></div>
+			<table class="table table-striped table-bordered table-hover" id="create-contact-form-table">
+				{% for field in contact_form %}
+					{% if field.label_tag != "Company" %}
+					<tr class="form-group">
+						<td><label class="control-label">{{ field.label_tag }}</label></td>
+						<td>
+							<div class="controls">
+								{{ field|addcss:"form-control" }}
+								<span id="{{ field.html_name }}-help" class="help-inline">{{ field.errors }}</span>
+							</div>            
+			        	</td>
+			        </tr>
+			        {% endif %}
+			    {% endfor %}
+
+			   	<tr class="form-group"><td>Password</td><td><input type="password" id="password" name="password" class="form-control" /></td></tr>
+			   	<tr class="form-group"><td>Confirm Password</td><td><input type="password" id="password2" name="password2" class="form-control" /></td></tr>
+			</table>					    							
+		</form>
+		<!--END CREATE CONTACT FORM -->
+	</div>
+	<!-- END CREATE CONTACT CONTAINER -->
+
+ <!-- END COMPANY CONTENT -->
+{% endblock %}

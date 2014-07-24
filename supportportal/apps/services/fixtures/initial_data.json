@@ -1,0 +1,49 @@
+[
+	{
+		"pk": 1, 
+		"model": "services.coupler", 
+		"fields": {
+			"name": "CpanelFTP", 
+			"uri": "/services/ftp/"
+		}
+	}, 
+	{
+		"pk": 2,
+		"model": "services.coupler", 
+		"fields": {
+			"name": "CpanelDNS", 
+			"uri": "/services/dns/"
+		}
+	}, 
+	{
+		"pk": 3, 
+		"model": "services.coupler", 
+		"fields": {
+			"name": "CpanelEmail", "uri": "/services/email/"
+		}
+	}, 
+	{
+		"pk": 4, 
+		"model": "services.coupler", 
+		"fields": {
+			"name": "Solusvm", 
+			"uri": "/services/solusvm/"
+		}
+	}, 
+	{
+		"pk": 5, 
+		"model": "services.coupler", 
+		"fields": {
+			"name": "Vmware", 
+			"uri": "/services/vmware/"
+		}
+	}, 
+	{
+		"pk": 6, 
+		"model": "services.coupler", 
+		"fields": {
+			"name": "IP", 
+			"uri": "/services/ip/"
+		}
+	}
+]

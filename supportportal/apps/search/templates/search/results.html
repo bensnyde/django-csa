@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block sitetitle %}| Search Results{% endblock %}
+{% block heading %}Search Results <small>For '{{ querystr }}'</small>{% endblock %}
+
+{% block breadcrumbs %}
+	<li>Search</li>
+	<li>{{ querystr }}</li>
+{% endblock %}
+
+{% block content %}
+<!-- BEGIN SEARCH CONTENTS -->
+	<!-- BEGIN CONTAINER HEAD -->
+    <div class="row page-head">
+        <div class="col-md-12"><i class="fa fa-edit"></i>&nbsp;<h3>Search Results</h3></div>       
+    </div>
+    <!-- END CONTAINER HEAD -->
+
+    <!-- BEGIN CONTAINER BODY -->
+	<div class="row">
+		<!-- BEGIN SEARCH FORM CONTAINER -->
+		<div class="col-md-12">
+			<!-- BEGIN SEARCH FORM -->
+			<form class="form-inline" id="search-form" role="form" action="{% url 'search:results' %}" method="POST">
+				{% csrf_token %}
+				<div class="input-group chat-form">
+					<input type="text" name="querystr" placeholder="Search..." class="form-control" />
+					<span class="input-group-btn">
+						<a onclick="$('#search-form').submit();" id="domainregsubmit" class="btn btn-primary">Search</a>
+					</span>    
+				</div>
+			</form>
+			<!-- END SEARCH FORM -->
+		</div>
+		<!-- END SEARCH FORM CONTAINER -->
+		<!-- BEGIN SEARCH RESULTS CONTAINER -->
+		<div class="col-md-12">
+			{% if matches.items %}
+				<div class="well" style="margin-top: 20px">
+					{% for match, record in matches.items %}
+					    <div class="list-group">
+					    	{% for line in record %}
+					    		<h4 class="list-group-item-heading"><a href="{{ line.link }}">{{ line.id }}</a></h4>
+					    		<a href="{{ line.link }}">{{ line.link }}</a>
+					    		<p class="list-group-item-text">{{ line.desc }}</p>
+					    	{% endfor %}
+					    </div>
+					{% endfor %}
+				</div>
+				
+				<div class="text-center">
+					<ul class="pagination">
+						<li><a href="#">Prev</a></li>
+						<li><a href="#">1</a></li>
+						<li><a href="#">2</a></li>
+						<li class="active"><a href="#">3</a></li>
+						<li><a href="#">4</a></li>
+						<li><a href="#">5</a></li>
+						<li><a href="#">Next</a></li>
+					</ul>
+				</div>			
+			{% else %}
+				<p class="text-center" style="padding-top: 200px">No matches for '{{ querystr }}'.</p>
+			{% endif %}	
+		</div>
+		<!-- END SEARCH RESULTS CONTAINER -->	
+	</div>
+	<!-- END CONTAINER BODY -->
+<!-- END SEARCH CONTENTS -->
+{% endblock %}

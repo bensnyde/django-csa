@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block sitetitle %}| Support{% endblock %}
+{% block heading %}Support <small>Knowledgebase</small>{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a>Support</a></li>
+	<li>Knowledgebase</li>
+{% endblock %}
+
+{% block js %}
+	<script type="text/javascript">
+		// Fetch Knowledgebase summary via AJAX
+		function getSummary() {		
+			// Destroy existing
+			$("#kb-categories").html("");
+			$("#popular-articles").html("");
+			$("#newest-articles").html("");
+
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result)) {
+					if(result.success == 1) {
+						// AJAX call returned successful
+
+						// Newest articles
+						for(x in result.data.newest) {
+							$("#newest-articles").append(' \
+								<li style="text-indent: 10px"> \
+									<a href="{%url 'knowledgebase:index' %}'+result.data.newest[x].id+'"> \
+										<em>'+result.data.newest[x].title+'</em> \
+									</a> \
+								</li>'								
+							);
+						}
+
+						// Most popular articles
+						for(x in result.data.popular) {
+							$("#popular-articles").append(' \
+								<li style="text-indent: 10px"> \
+									<a href="{%url 'knowledgebase:index' %}'+result.data.popular[x].id+'"> \
+										<em>'+result.data.popular[x].title+'</em> \
+									</a> \
+								</li>'								
+							);
+						}						
+
+						// Categories
+						for(x in result.data.categories) {
+							var articles = "";
+							for(y in result.data.categories[x].articles) {
+								articles += '<p><a href="{%url 'knowledgebase:index' %}'+result.data.categories[x].articles[y].id+'">'+result.data.categories[x].articles[y].title+'</a></p>';
+							}							
+
+							$("#kb-categories").append(' \
+								<li class="list-group-item row"> \
+									<div class="col-md-10"> \
+										<a onclick="$(this).next(\'div\').toggle();">'+result.data.categories[x].category+'</a> \
+										<div style="display: none; margin: 10px">'+articles+'</div> \
+									</div><div class="col-md-2 text-right"><span class="badge">'+result.data.categories[x].articles.length+'</span></div> \
+								</li>'
+							);
+						}
+					}					
+					else {
+						// AJAX call returned failed
+						$("#kb-categories").html(result.message);
+					}
+				}				
+			}
+
+			// Make the AJAX call
+			$.ajax({
+                url: "{%url 'knowledgebase:getsummary' %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });		
+		}
+	</script>
+{% endblock %}
+
+{% block jquery_document_ready %}
+	getSummary();
+{% endblock %}
+
+{% block content %}
+ <!-- BEGIN KNOWLEDGEBASE INDEX CONTENT -->
+
+	<!-- BEING KNOWLEDGEBASE CONTAINER -->
+	     <!-- BEGIN CONTAINER HEAD -->
+	    <div class="row page-head">
+	        <div class="col-md-12"><i class="fa fa-edit"></i>&nbsp;<h3>Knowledgebase</h3></div>
+	    </div>
+	    <!-- END CONTAINER HEAD -->
+	    <!-- BEGIN CONTAINER BODY -->
+		<div class="row">
+			<!-- BEGIN LEFT COLUMN -->
+			<div class="col-md-8 ">
+				<div id="kb-categories" class="list-group list-unstyled"></div>
+			</div>
+			<!-- END LEFT COLUMN -->
+			<!-- BEGIN RIGHT COLUMN -->
+			<div class="col-md-4">
+				<div class="control-group" id="featured-articles">
+					<!-- BEGIN NEWEST ARTICLES -->
+					<div class="panel panel-default">
+					  <div class="panel-heading">Most Recent</div>
+					  <div class="panel-body">
+					  	<ul id="newest-articles" class="list-unstyled"></ul>
+					  </div>
+					</div>
+					<!-- END NEWEST ARTICLES -->
+					<!-- BEGIN POPULAR ARTICLES -->
+					<div class="panel panel-default">
+					  <div class="panel-heading">Most Popular</div>
+					  <div class="panel-body">
+					  	<ul id="popular-articles" class="list-unstyled"></ul>
+					  </div>
+					</div>
+					<!-- END POPULAR ARTICLES -->
+				</div>
+			</div>		
+			<!-- END RIGHT COLUMN -->		
+		</div>
+	    <!-- END CONTAINER BODY -->  
+    <!-- END KNOWLEDGEBASE CONTAINER --> 
+
+ <!-- END KNOWLEDGEBASE INDEX CONTENT -->
+{% endblock %}

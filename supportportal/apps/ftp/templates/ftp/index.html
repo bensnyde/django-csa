@@ -1,0 +1,384 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+
+{% block sitetitle %}| Services{% endblock %}
+{% block heading %}Services <small>FTP Hosting</small>{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a>Services</a></li>
+	<li>FTP Hosting</li>
+{% endblock %}
+
+{% block css %}
+	<link rel="stylesheet" href="{% static '/assets/plugins/data-tables/DT_bootstrap.css' %}" />
+{% endblock %}
+
+{% block js %}
+	<script type="text/javascript" src="{% static '/assets/plugins/data-tables/jquery.dataTables.js' %}"></script>
+	<script type="text/javascript" src="{% static '/assets/plugins/data-tables/DT_bootstrap.js' %}"></script>
+
+	<script type="text/javascript">
+		var accounts = [];	// Local storage for retrieve FTP accounts
+
+        // Default Success Callback function for AJAX calls
+        function defaultSuccessCallback(result) {
+            if(!jQuery.isEmptyObject(result)) {
+                $('#flash-message').fadeIn();
+                if(result.success == 1) {
+                    // AJAX call returned successful
+                    $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+                    getAccounts();
+                    setTimeout("$('.modal.in').modal('hide')",2000);
+                }                    
+                else {
+                    // AJAX call returned failed
+                    $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+                    if(result.hasOwnProperty('errors')) {
+                        // iterate through and display form validation errors
+                        $.each(result.errors, function(k,v) {
+                            $("#id_"+k).parents('tr').addClass("has-error");
+                            $("#"+k+"-help").html(v);
+                        });
+                    }                                
+                }
+            }
+        }
+
+        // Retrieve active FTP sessions
+		function getSessions() {
+			// Destroy existing 
+			$("#ftp-sessions-tbody").html("");
+
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result)) {
+					if(result.success == 1) {
+						if(result.data.sessions.length == 0) {
+							$("#ftp-sessions-tbody").html('<tr><td colspan=7>No active sessions.</td></tr>');
+						}	
+						else {
+							for(session in result.data.sessions) {
+								$("#ftp-sessions-tbody").append(' \
+							        <tr> \
+							        	<td>'+ result.data.sessions[session].user +'</td> \
+							        	<td>'+ result.data.sessions[session].file +'</td> \
+							        	<td>'+ result.data.sessions[session].login +'</td> \
+							        	<td>'+ result.data.sessions[session].host +'</td> \
+							        	<td>'+ result.data.sessions[session].status +'</td> \
+									</tr>'
+								);
+							}						
+						}
+					}				
+				}				
+			}
+
+			// Fetch FTP Sessions via AJAX 
+			$.ajax({
+                url: "{% url 'ftp:getsessions' service_id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });
+		}
+
+		// Retrieve FTP accounts
+		function getAccounts() {
+			// Destroy existing
+			$("#ftp-accounts-table").dataTable().fnDestroy();
+			$("#ftp-accounts-tbody").html("");
+
+			// on success callback function
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result)) {
+					if(result.success == 1) {
+						// AJAX call returned successful
+						accounts = result.data.accounts;   // Save accounts for as local variable for showAcctDetails()
+						// Iterate through results
+						for(account in result.data.accounts) {
+							var rowctrl = "";
+							if(result.data.accounts[account].accttype == "sub") {		// Only accounts of accttype "sub" get operations buttons
+								rowctrl = ' \
+									<a role="button" class="btn chpw-modal" data-toggle="modal"><i class="fa fa-lock"></i> Set Pass</a> \
+							     	<a role="button" class="btn quota-modal" data-toggle="modal"><i class="fa fa-filter"></i> Set Quota</a>';
+
+								if(result.data.accounts[account].deleteable == 1) {		// Only deleteable accounts have option to delete
+									rowctrl = rowctrl + '<a class="btn del-modal" role="button" data-toggle="modal"><i class="fa fa-trash-o"></i> Delete</a>';
+								}					    
+							}
+
+							// Display parsed accounts
+							$("#ftp-accounts-tbody").append(' \
+								<tr data-account="'+ result.data.accounts[account].login + '"> \
+									<td><a class="acctdetail-modal" role="button" data-toggle="modal">'+ result.data.accounts[account].login + '</a></td> \
+									<td>'+ result.data.accounts[account].accttype + '</td> \
+									<td>'+ result.data.accounts[account].dir + '</td> \
+									<td>'+ result.data.accounts[account].diskquota + '</td> \
+									<td>'+ result.data.accounts[account].humandiskused + '</td> \
+									<td>'+ rowctrl + '</td> \
+								</tr>'
+							);
+						}
+						
+						// Initialize Datatable
+						$("#ftp-accounts-table").dataTable({"aoColumnDefs": [{ "bSortable": false, "aTargets": [ 5 ] }], "aaSorting": [[0, 'asc']]});
+					}
+				}				
+			}
+
+			// Fetch FTP Accounts via AJAX
+			$.ajax({
+                url: "{% url 'ftp:getaccounts' service_id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });
+		}
+
+		// Function to build Account Details modal from previously retrieved FTP Accounts
+		function showAcctDetails(account) {		
+			var output = "Account not found.";
+			$.each(accounts, function( key, value ) {
+				if(value.login == account) {
+					output = ' \
+						<table class="table table-striped table-bordered table-hover"> \
+							<tr><td>Disk Quota (Mb): </td><td>' + value.diskquota + '</td></tr> \
+							<tr><td>Disk Quota (b): </td><td>' + value._diskquota + '</td></tr> \
+							<tr><td>Disk Used %: </td><td>' + value.diskusedpercent + '</td></tr> \
+							<tr><td>Disk Used (Mb): </td><td>' + value.diskused + '</td></tr> \
+							<tr><td>Human Disk Quota: </td><td>' + value.humandiskquota + '</td></tr> \
+							<tr><td>Relative Directory: </td><td>' + value.reldir + '</td></tr> \
+							<tr><td>Account Type: </td><td>' + value.accttype + '</td></tr> \
+							<tr><td>Disk Used (b): </td><td>' + value._diskused + '</td></tr> \
+							<tr><td>Login: </td><td>' + value.login + '</td></tr> \
+							<tr><td>Absolute Directory: </td><td>' + value.dir + '</td></tr> \
+							<tr><td>Deletable: </td><td>' + value.deletable + '</td></tr> \
+							<tr><td>Server Login: </td><td>' + value.serverlogin + '</td></tr> \
+							<tr><td>Human Disk Used: </td><td>' + value.humandiskused + '</td></tr> \
+							<tr><td>Disk Used %: </td><td>' + value.diskusedpercent20 + '</td></tr> \
+							<tr><td>Disk Quota: </td><td>' + value._diskquota + '</td></tr> \
+						</table>';	
+					return false;
+				}
+			});
+			
+			buildModal('Account Details', output, '$("#mmodal").modal("hide")');
+		}		
+
+		// Customizes modal with specifications
+		function buildModal(label, body, saveaction) {
+			$('#flash-message').hide();
+			$('#mlabel').html(label);
+			$('#mbody').html(body);	
+			$('#msave').attr('onclick', saveaction);
+			$("#mmodal").modal('show');
+		}
+
+		// Makes AJAX call to supplied resource with supplied data
+		function sendPost(url, data) {
+			$.ajax({
+                url: url,
+                data: data,
+                type: "POST",
+                success: defaultSuccessCallback,
+                error: defaultErrorCallback
+            });
+		}	
+
+		// Function to build and display Create FTP Account modal
+		function build_add_account_modal() {
+			var modal_title = "Add Account";
+			var modal_onclick_action = 'sendPost("{% url 'ftp:addacct' service_id %}", $("#add-account-form").serialize())';
+			var modal_body = ' \
+				<form id="add-account-form" role="form" class="form"> \
+					<table class="table table-striped table-bordered table-hover" id="add-ftp-form-table"> \
+						<tr class="form-group"> \
+							<td><label class="control-label" for="username">Username: </label></td> \
+							<td><input type="text" name="username" id="id_username" class="form-control" /><span id="username-help" class="help-block"></span></td> \
+						</tr> \
+						<tr class="form-group"> \
+							<td><label class="control-label" for="password">Password: </label></td> \
+							<td><input type="password" name="password" id="id_password" class="form-control" /><span id="password-help" class="help-block"></span></td> \
+						</tr> \
+						<tr class="form-group"> \
+							<td><label class="control-label" for="password_confirm">Confirm Password: </label></td> \
+							<td><input type="password" class="form-control" name="password_confirm" id="id_password_confirm" /><span id="password_confirm-help" class="help-block"></span></td> \
+						</tr> \
+						<tr class="form-group"> \
+							<td><label class="control-label" for="quota">Quota: </label></td> \
+							<td><input type="text" name="quota" class="form-control" value="0" id="id_quota" /><span id="quota-help" class="help-block"></span></td> \
+						</tr> \
+						<tr class="form-group"> \
+							<td><label class="control-label" for="homedir">Homedir: </label></td> \
+							<td><input type="text" class="form-control" name="homedir" id="id_homedir" /><span id="homedir-help" class="help-block"></span></td> \
+						</tr> \
+					</table> \
+				</form>';
+
+			buildModal(modal_title, modal_body, modal_onclick_action);
+		}
+
+		// Function to build and display Change FTP Account Password modal
+		function build_chpw_modal(username) {
+			var modal_title = "Change Password";
+			var modal_onclick_action = 'sendPost("{% url 'ftp:chpw' service_id %}", $("#chpw-form").serialize())';
+			var modal_body = ' \
+				<form id="chpw-form" role="form" class="form"> \
+					<input type="hidden" name="username" value="'+username+'" id="username" /> \
+					<table class="table table-striped table-bordered table-hover" id="chpw-form-table"> \
+						<tr class="form-group"> \
+							<td><label class="control-label" for="password">Password: </label></td> \
+							<td><input type="password" name="password" id="id_password" class="form-control" /><span id="password-help" class="help-block"></span></td> \
+						</tr> \
+						<tr class="form-group"> \
+							<td><label class="control-label" for="password_confirm">Confirm Password: </label></td> \
+							<td><input type="password" name="password_confirm" id="id_password_confirm" class="form-control" /><span id="password_confirm-help" class="help-block"></span></td> \
+						</tr> \
+					</table> \
+				</form>';
+
+			buildModal(modal_title, modal_body, modal_onclick_action);
+		}
+
+		// Function to build and display Set FTP Account Quota Modal
+		function build_set_quota_modal(username) {
+			var modal_title = "Set Quota";
+			var modal_onclick_action = 'sendPost("{% url 'ftp:setquota' service_id %}", $("#quota-form").serialize())';
+			var modal_body = ' \
+				<form id="quota-form" role="form" class="form"> \
+					<input type="hidden" id="username" name="username" value="'+username+'" /> \
+					<table class="table table-striped table-bordered table-hover" id="chpw-form-table"> \
+						<tr class="form-group"> \
+							<td><label class="control-label" for="quota">Set Quota (Mb): </label></td> \
+							<td><input type="text" name="quota" id="id_quota" value="0" class="form-control" /><span id="quota-help" class="help-block">Use 0 for unlimited.</span></td> \
+						</tr> \
+					</table> \
+				</form>';
+
+			buildModal(modal_title, modal_body, modal_onclick_action);
+		}
+
+		// Function to build and display Delete FTP Account modal 
+		function build_delete_account_modal(username) {
+			var modal_title = "Delete Account";
+			var modal_onclick_action = 'sendPost("{% url 'ftp:delacct' service_id %}", {username: "'+username+'", destroy: 0})';
+			var modal_body = "Are you sure you want to delete this account?";
+
+			buildModal(modal_title, modal_body, modal_onclick_action);
+		}		
+	</script>	
+{% endblock %}
+
+{% block jquery_document_ready %}
+	getAccounts();
+	getSessions();
+
+    // FTP Accounts event bindings 
+    $('#ftp-accounts-tbody')
+    	.on('click', 'a.chpw-modal', function (e) {
+        	e.preventDefault();
+        	build_chpw_modal($(this).closest('tr').data('account'));
+    	})
+    	.on('click', 'a.quota-modal', function (e) {
+	        e.preventDefault();
+	        build_set_quota_modal($(this).closest('tr').data('account'));
+    	}) 
+		.on('click', 'a.del-modal', function (e) {
+	        e.preventDefault();
+	        build_delete_account_modal($(this).closest('tr').data('account'));
+    	})
+    	.on('click', 'a.acctdetail-modal', function (e) {
+	        e.preventDefault();
+	        showAcctDetails($(this).closest('tr').data('account'));
+    	});                           	
+{% endblock %}
+
+{% block content %}
+ <!-- BEGIN FTP CONTENT -->
+
+    <!-- BEGIN CONTENT HEADER -->
+    <div class="row page-head">
+        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>FTP Accounts</h3></div>
+        <div class="col-md-6 text-right">        
+            <div class="btn-group">
+                <a onclick="build_add_account_modal();" role="button" class="badge" data-toggle="modal">Add Account <i class="fa fa-plus"></i></a>
+            </div>
+        </div>
+    </div>
+    <!-- END CONTENT HEADER -->
+
+    <!-- BEGIN FTP ACCOUNTS CONTAINER -->
+    <div class="row">
+		<!-- BEGIN FTP ACCOUNTS TABLE -->
+		<table class="table table-striped table-bordered table-hover" id="ftp-accounts-table">
+			<thead>
+				<tr>
+					<th>User</th>
+					<th>Type</th>
+					<th>Homedir</th>
+					<th>Disk Quota <small>(Mb)</small></th>
+					<th>Disk Usage</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody id="ftp-accounts-tbody"></tbody>
+		</table>
+		<!-- END FTP ACCOUNTS TABLE -->
+	</div>
+	<!-- END FTP ACCOUNTS CONTAINER -->
+
+    <!-- BEGIN CONTENT HEADER -->
+    <div class="row page-head">
+        <div class="col-md-12"><i class="fa fa-edit"></i>&nbsp;<h3>FTP Sessions</h3></div>
+    </div>
+    <!-- END CONTENT HEADER -->
+
+    <!-- BEGIN FTP SESSIONS CONTAINER -->
+    <div class="row">    
+		<!-- BEGIN FTP SESSIONS TABLE -->
+		<table class="table table-striped table-bordered table-hover" id="ftp-sessions-table">
+			<thead>
+				<tr>
+					<th>User</th>
+					<th>File</th>
+					<th>Login</th>
+					<th>Host</th>
+					<th>Status</th>
+				</tr>
+			</thead>
+			<tbody id="ftp-sessions-tbody"></tbody>
+		</table>
+		<!-- END FTP SESSIONS TABLE -->		
+	</div>
+	<!-- END FTP SESSIONS CONTAINER -->	
+
+    <!-- BEGIN MODAL -->
+    <div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <!-- BEGIN MODAL HEADER -->
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
+                    <h3 id="mlabel"></h3>
+                </div>
+                <!-- END MODAL HEADER -->
+                <!-- BEGIN MODAL BODY -->
+                <div class="modal-body">
+                    <div id="flash-message"></div>
+                    <div id="mbody" class="well"></div>
+                </div>
+                <!-- END MODAL BODY -->
+                <!-- BEGIN MODAL FOOTER -->
+                <div class="modal-footer" id="modalfooter">
+                    <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
+                    <button id="msave" class="btn btn-primary">Ok</button>
+                </div>
+                <!-- END MODAL FOOTER -->
+            </div>
+        </div>
+    </div>
+    <!-- END MODAL -->
+ 
+ <!-- END FTP CONTENT -->
+{% endblock %}

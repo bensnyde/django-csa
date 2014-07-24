@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+{% load common_tags %}
+
+{% block sitetitle %}| Accounts{% endblock %}
+{% block heading %}User Profile <small>{{ user_details.get_full_name }}</small>{% endblock %}
+
+{% block breadcrumbs %}
+		<li><a>Accounts</a></i></li>
+		<li><a>User</a></i></li>
+		<li>{{ user_details.get_full_name }}</li>
+{% endblock %}
+
+{% block js %}
+	<script type="text/javascript">
+		// Makes AJAX call to supplied resource with supplied data
+		function sendPost(url, data) {
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result)) {
+					$('#flash-message').fadeIn();
+					if(result.success == 1) {
+						// AJAX call returned successful
+						$('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+						getLogs();
+						getProfile();
+						setTimeout("$('.modal.in').modal('hide')",2000);
+					}					
+					else {
+						// AJAX call returned failed
+						$('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+						$.each(result.errors, function(k,v) {
+                            $("#id_"+k).closest('div').addClass("has-error");
+                            $("#"+k+"-help").html(v);
+						});
+					}
+				}				
+			}
+
+			// Make the AJAX call
+			$.ajax({
+                url: url,
+                data: data,
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });				
+		}
+
+		function changePassword() {
+			if($("#id_new_password").val() === $("#id_confirm_password").val()) {
+				sendPost('{% url 'contacts:chpw' %}', $('#chpw-form').serializeArray());
+			}
+			else {
+				// Password's don't match 
+				$('#flash-message').fadeIn();
+				$('#flash-message').html('<div class="alert alert-danger">Passwords do not match.</div>');
+			}
+			return false;
+		}		
+
+		// Fetch User profile via AJAX
+		function getProfile() {
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result)) {
+					if(result.success == 1) {
+						// AJAX call returned successful
+						$("#user-profile-name").html(result.data.contact.first_name+' '+result.data.contact.last_name);
+						$("#user-profile-email").html(result.data.contact.email);
+						$("#user-profile-title").html(result.data.contact.title);
+						$("#user-profile-personal-phone").html(result.data.contact.personal_phone);
+						$("#user-profile-office-phone").html(result.data.contact.office_phone);
+						$("#user-profile-fax").html(result.data.contact.fax);
+						$("#user-profile-role").html(result.data.contact.role);
+
+						$("#id_email").val(result.data.contact.email);
+						$("#id_first_name").val(result.data.contact.first_name);
+						$("#id_last_name").val(result.data.contact.last_name);
+						$("#id_title").val(result.data.contact.title);
+						$("#id_personal_phone").val(result.data.contact.personal_phone);
+						$("#id_office_phone").val(result.data.contact.office_phone);
+						$("#id_fax").val(result.data.contact.fax);
+						$("#id_role").val(result.data.contact.role);
+					}					
+					else {
+						// AJAX call returned failed
+						$('#flash-message').fadeIn();
+						$('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');						
+					}
+				}				
+			}
+
+			// Make the AJAX call
+			$.ajax({
+                url: "{% url 'contacts:get' user_details.id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });		
+		}	
+
+		// Fetch User logs via AJAX
+		function getLogs() {
+			// Destroy existing
+			$("#auth-feed").html("");
+			$("#action-feed").html("");
+
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result)) {
+					if(result.success == 1) {
+						// AJAX call returned successful
+						for(x in result.data.authentication) {
+							$("#auth-feed").append(' \
+								<li> \
+									<div class="col1"> \
+										<div class="cont"> \
+											<div class="cont-col1"> \
+												<div class="label">  \
+													<i class="fa fa-bullhorn"></i> \
+												</div> \
+											</div> \
+											<div class="cont-col2"> \
+												<div class="desc"> \
+													'+result.data.authentication[x].user+' '+result.data.authentication[x].category+' from '+result.data.authentication[x].ip+' \
+												</div> \
+											</div> \
+										</div> \
+									</div> \
+									<div class="col2"> \
+										<div class="date"> \
+											'+result.data.authentication[x].timestamp+' \
+										</div> \
+									</div> \
+								</li>'
+							);
+						}
+
+						for(x in result.data.action) {
+							$("#action-feed").append(' \
+								<li> \
+									<div class="col1"> \
+										<div class="cont"> \
+											<div class="cont-col1"> \
+												<div class="label">  \
+													<i class="fa fa-bullhorn"></i> \
+												</div> \
+											</div> \
+											<div class="cont-col2"> \
+												<div class="desc"> \
+													'+result.data.action[x].actor + ' ' + result.data.action[x].action+' \
+												</div> \
+											</div> \
+										</div> \
+									</div> \
+									<div class="col2"> \
+										<div class="date"> \
+											'+result.data.action[x].timestamp+' \
+										</div> \
+									</div> \
+								</li>'
+							);
+						}
+					}					
+					else {
+						// AJAX call returned failed
+						// ********************* FIX ME ***************************
+					}
+				}
+			}
+
+			// Make the AJAX call
+			$.ajax({
+                url: "{% url 'contacts:getlogs' user_details.id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });		
+		}					
+	</script>
+{% endblock %}
+
+{% block jquery_document_ready %}
+	getProfile();
+	getLogs();
+{% endblock %}
+
+{% block content %}
+ <!-- BEGIN CONTACT CONTENT -->
+
+    <!-- BEGIN CONTACT PROFILE CONTAINER -->
+    	<!-- BEGIN CONTAINER HEAD -->
+	    <div class="row page-head">
+	        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Profile</h3></div>
+		        {% if user.id == user_details.id or user.is_admin %}
+			        <div class="col-md-6 text-right">        
+			            <div class="btn-group">
+			                <a onclick="$('#flash-message').html('');$('#mmodal').modal('show')" role="button" class="badge" data-toggle="modal">Edit Profile <i class="fa fa-plus"></i></a>
+			            </div>
+			        </div>
+		        {% endif %}        
+	    </div>
+	    <!-- END CONTAINER HEAD -->
+
+	    <!-- BEGIN CONTAINER BODY -->
+	    <div class="row">
+	    	<h4 id="user-profile-name" style="margin-left: 20px" class="col-md-12"></h4>
+	    </div>
+	    <div class="row">
+			<div class="col-md-8">
+				<!-- BEGIN CONTACT PROFILE -->
+				
+				<div style="padding-left: 40px; margin-bottom: 20px">
+					<div class="row">
+						<label class="control-label col-md-6">Title</label> <span class="col-md-6" id="user-profile-title"></span>								
+					</div>						
+					<div class="row">
+						<label class="control-label col-md-6">Email Address</label> <span class="col-md-6" id="user-profile-email"></span>
+					</div>					
+					<div class="row">
+						<label class="control-label col-md-6">Personal Phone Number</label> <span class="col-md-6" id="user-profile-personal-phone"></span>
+					</div>
+					<div class="row">
+						<label class="control-label col-md-6">Office Phone Number</label> <span class="col-md-6" id="user-profile-office-phone"></span>
+					</div>		
+					<div class="row">
+						<label class="control-label col-md-6">Fax Number</label> <span class="col-md-6" id="user-profile-fax"></span>				
+					</div>										
+				</div>						
+				<!-- END CONTACT PROFILE -->
+			</div>
+			<div class="col-md-4">
+				<div class="row">
+					<label class="control-label col-md-6">Status:</label> <span class="col-md-6">Active</span>
+				</div>
+				<div class="row">
+					<label class="control-label col-md-6">Access</label> <span class="col-md-6">Technical</span>
+				</div>					
+				<div class="row">
+					<label class="control-label col-md-6">Notifications:</label> <span class="col-md-6">On</span>
+				</div>													
+			</div>
+	    </div>
+	    <!-- END CONTAINER BODY -->
+    <!-- END CONTACT PROFILE CONTAINER -->
+
+	<!-- BEING CONTACT HISTORY CONTAINER -->
+	     <!-- BEGIN CONTAINER HEAD -->
+	    <div class="row page-head">
+	        <div class="col-md-12"><i class="fa fa-edit"></i>&nbsp;<h3>History</h3></div>
+	    </div>
+	    <!-- END CONTAINER HEAD -->
+
+	    <!-- BEGIN CONTAINER BODY -->
+	    <div class="row">
+			<div class="tabbable tabbable-custom">
+				<ul class="nav nav-tabs">
+					<li class="active"><a href="#activites-tab" data-toggle="tab">Authentication</a></li>
+					<li><a href="#recent-users-tab" data-toggle="tab">Activities</a></li>
+				</ul>
+				<div class="tab-content">
+					<!-- BEGIN ACTIVITIES TAB -->
+					<div class="tab-pane active" id="activites-tab">
+						<div data-rail-visible="1" data-always-visible="1" data-height="200px" class="scroller">
+							<ul class="feeds list-unstyled" id="auth-feed"></ul>
+						</div>
+					</div>
+					<!-- END ACTIVITIES TAB -->
+					<!-- BEGIN RECENT USERS TAB -->
+					<div class="tab-pane" id="recent-users-tab">
+						<div data-rail-visible="1" data-always-visible="1" data-height="200px" class="scroller">
+							<ul class="feeds list-unstyled" id="action-feed"></ul>
+						</div>
+					</div>
+					<!-- END RECENT USERS TAB -->
+				</div>
+			</div>
+	    </div>
+	    <!-- END CONTAINER BODY -->  
+    <!-- END CONTACT HISTORY CONTAINER -->
+
+	<!-- BEGIN MODAL -->
+	<div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
+					<h3 id="mlabel">Contact Profile</h3>
+				</div>
+				<div class="modal-body form">
+					<!-- BEGIN MODAL BODY -->
+					<div id="flash-message"></div>
+					<div id="mbody" class="well">
+						<div class="hidden" id="flash-message"></div>
+						<form id="user-id_form" class="form-horizontal form-bordered">
+						    {% csrf_token %}
+						    <input type="hidden" name="user_id" id="id_user_id" value="{{ user_details.id }}" />
+
+						    <div class="form-group">
+						        <label class="control-label col-md-3">Email Address</label>
+						        <div class="controls col-md-9">
+						            <input class="form-control" id="id_email" maxlength="255" name="email" type="email" />
+						            <span id="email-help" class="help-block"></span>						            
+						        </div>
+						    </div>
+
+						    <div class="form-group">
+						        <label class="control-label col-md-3">First Name</label>
+						        <div class="controls col-md-9">
+						            <input class="form-control" id="id_first_name" maxlength="100" name="first_name" type="text" />
+						            <span id="first_name-help" class="help-block"></span>
+						        </div>
+						    </div>
+
+						    <div class="form-group">
+						        <label class="control-label col-md-3">Last Name</label>
+						        <div class="controls col-md-9">
+						            <input class="form-control" id="id_last_name" maxlength="100" name="last_name" type="text" />
+						            <span id="last_name-help" class="help-block"></span>
+						        </div>
+						    </div>
+
+						    <div class="form-group">
+						        <label class="control-label col-md-3">Title</label>
+						        <div class="controls col-md-9">
+						            <input class="form-control" id="id_title" maxlength="200" name="title" type="text" />
+						            <span id="title-help" class="help-block"></span>
+						        </div>
+						    </div>
+
+						    <div class="form-group">
+						        <label class="control-label col-md-3">Personal Phone Number</label>
+						        <div class="controls col-md-9">
+						            <input class="form-control" id="id_personal_phone" maxlength="50" name="personal_phone" type="text" />
+						            <span id="personal_phone-help" class="help-block"></span>
+						        </div>
+						    </div>
+
+						    <div class="form-group">
+						        <label class="control-label col-md-3">Office Phone Number</label>
+						        <div class="controls col-md-9">
+						            <input class="form-control" id="id_office_phone" maxlength="50" name="office_phone" type="text" />
+						            <span id="office_phone-help" class="help-block"></span>
+						        </div>
+						    </div>
+
+						    <div class="form-group">
+						        <label class="control-label col-md-3">Fax Number</label>
+						        <div class="controls col-md-9">
+						            <input class="form-control" id="id_fax" maxlength="50" name="fax" type="text" />
+						            <span id="fax-help" class="help-block"></span>
+						        </div>
+						    </div>
+
+						    <div class="form-group">
+						        <label class="control-label col-md-3">Role</label>
+						        <div class="controls col-md-9">
+						            <select class="form-control" id="id_role" name="role" autocomplete="off">
+						                <option value="Consultant">Consultant</option>
+						                <option value="Billing">Billing</option>
+						                <option value="Tech">Tech</option>
+						                <option value="Admin">Admin</option>
+						            </select>
+						          	<span id="role-help" class="help-block"></span>
+						        </div>
+						    </div>
+
+							<div class="form-group">
+								<label class="control-label col-md-3">Old password</label>
+								<div class="controls col-md-9">
+									<input class="form-control" id="id_old_password" name="old_password" type="password" />
+									<span id="old_password-help" class="help-block"></span>
+								</div>
+							</div>
+
+							<div class="form-group">
+								<label class="control-label col-md-3">New password</label>
+								<div class="controls col-md-9">
+									<input class="form-control" id="id_new_password" name="new_password" type="password" />
+									<span id="new_password-help" class="help-block"></span>
+								</div>
+							</div>
+
+							<div class="form-group">
+								<label class="control-label col-md-3">Confirm password</label>
+								<div class="controls col-md-9">
+									<input class="form-control" id="id_confirm_password" name="confirm_password" type="password" />
+									<span id="confirm_password-help" class="help-block"></span>
+								</div>
+							</div>
+						</form>						
+
+					</div>
+					<!-- END MODAL BODY -->
+				</div>
+				<div class="modal-footer" id="modalfooter">
+					<button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
+					<button id="msave" class="btn btn-primary" onclick="sendPost('{% url 'contacts:set' %}', $('#user-id_form').serializeArray())">Ok</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	<!-- END MODAL -->   
+		
+ <!-- END CONTACT CONTENT -->
+{% endblock %}

@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+
+{% block sitetitle %}| Services{% endblock %}
+{% block heading %}Services <small>Email Hosting</small>{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a>Services</a></li>
+    <li>Email Hosting</li>
+{% endblock %}
+
+{% block css %}
+    <link rel="stylesheet" href="{% static '/assets/plugins/data-tables/DT_bootstrap.css' %}" />
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="{% static '/assets/plugins/data-tables/jquery.dataTables.js' %}"></script>
+    <script type="text/javascript" src="{% static '/assets/plugins/data-tables/DT_bootstrap.js' %}"></script>
+
+    <script type="text/javascript">
+        // Default Success Callback function for AJAX calls
+        function defaultSuccessCallback(result) {
+            if(!jQuery.isEmptyObject(result)) {
+                $('#flash-message').fadeIn();
+                if(result.success == 1) {
+                    // AJAX call returned successful
+                    $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+                    getAccounts();
+                    getForwards();
+                    setTimeout("$('.modal.in').modal('hide')",2000);
+                }                    
+                else {
+                    // AJAX call returned failed
+                    $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+                    if(result.hasOwnProperty('errors')) {
+                        // iterate through and display form validation errors
+                        $.each(result.errors, function(k,v) {
+                            $("#id_"+k).parents('tr').addClass("has-error");
+                            $("#"+k+"-help").html(v);
+                        });
+                    }                                
+                }
+            }
+        }        
+
+        // Makes AJAX call to supplied resource with supplied data
+        function sendPost(url, data) {
+            $.ajax({
+                url: url,
+                data: data,
+                type: "POST",
+                success: defaultSuccessCallback,
+                error: defaultErrorCallback
+            });     
+        }
+
+        // Customizes modal with specifications
+        function buildModal(label, body, saveaction) {
+            $('#flash-message').hide();
+            $('#mlabel').html(label);
+            $('#mbody').html(body); 
+            $('#msave').attr('onclick', saveaction);
+            $("#mmodal").modal('show');
+        }    
+
+        // Handles Create Forward modal's type selection
+        function processForwardSelectChange(fwdopt) {
+            // Display form options depending on the forward type selected
+            switch(fwdopt) {
+                case 'blackhole':
+                    $("#dyn-add-fwd").html("");
+                    break;
+                case 'fail':
+                    $("#dyn-add-fwd").html(' \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="failmsgs">Fail Message</label></td> \
+                            <td><input type="text" class="form-control" name="failmsgs" /><span id="failmsgs-help" class="help-block"></span></td> \
+                        </tr>'
+                    );
+                    break;
+                case 'system':
+                    $("#dyn-add-fwd").html(' \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="fwdsystem">System Account</label></td> \
+                            <td><input type="text" class="form-control" name="fwdsystem" /><span id="fwdsystem-help" class="help-block"></span></td> \
+                        </tr>'
+                    );
+                    break;
+                case 'fwd':
+                    $("#dyn-add-fwd").html(' \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="fwdemail">Email Address</label></td> \
+                            <td><input type="text" class="form-control" name="fwdemail" /><span id="fwdemail-help" class="help-block"></span></td> \
+                        </tr>'
+                    );
+                    break;
+                case 'pipe':
+                    $("#dyn-add-fwd").html(' \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="pipefwd">Pipe Command</label></td> \
+                            <td><input type="text" class="form-control" name="pipefwd" /><span id="pipefwd-help" class="help-block"></span></td> \
+                        </tr>'
+                    );
+                    break;
+            }
+        }    
+
+        // Function to build and display Create Email Forward modal
+        function build_add_forward_modal() {
+            var modal_title = "Add Forward";
+            var modal_onclick_action = 'sendPost("{% url 'email:addfwd' service_id %}", $("#email-add-forward-form").serialize())';
+            var modal_body = ' \
+                <form id="email-add-forward-form" role="form" class="form"> \
+                    <table class="table table-striped table-bordered table-hover" id="forward-form-table"> \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="email">Email: </label></td> \
+                            <td><input type="text" id="id_email" class="form-control" name="email" /><span id="email-help" class="help-block"></span></td> \
+                        </tr> \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="fwdopt">Type: </label></td> \
+                            <td> \
+                                <select class="form-control" id="id_fwdopt" name="fwdopt" onchange="processForwardSelectChange(this.value)" autocomplete="off"> \
+                                    <option value="blackhole">Blackhole</option> \
+                                    <option value="fail">Fail</option> \
+                                    <option value="fwd">Foward to Email</option> \
+                                    <option value="system">Forward to System Acct</option> \
+                                    <option value="pipe">Pipe</option> \
+                                </select> \
+                                <span id="fwdopt-help" class="help-block"></span> \
+                            </td> \
+                        </tr><tbody id="dyn-add-fwd"></tbody> \
+                    </table> \
+                </form>';
+
+            buildModal(modal_title, modal_body, modal_onclick_action);
+        }
+
+
+        // Function to build and display Create Email Account modal
+        function build_add_account_modal() {
+            var modal_onclick_action = 'sendPost("{% url 'email:addacct' service_id %}", $("#email-add-account-form").serialize())';
+            var modal_title = "Add Account";
+            var modal_body = ' \
+                <form id="email-add-account-form" role="form" class="form"> \
+                    <table class="table table-striped table-bordered table-hover" id="email-form-table"> \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="email">Email: </label></td> \
+                            <td><input type="text" class="form-control" id="id_email" name="email" /><span id="email-help" class="help-block"></span></td> \
+                        </tr> \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="password">Password: </label></td> \
+                            <td><input type="password" id="id_password" name="password" class="form-control" /><span id="password-help" class="help-block"></span></td> \
+                        </tr> \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="password_confirm">Confirm Password: </label></td> \
+                            <td><input type="password" id="id_password_confirm" name="password_confirm" class="form-control" /><span id="password_confirm-help" class="help-block"></span></td> \
+                        </tr> \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="quota">Quota: </label></td> \
+                            <td><input type="text" id="id_quota" name="quota" class="form-control" value="0" /><span id="quota-help" class="help-block"></span></td> \
+                        </tr> \
+                    </table> \
+                </form>';            
+
+            buildModal(modal_title, modal_body, modal_onclick_action);
+        }    
+
+        // Function to build and display Email CHPW modal
+        function build_chpw_modal(email) {
+            var modal_onclick_action = 'sendPost("{% url 'email:chpw' service_id %}", $("#email-chpw-form").serialize())';
+            var modal_title = "Change Password";
+            var modal_body = ' \
+                <form id="email-chpw-form" role="form" class="form"> \
+                    <input type="hidden" name="email" value="'+email+'" /> \
+                    <table class="table table-striped table-bordered table-hover" id="chpw-form-table"> \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="password">Password: </label></td> \
+                            <td><input type="password" class="form-control" id="id_password" name="password" /><span id="password-help" class="help-block"></span></td> \
+                        </tr> \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="password_confirm">Confirm Password: </label></td> \
+                            <td><input type="password" class="form-control" id="id_password_confirm" name="password_confirm" /><span id="password_confirm-help" class="help-block"></span></td> \
+                        </tr> \
+                    </table> \
+                </form>';
+            
+            buildModal(modal_title, modal_body, modal_onclick_action);
+        }
+
+        // Function to build and display Email Quota modal
+        function build_set_quota_modal(email) {
+            var modal_onclick_action = 'sendPost("{% url 'email:setquota' service_id %}", $("#email-quota-form").serialize())';
+            var modal_title = "Set Quota";
+            var modal_body = ' \
+                <form id="email-quota-form" role="form" class="form"> \
+                    <input type="hidden" name="email" value="'+email+'" /> \
+                    <table class="table table-striped table-bordered table-hover" id="quota-form-table"> \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="quota">Set Quota (Mb): </label></td> \
+                            <td><input type="text" name="quota" class="form-control" id="id_quota" value="0" /><span id="quota-help" class="help-block"></span></td> \
+                        </tr> \
+                    </table> \
+                </form>';
+
+            buildModal(modal_title, modal_body, modal_onclick_action);
+        }    
+
+        // Function to build and display Delete Email Account modal
+        function build_delete_account_modal(email) {
+            var modal_title = "Delete Account";
+            var modal_body = "Are you sure you want to delete this email account?";
+            var modal_onclick_action = 'sendPost("{% url 'email:delacct' service_id %}", {email: "'+email+'"})';
+
+            buildModal(modal_title, modal_body, modal_onclick_action);            
+        }    
+
+        // Retrieves listing of Email Accounts via AJAX
+        function getAccounts() {
+            // Destroy existing
+            $("#email-accounts-table").dataTable().fnDestroy();
+            $("#email-accounts-tbody").html("");
+
+            // onSuccess callback function
+            function onSuccessCallback(result) {
+                if(!jQuery.isEmptyObject(result)) {
+                    if(result.success == 1) {
+                        // AJAX call returned successful
+                        for(x in result.data.accounts) {
+                            var output = ' \
+                                <tr data-email="' + result.data.accounts[x].email + '"> \
+                                    <td>'+result.data.accounts[x].email+'</td> \
+                                    <td>'+result.data.accounts[x].login+'</td> \
+                                    <td>';
+                            
+                            // Provide controls to email subaccounts only
+                            if(result.data.accounts[x].login != "Main Account") {
+                                output += ' \
+                                    <a role="button" class="btn chpw-modal" data-toggle="modal"><i class="fa fa-lock"></i> Set Pass</a> \
+                                    <a role="button" class="btn quota-modal" data-toggle="modal"><i class="fa fa-filter"></i> Set Quota</a> \
+                                    <a role="button" class="btn delacct-modal" data-toggle="modal"><i class="fa fa-trash-o"></i> Delete</a>';
+                            }
+
+                            output += '</td></tr>';
+
+                            $("#email-accounts-tbody").append(output);
+                        }
+
+                        // Initialize Datatable
+                        $("#email-accounts-table").dataTable({"aoColumnDefs": [], "aaSorting": [[0, 'asc']]});          
+                    }
+                    else { 
+                        // AJAX call returned failed
+                        $("#email-accounts-tbody").html('<tr><td colspan=3>'+result.message+'</td></tr>');
+                    }                        
+                }                
+            }
+            
+            // Make AJAX call to retrieve accounts
+            $.ajax({
+                url: "{%url 'email:getaccounts' service_id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });
+        }
+
+        // Retrieves listing of Email Forwards via AJAX
+        function getForwards() {
+            // Destroy existing
+            $("#email-forwards-table").dataTable().fnDestroy();
+            $("#email-forwards-tbody").html("");  
+
+            // onSuccess callback function
+            function onSuccessCallback(result) {
+                if(!jQuery.isEmptyObject(result)) {
+                    if(result.success == 1) {
+                        // AJAX call returned successful
+                        for(x in result.data.forwards) {
+                            $("#email-forwards-tbody").append('<tr data-forward="'+result.data.forwards[x].dest+'"><td>'+result.data.forwards[x].dest+'</td><td>'+result.data.forwards[x].forward+'</td></tr>');
+                        }
+
+                        // Initialize Datatable
+                        $("#email-forwards-table").dataTable({"aoColumnDefs": [],"aaSorting": [[0, 'asc']]});
+                    }
+                    else {
+                        // AJAX call returned failed
+                        $("#email-forwards-tbody").html('<tr><td colspan=2>'+result.message+'</td></tr>');
+                    }                    
+                }                
+            }          
+
+            // Make AJAX call to retrieve forwards
+            $.ajax({
+                url: "{%url 'email:getforwards' service_id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });            
+        }                
+    </script>
+{% endblock %}
+
+{% block jquery_document_ready %}
+    getAccounts();
+    getForwards();
+
+    // Email account event bindings
+    $('#email-accounts-tbody')
+        .on('click', 'a.chpw-modal', function (e) {
+            e.preventDefault();
+            build_chpw_modal($(this).closest('tr').data('email'));
+        })
+        .on('click', 'a.quota-modal', function (e) {
+            e.preventDefault();
+            build_set_quota_modal($(this).closest('tr').data('email'));
+        })
+        .on('click', 'a.delacct-modal', function (e) {
+            e.preventDefault();
+            build_delete_account_modal($(this).closest('tr').data('email'));
+        });          
+{% endblock %}
+
+{% block content %}
+ <!-- BEGIN EMAIL CONTENT -->
+
+    <!-- BEGIN EMAIL ACCOUNTS CONTENT HEADERR -->
+    <div class="row page-head">
+        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Email Accounts</h3></div>
+        <div class="col-md-6 text-right">        
+            <div class="btn-group">
+                <a onclick="build_add_account_modal();" role="button" class="badge" data-toggle="modal">Add Account <i class="fa fa-plus"></i></a>
+            </div>
+        </div>
+    </div>
+    <!-- END EMAIL ACCOUNTS CONTENT HEADER -->
+
+    <!-- BEGIN EMAIL ACCOUNTS CONTAINER -->
+    <div class="row">
+        <!-- BEGIN EMAIL ACCOUNTS TABLE -->
+        <table class="table table-striped table-bordered table-hover" id="email-accounts-table">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Login</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="email-accounts-tbody"></tbody>
+        </table>
+        <!-- END EMAIL ACCOUNTS TABLE -->    
+    </div>
+    <!-- END EMAIL ACCOUNTS CONTAINER -->
+
+    <!-- BEGIN EMAIL FORWARDS CONTENT HEADER -->
+    <div class="row page-head">
+        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Email Forwards</h3></div>
+        <div class="col-md-6 text-right">        
+            <div class="btn-group">
+                <a onclick="build_add_forward_modal();" role="button" class="badge" data-toggle="modal">Add Forward <i class="fa fa-plus"></i></a>
+            </div>
+        </div>
+    </div>
+    <!-- END EMAIL FORWARDS CONTENT HEADER -->
+
+    <!-- BEGIN EMAIL FORWARDS CONTAINER -->
+    <div class="row">
+        <!-- BEGIN EMAIL FORWARDS TABLE -->
+        <table class="table table-striped table-bordered table-hover" id="email-forwards-table">
+            <thead>
+                <tr>
+                    <th>Address</th>
+                    <th>Destination</th>
+                </tr>
+            </thead>
+            <tbody id="email-forwards-tbody"></tbody>
+        </table>
+        <!-- END EMAIL FORWARDS TABLE -->
+    </div>
+    <!-- END EMAIL FORWARDS CONTAINER -->
+
+    <!-- BEGIN MODAL -->
+    <div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <!-- BEGIN MODAL HEADER -->
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
+                    <h3 id="mlabel"></h3>
+                </div>
+                <!-- END MODAL HEADER -->
+                <!-- BEGIN MODAL BODY -->
+                <div class="modal-body">
+                    <div id="flash-message"></div>
+                    <div id="mbody" class="well"></div>
+                </div>
+                <!-- END MODAL BODY -->
+                <!-- BEGIN MODAL FOOTER -->
+                <div class="modal-footer" id="modalfooter">
+                    <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
+                    <button id="msave" class="btn btn-primary">Ok</button>
+                </div>
+                <!-- END MODAL FOOTER -->
+            </div>
+        </div>
+    </div>
+    <!-- END MODAL -->
+
+ <!-- END EMAIL CONTENT -->
+{% endblock %}

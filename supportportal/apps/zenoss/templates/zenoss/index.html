@@ -1,0 +1,142 @@
+
+{% extends "base.html" %}
+{% block start_html %}{% endblock %}
+{% block meta %}{% endblock %}
+{% block base_css %}{% endblock %}
+{% block base_top_js %}{% endblock %}
+{% block body %}{% endblock %}
+{% block end_html %}{% endblock %}
+
+{% block js %}
+	<script type="text/javascript">
+		var images = [];	// local array to store fetched uri's 
+
+		// Fetch Interface Graphs via AJAX
+		function getGraphs(drange) {
+			// Destroy existing 
+			$("#interface-graphs-container").html("");
+
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result)) {
+					images = result["data"]["graphs"];
+					$("#interface-graphs-container").html('<img src="{{ MEDIA_URL }}'+images[0]["url"]+'" />');
+					$("#graph-type").html("");
+
+					$.each(result["data"]["graphs"], function(data) {
+						$("#graph-type").append('<OPTION>' + result["data"]["graphs"][data]["title"] + '</OPTION>');
+					});			
+				}				
+			}
+
+			// onError callback function
+			function onErrorCallback(xhr, ajaxOptions, thrownError) {
+                switch (xhr.status) {
+                    case 403:
+                        $("#zenoss-container").html('<div class="alert alert-danger">Illegal request: '+xhr.responseText+'</div>');
+                        break;
+                    default:
+                    	$("#interface_details").html('<div class="alert alert-danger">Server returned error.</div>');                             
+                }
+            }
+
+            // Make the AJAX call
+            $.ajax({
+                url: "{% url 'zenoss:getgraphs' service_id server.id %}",
+                data: {"drange": drange},
+                type: "POST",
+                success: onSuccessCallback,
+                error: onErrorCallback
+            });				
+		}
+
+		// Fetch Interface details via AJAX
+		function getZenossDetails() {
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result)) {
+					$.each(result["data"]["details"], function(data) {
+						if(result["data"]["details"][data]["name"]=="status" || result["data"]["details"][data]["name"]=="speed" || result["data"]["details"][data]["name"]=="duplex" || result["data"]["details"][data]["name"]=="mtu")
+							$("#interface-details-table").append('<tr><td>'+result["data"]["details"][data]["name"]+'</td><td>'+result["data"]["details"][data]["value"]+'</td></tr>');
+					});			
+				}				
+			}
+
+			// onError callback function
+			function onErrorCallback(xhr, ajaxOptions, thrownError) {
+                switch (xhr.status) {
+                    case 403:
+                        $("#interface_details").html('<div class="alert alert-danger">Illegal request: '+xhr.responseText+'</div>');
+                        break;
+                    default:
+                    	$("#interface_details").html('<div class="alert alert-danger">Server returned error.</div>');
+                }
+            }
+
+			// Make the AJAX call
+            $.ajax({
+                url: "{% url 'zenoss:getdetails' service_id server.id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: onErrorCallback
+            });					
+		}
+
+        jQuery(document).ready(function() {    
+            getZenossDetails();
+			getGraphs($("#graph-interval").val());
+			
+
+			$('#graph-interval').on('change', function() {
+				getGraphs($("#graph-interval").val());
+			});	       
+
+			$("#graph-type").on('change', function() {
+				for(x in images) {
+					if($(this).val()==images[x]["title"]) {
+						$("#interface-graphs-container").html('<img src="{{ MEDIA_URL }}'+images[x]["url"]+'" />');
+					}
+				}
+			});
+        });
+
+	</script>
+{% endblock %}
+
+{% block extension_only_content %}
+ <!-- BEGIN ZENOSS CONTENT -->
+
+ 	<div class="hidden" id="flash-message"></div>
+
+    <!-- BEGIN CONTENT HEADER -->
+    <div class="row page-head">
+        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Uplink Statatistics</h3></div>
+        <div class="col-md-6 text-right">        
+			<div class="btn-group">
+				<select name="graph-type" id="graph-type" autocomplete="off"></select>
+				<select name="graph-interval" id="graph-interval" autocomplete="off">
+					<OPTION selected="selected" value=86400>24 hrs</OPTION>
+					<OPTION value=604800>1 wk</OPTION>
+					<OPTION value=2678400>1 mo</OPTION>
+					<OPTION value=8035200>3 mo</OPTION>
+					<OPTION value=24105600>6 mo</OPTION>
+				</select>
+			</div>
+        </div>
+    </div>
+    <!-- END CONTENT HEADER -->
+
+    <!-- BEGIN ZENOSS STATS CONTAINER -->
+    <div class="row" id="zenoss-container">
+		<div id="interface_details">
+			<table class="table table-striped table-bordered table-hover" id="interface-details-table"></table>
+		</div>
+
+		<div id="interface_events"></div>
+
+		<div id="interface-graphs-container" class="col-md-12 text-center"></div>
+	</div>
+    <!-- END ZENOSS STATS CONTAINER -->
+	
+ <!-- END ZENOSS CONTENT -->
+{% endblock %}

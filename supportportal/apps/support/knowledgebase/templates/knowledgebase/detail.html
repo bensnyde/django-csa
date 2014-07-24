@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block sitetitle %}| Support{% endblock %}
+{% block heading %}Support <small>Knowledgebase</small>{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a>Support</a></li>
+	<li><a href="{% url 'knowledgebase:index' %}">Knowledgebase</a></li>
+	<li><a href="{% url 'knowledgebase:index' %}" id="breadcrumb-category-title"></a></li>
+	<li id="breadcrumb-article-title"></li>
+{% endblock %}
+
+{% block js %}
+	<script type="text/javascript">
+		// Fetch Article via AJAX
+		function getArticle() {	
+			// Destroy existing	
+			$("#article-stats").html("");
+
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result)) {
+					if(result.success == 1) {
+						// AJAX call returned success
+						$("#article-title").html(result.data.article.title);
+						$("#article-content").html(result.data.article.contents);
+						$("#breadcrumb-category-title").html(result.data.article.category);
+						$("#breadcrumb-article-title").html(result.data.article.title);
+
+						var tags = "";
+						for(x in result.data.article.tags) {
+							tags += '<li><a href="#"><i class="fa fa-tags"></i> '+result.data.article.tags[x].title+'</a></li>';
+						}
+
+						$("#article-stats").append(' \
+							<dt>Author</dt><dd>'+result.data.article.author+'</dd> \
+							<dt>Category</dt><dd>'+result.data.article.category+'</dd> \
+							<dt>Created</dt><dd>'+result.data.article.created+'</dd> \
+							<dt>Update</dt><dd>'+result.data.article.modified+'</dd> \
+							<dt>Tags</dt> \
+							<dd> \
+								<ul class="list-unstyled">'+tags+'</ul> \
+							</dd>'
+						);
+					}					
+					else {
+						// AJAX call returned failed
+						$("#article-content").html(result.message);
+					}
+				}				
+			}
+
+			// Make the AJAX call
+			$.ajax({
+                url: "{%url 'knowledgebase:getarticle' article_id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });			
+		}
+	</script>
+{% endblock %}
+
+{% block jquery_document_ready %}
+	getArticle();
+{% endblock %}
+
+{% block content %}
+ <!-- BEGIN KNOWLEDGEBASE DETAIL CONTENT -->
+	     <!-- BEGIN CONTAINER HEAD -->
+	    <div class="row page-head">
+	        <div class="col-md-12"><i class="fa fa-edit"></i>&nbsp;<h3 id="article-title">Knowledgebase</h3></div>
+	    </div>
+	    <!-- END CONTAINER HEAD -->
+	    <!-- BEGIN CONTAINER BODY -->
+		<div class="row">
+			<!-- BEGIN LEFT COLUMN -->
+			<div class="col-md-8">
+				<div id="article-content"></div>
+			</div>	
+			<!-- END LEFT COLUMN -->
+			<!-- BEGIN RIGHT COLUMN -->
+			<div class="col-md-4">
+				<!-- BEGIN ARTICLE STATS -->	
+				<div>
+					<dl id="article-stats"></dl>
+				</div>
+				<!-- END ARTICLE STATS -->
+			</div>
+			<!-- END RIGHT COLUMN -->			
+		</div>
+	    <!-- END CONTAINER BODY -->  
+ <!-- END KNOWLEDGEBASE DETAIL CONTENT -->
+{% endblock %}

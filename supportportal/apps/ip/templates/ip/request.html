@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block sitetitle %}| Services{% endblock %}
+{% block heading %}Services <small>IP Space</small>{% endblock %}
+
+{% block breadcrumbs %}
+    <li>Request IP Space</li>
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript">
+        // Build data container for and initiate AJAX request
+        function sendRequest() {    
+            var data = {
+                'contacts': [{{ request.uesr.id }}],
+                'attachment': null,
+                'description': 'IP Allocation Request',
+                'contents': ' \
+                    <p>Automated request for IP space:</p> \
+                        <p>-CIDR: ' + $("#cidr").val() + '</p> \
+                        <p>-Justification: ' + $("#justification").val() + '</p> \
+                        <p>-Comments: ' + $("#comments").val() + '</p>'
+            }
+
+            // onSuccess callback function
+            function onSuccessCallback(result) {
+                if(!jQuery.isEmptyObject(result)) {
+                    if(result.success == 1) {
+                        // AJAX call returned successfull
+                        window.location = "{% url 'tickets:index' %}"+result.data.ticket_id;
+                    }
+                }
+                else {
+                    // AJAX call returned failed
+                    $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+                }                      
+            }
+
+            $.ajax({
+                url: "{% url 'tickets:create_ticket' %}",
+                type: "POST",
+                data: data,
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });          
+        }
+    </script>
+{% endblock %}
+
+{% block content %}
+ <!-- BEGIN REQUEST IP CONTENT-->
+
+    <div id="flash-message"></div>
+
+    <!-- BEGIN IP REQUEST CONTENT HEADERR -->
+    <div class="row page-head">
+        <div class="col-md-12"><i class="fa fa-edit"></i>&nbsp;<h3>Request IP Space</h3></div>
+    </div>
+    <!-- END IP REQUEST CONTENT HEADER -->
+
+    <!-- BEGIN IP REQUEST CONTAINER -->
+    <div class="row">
+        <div class="col-md-offset-2 col-md-8">
+            <p>We comply with American Registry for Internet Numbers (ARIN) requirements regarding IP address allocations. Requests for IP space must provide justification for their use.</p> 
+            <p class="text-center"><strong>Note: </strong><i>New customers are rarely allocated large IP blocks. Once trust has been built, we are happy to provide as much space as is needed.</i></p>
+        </div><br />
+
+        <!-- BEGIN IP REQUEST FORM -->
+        <form role="form" class="form" id="ipreq-form">       
+            <div class="form-group">
+                <label for="ipreq_cidr" class="control-label col-md-3">CIDR</label>
+                <div class="controls col-md-9">
+                    <SELECT name="ipreq_cidr" id="cidr" class="form-control" autocomplete="off">
+                        <OPTION>30</OPTION>
+                        <OPTION>29</OPTION>
+                        <OPTION>28</OPTION>
+                        <OPTION>27</OPTION>
+                        <OPTION>26</OPTION>
+                        <OPTION>25</OPTION>
+                        <OPTION>24</OPTION>
+                    </SELECT>
+                    <span id="cidr-help" class="help-block"></span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="ipreq_justification" class="control-label col-md-3">Justification</label>
+                <div class="controls col-md-9">
+                    <textarea name="ipreq_justification" class="form-control" id="justification" rows="10" cols="100"></textarea>
+                    <span id="justification-help" class="help-block"></span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="ipreq_addinfo" class="control-label col-md-3">Additional Information</label>
+                <div class="controls col-md-9">
+                    <textarea name="ipreq_addinfo" class="form-control" id="comments" rows="10" cols="100"></textarea>
+                    <span id="addinfo-help" class="help-block"></span>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <div class="col-md-offset-3 col-md-9">
+                    <button class="btn blue" id="ipreq_submit" onclick="sendRequest()"> Request Space <i class="icon-plus"></i></button>                           
+                </div>
+            </div>
+        </form>
+        <!-- END IP REQUEST FORM -->
+    </div>
+    <!-- END IP REQUEST CONTAINER -->
+
+ <!-- END REQUEST IP CONTENT -->
+{% endblock %}

@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+
+{% block sitetitle %}| Services{% endblock %}
+{% block heading %}Services <small>DNS</small>{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a>Services</a></i></li>
+    <li><a href="{% url 'dns:index' service_id %}">DNS</a></li>
+    <li>{{ zone }}</li>
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript">
+        // Default Success Callback function for AJAX calls
+        function defaultSuccessCallback(result) {
+            if(!jQuery.isEmptyObject(result)) {
+                $('#flash-message').fadeIn();
+                if(result.success == 1) {
+                    // AJAX call returned successful
+                    $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+                    getRecords();
+                    setTimeout("$('.modal.in').modal('hide')",2000);
+                }                    
+                else {
+                    // AJAX call returned failed
+                    $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+                    if(result.hasOwnProperty('errors')) {
+                        // iterate through and display form validation errors
+                        $.each(result.errors, function(k,v) {
+                            $("#id_"+k).parents('tr').addClass("has-error");
+                            $("#"+k+"-help").html(v);
+                        });
+                    }                                
+                }
+            }
+        }
+
+        // Makes AJAX call to supplied resource with supplied data
+        function sendPost(url, data) {
+            $.ajax({
+                url: url,
+                data: data,
+                type: "POST",
+                success: defaultSuccessCallback,
+                error: defaultErrorCallback
+            });                        
+        }
+
+        // Retrieve listing of DNS records under zone
+        function getRecords() {
+            // destroy existing
+            $("#dns-records-tbody").html("");
+
+            // ajax onSuccess callback
+            function onSuccessCallback(result) {
+                if(!jQuery.isEmptyObject(result)) {
+                    if(result.success == 1) {
+                        // Parse and display returned records depending on record type
+                        for(x in result.data.records) {
+                            var output = "";
+                            if(result.data.records[x].type != ":RAW" && result.data.records[x].type != "$TTL") {
+                                output = output + ' \
+                                    <tr valign="top" data-record="'+result.data.records[x].Line+'"> \
+                                        <td>'+result.data.records[x].name+'</td> \
+                                        <td>'+result.data.records[x].ttl+'</td> \
+                                        <td>'+result.data.records[x].type+'</td>';
+
+                                if(result.data.records[x].type == 'SOA') {
+                                    output = output + ' \
+                                    <td> \
+                                        '+result.data.records[x].mname+'<br /> \
+                                        '+result.data.records[x].rname+'<br /> \
+                                        '+result.data.records[x].serial+'<br /> \
+                                        '+result.data.records[x].refresh+'<br /> \
+                                        '+result.data.records[x].retry+'<br /> \
+                                        '+result.data.records[x].expire+'<br /> \
+                                        '+result.data.records[x].minimum+'<br /> \
+                                    </td>';
+                                }
+                                else if(result.data.records[x].type == 'MX') {
+                                    output = output + ' \
+                                    <td> \
+                                        '+result.data.records[x].preference+'<br /> \
+                                        '+result.data.records[x].exchange+'<br /> \
+                                    </td>';                                
+                                }
+                                else if(result.data.records[x].type == 'A' || result.data.records[x].type == 'A6' || result.data.records[x].type == 'AAAA') {
+                                    output = output + '<td>'+result.data.records[x].address+'</td>';
+                                }
+                                else if(result.data.records[x].type == 'NS') {
+                                    output = output + '<td>'+result.data.records[x].nsdname+'</td>';
+                                }
+                                else if(result.data.records[x].type == 'PTR') {
+                                    output = output + '<td>'+result.data.records[x].ptrdname+'</td>';
+                                }
+                                else if(result.data.records[x].type == 'CNAME') {
+                                    output = output + '<td>'+result.data.records[x].cname+'</td>';
+                                }
+                                else if(result.data.records[x].type == 'TXT') {
+                                    output = output + '<td>'+result.data.records[x].txtdata+'</td>';
+                                }
+                                else if(result.data.records[x].type == 'SRV') {
+                                    output = output + ' \
+                                    <td> \
+                                        '+result.data.records[x].priority+'<br /> \
+                                        '+result.data.records[x].weight+'<br /> \
+                                        '+result.data.records[x].port+'<br /> \
+                                        '+result.data.records[x].target+'<br /> \
+                                    </td>';
+                                }                                    
+
+                                output = output + ' \
+                                            <td><a role="button" class="btn del-record" data-toggle="modal"><i class="fa fa-trash-o"></i> Delete</a></td> \
+                                        </tr>';    
+                            }                                                                                                        
+
+                            $("#dns-records-tbody").append(output);             
+                        }
+                    }                    
+                    else {
+                        // AJAX call returned status code fail
+                        $("#dns-records-tbody").html("<tr><td colspan=5>'+result.message+'</td></tr>");
+                    }
+                }  
+            }
+
+            // make ajax call
+            $.ajax({
+                url: "{%url 'dns:getrecords' service_id %}",
+                data: {zone: "{{ zone }}"},
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });
+        }
+
+        // Customizes modal with specifications
+        function buildModal(label, body, saveaction) {
+            $('#flash-message').hide();
+            $('#mlabel').html(label);
+            $('#mbody').html(body);    
+            $('#msave').attr('onclick', saveaction);
+            $("#mmodal").modal('show');        
+        }        
+
+        // Builds Delete Record modal 
+        function build_delete_record_modal(linenum) {
+            var modal_title = "Delete Record";
+            var modal_body = 'Are you sure you want to delete this record?';
+            var modal_onclick_action = 'sendPost("{% url 'dns:deleterecord' service_id %}", {line: '+linenum+', zone: \'{{ zone }}\'})';
+
+            buildModal(modal_title, modal_body, modal_onclick_action);
+        }
+
+        // Builds Add Record modal 
+        function build_add_record_modal() {
+            var modal_onclick_action = 'sendPost("{% url 'dns:addrecord' service_id %}", $("#add-record-form").serialize())';
+            var modal_title = "Add Record";
+            var modal_body = ' \
+                <form class="form" role="form" id="add-record-form"> \
+                    <input type="hidden" name="zone" value="{{ zone }}" /> \
+                    <table class="table table-bordered" id="add-dns-record-table"> \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="domain">Domain</label></td> \
+                            <td><input type="text" name="domain" id="id_domain" class="form-control" /><span id="domain-help" class="help-block"></span></td> \
+                        </tr> \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="ttl">TTL</label></td> \
+                            <td><input type="text" name="ttl" id="id_ttl" class="form-control" /><span id="ttl-help" class="help-block"></span></td> \
+                        </tr> \
+                        <tr class="form-group" id="rtype-select"> \
+                            <td><label class="control-label" for="rtype">Type</label></td> \
+                            <td> \
+                                <select name="rtype" id="id_rtype" onchange="processAddRecordSelection($(this).val())" class="form-control" autocomplete="off"> \
+                                    <option SELECTED>A</option> \
+                                    <option>A6</option> \
+                                    <option>AAAA</option> \
+                                    <option>CNAME</option> \
+                                    <option>DNAME</option> \
+                                    <option>MX</option> \
+                                    <option>NS</option> \
+                                    <option>PTR</option> \
+                                    <option>SRV</option> \
+                                    <option>TXT</option> \
+                                </select> \
+                                <span id="rtype-help" class="help-block"></span> \
+                            </td> \
+                        </tr> \
+                        <tbody id="add-record-tbody"> \
+                            <tr class="form-group"> \
+                                <td><label class="control-label" for="record">Hostname</label></td> \
+                                <td><input type="text" name="record" id="id_record" class="form-control" /><span id="record-help" class="help-block"></span></td> \
+                            </tr> \
+                        </tbody> \
+                    </table> \
+                </form>';
+
+            buildModal(modal_title, modal_body, modal_onclick_action);
+        }
+
+        // Populates add record form with proper fields for selected type
+        function processAddRecordSelection(rtype) {
+            switch(rtype) {
+                case 'NS':
+                case 'PTR':                
+                case 'CNAME':
+                case 'DNAME':
+                    $('#add-record-tbody').html(' \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="record">Hostname</label></td> \
+                            <td><input type="text" name="record" id="id_record" class="form-control" /><span id="record-help" class="help-block"></span></td> \
+                        </tr>'
+                    );
+                    break;
+                case 'MX':
+                    $('#add-record-tbody').html(' \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="priority">Priority</label></td> \
+                            <td><input type="text" name="priority" id="id_priority" class="form-control" /><span id="priority-help" class="help-block"></span></td> \
+                        </tr> \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="record">Exchange</label></td> \
+                            <td><input type="text" name="record" id="id_record" class="form-control" /><span id="record-help" class="help-block"></span></td> \
+                        </tr>'
+                    );
+                    break;
+                case 'SRV':
+                    $('#add-record-tbody').html(' \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="priority">Priority</label></td> \
+                            <td><input type="text" name="priority" id="id_priority" class="form-control" /><span id="priority-help" class="help-block"></span></td> \
+                        </tr> \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="weight">Weight</label></td> \
+                            <td><input type="text" name="weight" id="id_weight" class="form-control" /><span id="weight-help" class="help-block"></span></td> \
+                        </tr> \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="port">Port</label></td> \
+                            <td><input type="text" name="port" id="id_port" class="form-control" /><span id="port-help" class="help-block"></span></td> \
+                        </tr> \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="record">Target</label></td> \
+                            <td><input type="text" name="record" id="id_record" class="form-control" /><span id="record-help" class="help-block"></span></td> \
+                        </tr>'
+                    );
+                    break;
+                case 'TXT':
+                    $('#add-record-tbody').html(' \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="record">Text Information</label></td> \
+                            <td><input type="text" name="record" id="id_record" class="form-control" /><span id="record-help" class="help-block"></span></td> \
+                        </tr>'
+                    );
+                    break;
+                case 'A6':
+                case 'AAAA':
+                    $('#add-record-tbody').html(' \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="record">IPv6 Address</label></td> \
+                            <td><input type="text" name="record" id="id_record" class="form-control" /><span id="record-help" class="help-block"></span></td> \
+                        </tr>'
+                    );
+                    break;                    
+                default:
+                case 'A':
+                    $('#add-record-tbody').html(' \
+                        <tr class="form-group"> \
+                            <td><label class="control-label" for="record">IP or Hostname</label></td> \
+                            <td><input type="text" name="record" id="id_record" class="form-control" /><span id="record-help" class="help-block"></span></td> \
+                        </tr>'
+                    );
+                    break;            
+            }
+        }        
+    </script>
+{% endblock %}
+
+{% block jquery_document_ready %}
+    getRecords();
+
+    // DNS Records event bindings
+    $('#dns-records-tbody').on('click', 'a.del-record', function (e) {
+        e.preventDefault();
+        build_delete_record_modal($(this).closest('tr').data('record'));
+    }); 
+{% endblock %}
+
+{% block content %}
+ <!-- BEGIN DNS DETAIL CONTENT -->
+
+    <!-- BEGIN CONTENT HEADER -->
+    <div class="row page-head">
+        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>{{ zone }}</h3></div>
+        <div class="col-md-6 text-right">        
+            <div class="btn-group">
+                <a onclick="build_add_record_modal()" role="button" class="badge" data-toggle="modal">Add Record <i class="fa fa-plus"></i></a>
+            </div>
+        </div>
+    </div>
+    <!-- END CONTENT HEADER -->
+
+    <!-- BEGIN DNS RECORDS CONTAINER -->
+    <div class="row">
+        <!-- BEGIN DNS RECORDS TABLE -->
+        <table class="table table-hover" id="dns-records-table">
+            <thead>
+                <tr>
+                    <th>Domain</th>
+                    <th>TTL</th>
+                    <th>Type</th>
+                    <th>Record</th>
+                    <th>&nbsp;</th>
+                </tr>
+            </thead>
+            <tbody id="dns-records-tbody"></tbody>
+        </table>
+        <!-- END DNS RECORDS TABLE -->
+    </div>
+    <!-- END DNS RECORDS CONTAINER -->
+
+    <!-- BEGIN MODAL -->
+    <div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <!-- BEGIN MODAL HEADER -->
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
+                    <h3 id="mlabel"></h3>
+                </div>
+                <!-- END MODAL HEADER -->
+                <!-- BEGIN MODAL BODY -->
+                <div class="modal-body">
+                    <div id="flash-message"></div>
+                    <div id="mbody" class="well"></div>
+                </div>
+                <!-- END MODAL BODY -->
+                <!-- BEGIN MODAL FOOTER -->
+                <div class="modal-footer" id="modalfooter">
+                    <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
+                    <button id="msave" class="btn btn-primary">Ok</button>
+                </div>
+                <!-- END MODAL FOOTER -->
+            </div>
+        </div>
+    </div>
+    <!-- END MODAL -->
+
+ <!-- END DNS DETAIL CONTENT -->
+{% endblock %}

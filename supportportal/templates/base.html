@@ -1,0 +1,319 @@
+{% load staticfiles %}
+
+{% block start_html %}
+ <!DOCTYPE html>
+ <html lang="en"> 
+{% endblock start_html %}
+
+{% block head %}
+  <head>
+    {% block meta %}
+     <title>Cybercon | Support Portal {% block sitetitle %}{% endblock %}</title>
+     <meta charset="utf-8" />
+     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+     <meta content="Cybercon Support Portal" name="description" />
+     <meta content="Benton Snyder" name="author" />
+    {% endblock meta %}
+
+    {% block base_css %}
+     <link rel="shortcut icon" href="{% static '/assets/favicon.ico' %}" />
+     <!-- BEGIN STYLES -->
+      <link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css" rel="stylesheet">
+      <link href="//netdna.bootstrapcdn.com/bootswatch/3.1.1/cosmo/bootstrap.min.css" rel="stylesheet">
+     <!-- END STYLES -->   
+    {% endblock base_css %}
+   
+    {% block css %}{% endblock %}
+
+     <style>
+      .page-head { border-bottom: 1px solid black; margin-bottom: 20px; }
+      .page-head h3 { padding: 0; margin: 0; display: inline; }
+     </style>
+
+
+    
+    
+    {% block base_top_js %}
+     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+     <script type="text/javascript">
+        jQuery(document).ready(function() {    
+          {% block jquery_document_ready %}{% endblock %}
+        });
+
+        // Default Error Callback function for AJAX calls
+        function defaultErrorCallback(xhr, ajaxOptions, thrownError) {
+            $("#flash-message").fadeIn();
+            switch (xhr.status) {
+                case 403:  // forbidden
+                    $("#flash-message").html('<div class="alert alert-danger">Illegal request: '+xhr.responseText+'</div>');
+                default:
+                  $("#flash-message").html('<div class="alert alert-danger">Server returned error.</div>');                          
+            }
+        }    
+
+        // Customizes modal title, body and onclick response
+        function buildModal(label, body, saveaction) {
+          $('#flash-message').hide();
+          $('#mlabel').html(label);
+          $('#mbody').html(body); 
+          $('#msave').attr('onclick', saveaction);
+          $("#mmodal").modal('show');   
+        }            
+
+        // Django CSRF protection
+        function sameOrigin(url) {
+          // test that a given url is a same-origin URL
+          // url could be relative or scheme relative or absolute
+          var host = document.location.host; // host + port
+          var protocol = document.location.protocol;
+          var sr_origin = '//' + host;
+          var origin = protocol + sr_origin;
+          // Allow absolute or scheme relative URLs to same origin
+          return (url == origin || url.slice(0, origin.length + 1) == origin + '/') ||
+            (url == sr_origin || url.slice(0, sr_origin.length + 1) == sr_origin + '/') ||
+            // or any other URL that isn't scheme relative or absolute i.e relative.
+            !(/^(\/\/|http:|https:).*/.test(url));
+        }    
+
+        // Django CSRF protection
+        function csrfSafeMethod(method) {
+          // these HTTP methods do not require CSRF protection
+          return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+        }
+
+        // Django CSRF protection
+        function getCookie(name) {
+          var cookieValue = null;
+          if (document.cookie && document.cookie != '') {
+            var cookies = document.cookie.split(';');
+            for (var i = 0; i < cookies.length; i++) {
+              var cookie = jQuery.trim(cookies[i]);
+              // Does this cookie string begin with the name we want?
+              if (cookie.substring(0, name.length + 1) == (name + '=')) {
+                  cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                  break;
+              }
+            }
+          }
+          return cookieValue;
+        }
+
+        // Django CSRF protection
+        var csrftoken = getCookie('csrftoken');
+        $.ajaxSetup({
+          beforeSend: function(xhr, settings) {
+            if (!csrfSafeMethod(settings.type) && sameOrigin(settings.url)) {
+              // Send the token to same-origin, relative URLs only.
+              // Send the token only if the method warrants CSRF protection
+              // Using the CSRFToken value acquired earlier
+              xhr.setRequestHeader("X-CSRFToken", csrftoken);
+            }
+          }
+        });        
+
+        // Handle AJAX autocomplete Search results
+        function lookup(inputString) {
+          if(inputString.length == 0) {
+            $('#suggestions').fadeOut(); // Hide the suggestions box
+          } 
+          else {
+            function onSuccessCallback(result) {
+              if(!jQuery.isEmptyObject(result)) {
+                var out = '<div id="searchresults" class="list-group">';
+                for(category in result) {
+                  out = out + '<h4 class="category">'+category+'</h4>';
+                  for(record in result[category]) {
+                    out = out + '<div class="list-group-item"><div class="list-group-item-heading"><a href="'+result[category][record]['link']+'"><strong>'+result[category][record]['title']+'</strong></a></div>';
+                    if(result[category][record].hasOwnProperty('preview'))
+                      out = out + '<div class="list-group-item-text">'+result[category][record]['preview']+'</div>';
+                    out = out + '</div></div>'
+                  }
+                }
+
+                $('#suggestions').fadeIn(); // Show the suggestions box
+                $('#suggestions').html(out); // Fill the suggestions box
+              }
+              else {
+                // No results
+                $('#suggestions').fadeOut(); // Hide the suggestions box
+              }              
+            }
+
+            // Make the AJAX call
+            $.ajax({
+                url: "{% url 'search:results' %}",
+                type: "POST",
+                data: {querystr: inputString},
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });
+          }
+        }        
+     </script>
+    {% endblock base_top_js %}
+    {% block js %}{% endblock %} 
+  </head>
+{% endblock head %}
+
+{% block extension_only_content %}{% endblock %}
+
+{% block body %}
+  <body style="padding-top: 70px; padding-bottom: 70px">
+    <!-- BEGIN HEADER -->
+    {% block header_nav %}
+      <!-- BEGIN TOP NAVIGATION BAR -->
+      <div class="navbar navbar-default navbar-fixed-top">
+        <div class="container">
+            <!-- BEGIN LOGO -->
+            <div style="padding-top: 10px; float: left">
+              <a href="{% url 'apps.dashboard.views.index' %}" style="font-size: 24px; color: #ffffff">Cybercon</a>
+            </div>
+            <!-- END LOGO -->
+
+            <!-- BEGIN TOP NAVIGATION MENU -->              
+            <ul class="nav navbar-nav pull-right">
+              <!-- BEGIN USER LOGIN DROPDOWN -->
+              <li class="dropdown">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown"><span>{{ user.get_full_name }}&nbsp;</span><i class="fa fa-angle-down"></i></a>
+                <ul class="dropdown-menu">
+                  <li><a href="{% url 'contacts:detail' user.id %}"><i class="fa fa-user"></i> My Profile</a></li>
+                  <li><a href="{% url 'backend:index' %}"><i class="fa fa-user"></i> Administrate</a></li>
+                  <li class="divider"></li>
+                  <li><a href="/logout/"><i class="fa fa-key"></i> Log Out</a></li>
+                </ul>
+              </li>
+              <!-- END USER LOGIN DROPDOWN -->
+            </ul>
+            <!-- END TOP NAVIGATION MENU --> 
+          </div>
+        </div>
+      </div>
+      <!-- END TOP NAVIGATION BAR -->
+    {% endblock %}
+    <!-- END HEADER -->
+
+
+    <!-- BEGIN BODY CONTAINER -->
+    <div class="container">
+      <!-- BEGIN HEADER -->
+      {% block page_header %}
+      <div class="row">
+        <div class="col-md-12">
+          <div id="suggestions" style="display: none; position: absolute; z-index: 10; left: 300px; background: black; color: white; width: 300px; padding: 10px; margin: 0"></div>
+          <h3 class="page-title">{% block heading %}Support Portal <small>Dashboard</small>{% endblock %}</h3>
+          <ul class="page-breadcrumb breadcrumb">
+            <li>
+              <i class="fa fa-home"></i>
+              <a href="{% url 'apps.dashboard.views.index' %}">Home</a> 
+            </li>
+            {% block breadcrumbs %}
+              <li>Dashboard</li>
+            {% endblock %}
+          </ul>
+        </div>
+      </div>
+      {% endblock %}
+      <!-- END HEADER -->
+
+      <!-- BEGIN BODY CONTENT -->
+      <div class="row">
+        <div class="col-md-3">
+          <!-- BEGIN SIDEBAR -->
+          {% block sidebar_nav %}
+            <div class="navbar">
+              <!-- BEGIN SIDEBAR MENU -->        
+              <ul class="list-unstyled">
+                <li>
+                  <!-- BEGIN RESPONSIVE QUICK SEARCH FORM -->
+                  <div id="searchcontainer">
+                  <form class="form" role="form" id="searchform" action="{% url 'search:results' %}" method="POST">{% csrf_token %}
+                    <div class="form-group">
+                      <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Search..." name="querystr" onkeyup="lookup(this.value);">
+                      </div>
+                    </div>
+                  </form>
+                 </div>
+                  <!-- END RESPONSIVE QUICK SEARCH FORM -->
+                </li>
+                <li>
+                  <a href="{% url 'apps.dashboard.views.index' %}">
+                    <i class="fa fa-home"></i> 
+                    <span class="title">Dashboard</span>
+                  </a>
+                </li>
+                <li>
+                  <a>
+                    <i class="fa fa-user"></i> 
+                    <span class="title">Accounts</span>
+                  </a>
+                  <ul class="sub-menu">
+                    <li><a href="{% url 'companies:detail' user.company_id %}">Company</a></li>
+                    <li><a href="{% url 'contacts:detail' user.id %}">User</a></li>
+                  </ul>
+                </li>
+                <li>
+                  <a>
+                    <i class="fa fa-cogs"></i> 
+                    <span class="title">Services</span>
+                  </a>
+                  <ul id="services-list" class="sub-menu">
+                    {% for service in user.get_services %}
+                      <li><a href="{{ service.uri }}{{ service.id }}">{{ service.name }}</a></li>
+                    {% endfor %}
+                  </ul>
+                </li>
+                <li>
+                  <a>
+                    <i class="fa fa-wrench"></i> 
+                    <span class="title">Support</span>
+                  </a>
+                  <ul class="sub-menu">
+                    <li><a href="{% url 'tickets:index' %}">Trouble Tickets</a></li>
+                    <li><a href="{% url 'knowledgebase:index' %}">Knowledgebase</a></li>
+                    <li><a href="{% url 'contact:index' %}">Contact Us</a></li>
+                  </ul>          
+                </li>
+              </ul>
+              <!-- END SIDEBAR MENU -->
+            </div>
+          {% endblock %}
+          <!-- END SIDEBAR -->            
+        </div>
+        <div class="col-md-9">
+          <!-- BEGIN PAGE CONTENT -->
+          {% block content %}{% endblock %}
+          <!-- END PAGE CONTENT -->
+        </div>
+      </div>
+      <!-- END BODY CONTENT -->
+    </div>
+    <!-- END BODY CONTAINER --> 
+
+    <!-- BEGIN FOOTER -->
+    {% block footer_nav %}
+     <div class="navbar navbar-fixed-bottom" style="background-color: #f5f5f5">
+      <div class="container">
+        <div class="col-md-8">
+          &copy; 2013 <a href="http://cybercon.com" alt="Cybercon">Cybercon</a> All rights reserved.
+        </div>
+        <div class="col-md-4">
+          <span style="background-color: lightgray; float: right; display: block; text-decoration: none; cursor: pointer; margin-top: 6px; font-size: 16px; padding: 0 6px 0 6px"><i class="fa fa-angle-up"></i></span>
+        </div>
+      </div>
+     </div>
+    {% endblock footer_nav %}
+    <!-- END FOOTER -->
+
+    <!-- BEGIN JAVASCRIPTS -->
+    {% block base_bottom_js %}
+     <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>     
+     <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+    {% endblock base_bottom_js %} 
+    <!-- END JAVASCRIPTS --> 
+  </body>
+{% endblock body %}
+
+{% block end_html %}
+ </html>
+{% endblock end_html %}

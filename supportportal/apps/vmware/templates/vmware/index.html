@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% block start_html %}{% endblock %}
+{% block meta %}{% endblock %}
+{% block base_css %}{% endblock %}
+{% block base_top_js %}{% endblock %}
+{% block body %}{% endblock %}
+{% block end_html %}{% endblock %}
+
+{% block js %}
+	<script type="text/javascript">
+        // Default Success Callback function for AJAX calls
+        function defaultSuccessCallback(result) {
+	        if(!jQuery.isEmptyObject(result)) {
+	            $('#flash-message').fadeIn();
+	            if(result.success == 1) {
+	            	// AJAX call returned success
+	                $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+	                setTimeout(null,1000);
+	                window.location.reload();
+	            }
+	            else {
+	            	// AJAX call returned failed
+	                $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+	            }
+	            $('#flash-message').delay(3000).fadeOut();
+	        }
+        }    
+
+	    // Makes AJAX call to supplied resource with supplied data
+	    function sendPost(url, data) {
+            $.ajax({
+                url: url,
+                data: data,
+                type: "POST",
+                success: defaultSuccessCallback,
+                error: defaultErrorCallback
+            });
+	    }
+
+	    // Humanize bit size
+	    function kbytesToSize(bytes) {
+		   var sizes = ['KB', 'MB', 'GB', 'TB'];
+		   if (bytes == 0) return '0 Bytes';
+		   var i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+		   return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
+		};
+
+		// Retrieve and process Statistics
+		function getVmwareStats() {
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+		        if(!jQuery.isEmptyObject(result)) {
+		            if(result.success == 1) {
+		            	// AJAX call returned success
+		            	var hdds = "";
+
+		            	$("#vm-stats-state").html(result.data.statistics.state);
+		            	$("#vm-stats-guest-os").html(result.data.statistics.vmwaretools_os);
+		            	$("#vm-stats-guest-ip").html(result.data.statistics.vmwaretools_ip);
+		            	$("#vm-stats-name").html(result.data.statistics.name);
+		            	$("#vm-stats-memory").html(result.data.statistics.memory);
+		            	$("#vm-stats-cpus").html(result.data.statistics.vcpus);
+		            	
+		            	// collect vhd's 
+		            	for(vhd in result.data.statistics.vhds) {
+		            		hdds = hdds + result.data.statistics.vhds[vhd].label + ' - <span class="bytes_to">' + result.data.statistics.vhds[vhd].capacity + '</span><br />';
+		            	}
+
+		            	$("#vm-stats-hdds").html(hdds);
+		            }
+		            else {
+		            	// AJAX call returned failed
+		            	// ****************fix me***********************
+		            }
+		        }				
+			}
+
+			// onError callback function
+			function onErrorCallback(xhr, ajaxOptions, thrownError) {
+                switch (xhr.status) {
+                    case 403:
+                        $("#vmware-stats-body").html('<div class="alert alert-danger">Illegal request: '+xhr.responseText+'</div>');
+                }
+            }
+
+			// Make the AJAX call
+            $.ajax({
+                url: "{% url 'vmware:getstats' service_id server.id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: onErrorCallback
+            });			
+		}
+
+		// Fetch mountable ISO listing via AJAX
+		function getIsoListing() {
+			// Destroy existing
+			$("#iso-select").prop("disabled", false);
+			$("#iso-select").html("");
+
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+		        if(!jQuery.isEmptyObject(result)) {
+		            if(result.success == 1) {
+		            	// AJAX call returned success
+		            	for(iso in result.data.isos) {
+		            		$("#iso-select").append('<OPTION>'+result.data.isos[iso]+'</OPTION>');
+		            	}
+		            }
+		            else {
+		            	// AJAX call returned failed
+		            	// ****************fix me***********************
+		            	$("#iso-select").prop("disabled", true);
+		            }
+		        }				
+			}
+
+			// onError callback function
+			function onErrorCallback(xhr, ajaxOptions, thrownError) {
+                switch (xhr.status) {
+                    case 403:
+                         $("#vmware-controls-container").html('<div class="alert alert-danger">Illegal request: '+xhr.responseText+'</div>');
+                }
+            }
+
+			// Make the AJAX call
+            $.ajax({
+                url: "{% url 'vmware:getisos' service_id server.id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: onErrorCallback
+            });			
+		}
+
+		// Fetch Snapshots via AJAX
+		function getSnapshots() {
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+		        if(!jQuery.isEmptyObject(result)) {
+		            if(result.success == 1) {
+		            	// AJAX call returned success
+		            	var count = 0;
+		            	for(snapshot in result.data.snapshots) {
+		            		count++;	// to track current snapshot count
+		            		$("#vm-snapshots-table").append(' \
+		            			<tr data-path="'+result.data.snapshots[snapshot].path+'"> \
+		            				<td>' + result.data.snapshots[snapshot].name + '</td> \
+		            				<td>' + result.data.snapshots[snapshot].description + '</td> \
+		            				<td>' + result.data.snapshots[snapshot].path + '</td> \
+		            				<td> \
+		            					<a class="btn green revert-snapshot" role="button"><i class="fa fa-edit"></i> Revert</a> \
+										<a role="button" class="btn dark delete-snapshot"><i class="fa fa-trash-o"></i> Delete</a> \
+				        			</td> \
+				        		</tr>'
+				        	);   		
+		            	}
+
+		            	// Customers are restricted to 5 total snapshots, don't allow further submissions
+		            	if(count>4) {
+		            		$("#snapshot_name").prop("disabled", true);
+		            		$("#snapshot_desc").prop("disabled", true);
+		            		$("#create_snapshot").attr("onclick", "return false");
+		            	}
+		            }
+		            else {
+		            	// AJAX call returned failed
+		                // ****************fix me***********************
+		            }
+		        }				
+			}
+
+			// onError callback function
+			function onErrorCallback(xhr, ajaxOptions, thrownError) {
+                switch (xhr.status) {
+                    case 403:
+                         $("#vmware-snapshots-body").html('<div class="alert alert-danger">Illegal request: '+xhr.responseText+'</div>');
+                }
+            }
+
+            // Make the AJAX call
+            $.ajax({
+                url: "{% url 'vmware:getsnapshots' service_id server.id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: onErrorCallback
+            });
+		}
+
+		jQuery(document).ready(function() {   
+			getIsoListing();
+			getVmwareStats();
+			getSnapshots();
+
+			// Iterate through all id's with class "bytes_to" and convert values to human readable format
+		    var collection = $(".bytes_to");
+			collection.each(function() {
+				$(this).html(kbytesToSize($(this).html()));
+			});
+
+		    // Snapshot controls event bindings
+		    $('#vm-snapshots-table')
+		        .on('click', 'a.revert-snapshot', function (e) {
+		            e.preventDefault();
+		            sendPost("{% url 'vmware:revertsnapshot' service_id server.id %}", {"path": $(this).closest('tr').data('path')});
+		        })	
+		        .on('click', 'a.delete-snapshot', function (e) {
+		            e.preventDefault();
+		            sendPost("{% url 'vmware:deletesnapshot' service_id server.id %}", {"path": $(this).closest('tr').data('path')});
+		        });		        		
+		}); 
+	</script>
+{% endblock %}
+
+
+{% block extension_only_content %}
+ <!-- BEGIN VMWARE CONTENT -->
+ 	<div id="flash-message" class="hidden"></div>
+
+    <!-- BEGIN CONTENT HEADER -->
+    <div class="row page-head">
+        <div class="col-md-12"><i class="fa fa-edit"></i>&nbsp;<h3>Vmware Hosting</h3></div>
+    </div>
+    <!-- END CONTENT HEADER -->
+
+    <!-- BEGIN VMWARE CONTAINER -->
+    <div class="row">
+		<!-- BEGIN VMWARE CONTROLS -->	
+		<div class="well">
+			<div class="text-center control-group">
+				<h3>Vmware vSphere</h3>
+				<span><a title="Vmware ESX Vsphere" target="_blank" href="https://vc.vservercenter.com">http://vc.vservercenter.com</a></span>
+            </div><br />
+
+            <div id="vmware-controls-container">
+				<div class="control-group text-center">
+					<button type="button" class="btn btn-success" onclick='sendPost("{% url 'vmware:boot' service_id server.id %}", {})'>Power On</button>
+					<button type="button" class="btn btn-warning" onclick='sendPost("{% url 'vmware:reboot' service_id server.id %}", {"graceful": 0})'>Reset</button>
+					<button type="button" class="btn btn-danger" onclick='sendPost("{% url 'vmware:shutdown' service_id server.id %}", {"graceful": 0})'>Power Off</button>
+				</div><br />	
+
+				<div class="control-group text-center">
+					<button type="button" class="btn btn-info" onclick='sendPost("{% url 'vmware:shutdown' service_id server.id %}", {"graceful": 1})'>Shutdown Guest</button>
+					<button type="button" class="btn" onclick='sendPost("{% url 'vmware:reboot' service_id server.id %}", {"graceful": 1})'>Reboot Guest</button>
+				</div><br />  		
+			
+				<div class="control-group">
+	                <label class="control-label" for="iso">ISO</label>
+					<div class="input-group text-left">
+						<select name="iso" id="iso-select" class="form-control" autocomplete="off"></select>
+						<span class="input-group-btn">
+							<button type="button" class="btn btn-primary" id="set-iso-btn" onclick='sendPost("{% url 'vmware:mount' service_id server.id %}", {"iso": $("#iso-select").val()})'>Set</button>
+						</span>
+					</div>
+	            </div>
+            </div>
+		</div>				
+		<!-- END VMWARE CONTROLS -->						
+
+		<!-- BEGIN VMWARE STATS -->	
+		<div id="vmware-stats-container">
+			<h5>Details</h5>
+			<div id="vmware-stats-body">
+				<table class="table table-striped table-bordered table-hover" id="vm-stats-table">
+					<tr><td>Current State</td><td id="vm-stats-state"></td></tr>
+					<tr><td>Vmwaretools Guest OS</td><td id="vm-stats-guest-os"></td></tr>
+					<tr><td>Vmwaretools Guest IP</td><td id="vm-stats-guest-ip"></td></tr>
+					<tr><td>Server Name</td><td id="vm-stats-name"></td></tr>
+					<tr><td>Memory</td><td id="vm-stats-memory"></td></tr>
+					<tr><td>vCPUs</td><td id="vm-stats-cpus"></td></tr>
+					<tr><td>HDDs</td><td id="vm-stats-hdds"></td></tr>
+					</tr>
+				</table>
+			</div>
+		</div>
+		<!-- END VMWARE STATS -->
+
+		<!-- BEGIN VMWARE SNAPSHOTS -->
+		<div id="vmware-snapshots-container">
+			<h5>Snapshots</h5>
+			<div id="vmware-snapshots-body">
+				<table class="table table-striped table-bordered table-hover" id="vm-snapshots-table"></table>					
+
+				<form role="form" id="create-snapshot-form">
+					<table class="table" id="vm-create-snapshot-table">
+						<tr>
+							<td class="col-md-3"><input type="text" name="name" id="snapshot_name" class="form-control" placeholder="Name" /></td>
+							<td class="col-md-7"><input type="text" name="description" id="snapshot_desc" class="form-control" placeholder="Description" /></td>
+							<td class="col-md-3 pull-right">
+								<button id="create_snapshot" type="button" class="btn btn-primary" onclick='sendPost("{% url 'vmware:createsnapshot' service_id server.id %}", $("#create-snapshot-form").serialize())'>Create</button>
+							</td>
+						</tr>
+					</table>
+				</form>
+			</div>	
+		</div>
+		<!-- END VMWARE SNAPSHOTS -->
+	</div>
+    <!-- END VMWARE CONTAINER -->
+
+ <!-- END VMWARE CONTENT -->
+{% endblock %}

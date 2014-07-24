@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% block start_html %}{% endblock %}
+{% block meta %}{% endblock %}
+{% block base_css %}{% endblock %}
+{% block base_top_js %}{% endblock %}
+{% block body %}{% endblock %}
+{% block end_html %}{% endblock %}
+
+{% block js %}
+	<script type="text/javascript">
+		var vnc_ip;			// local variable to hold vnc server's ip address
+		var vnc_port;		// local variable to hold vnc server's port
+		var vnc_pass;		// local variable to hold vnc server's password
+
+        // Default Success Callback function for AJAX calls
+        function defaultSuccessCallback(result) {
+            if(!jQuery.isEmptyObject(result)) {
+                $('#flash-message').fadeIn();
+                if(result.success == 1) {
+                	// AJAX call returned success
+                    $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+                    getSolusStats();
+                }
+                else {
+                	// AJAX call returned failed
+                    $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+                }
+                $('#flash-message').delay(3000).fadeOut();
+            }
+        }             
+
+	    // Makes AJAX call to supplied resource with supplied data
+	    function sendPost(url, data) {
+            $.ajax({
+                url: url,
+                data: data,
+                type: "POST",
+                success: defaultSuccessCallback,
+                error: defaultErrorCallback
+            });
+	    }
+
+	    // Loads VNC applet into DOM
+	    function start_vnc_applet() {
+	    	$("#vnc_applet_placeholder").append(' \
+			    <applet archive="http://184.175.99.17/tightvnc-jviewer.jar" code="com.glavsoft.viewer.Viewer" width="1" height="1"> \
+		            <param name="Host" value="' + vnc_ip + '" /> \
+		            <param name="Port" value="' + vnc_port + '" /> \
+		            <param name="Password" value="' + vnc_pass + '" /> \
+		            <param name="ShowControls" value="no" /> \
+				</applet>'
+	    	);
+	    }
+
+	    // Converts bytes to human-readable format
+		function bytesToSize(bytes) {
+			if (bytes == 0) {
+				return '0 Bytes';
+			}
+
+		    var sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+		    var i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+
+		    return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
+		};
+
+		// Fetch SolusVM Server stats via AJAX
+		function getSolusStats() {
+			// Destroy existing
+			// *************************** FIX ME ******************************
+
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+		        if(!jQuery.isEmptyObject(result)) {
+		            if(result.success == 1) {
+		            	// AJAX call returned success
+		            	$("#stats-type").html(result.data.statistics.type);
+		            	$("#stats-node").html(result.data.state.node);
+		            	$("#stats-hostname").html(result.data.statistics.hostname);
+		            	$("#stats-mac").html(result.data.statistics.mac);
+		            	$("#stats-hdd").html(bytesToSize(result.data.statistics.hdd));
+		            	$("#stats-ram").html(bytesToSize(result.data.statistics.memory));
+		            	$("#stats-ipaddresses").html(result.data.state.ipaddresses);
+		            	$("#stats-bandwidth").html('<img src="http://vcp.vservercenter.com' + result.data.state.trafficgraph + '" />');
+		            	$("#hostname").val(result.data.statistics.hostname);
+		            	$("#vm-stats-table").fadeIn();
+		            	
+		            	vnc_ip = result.data.vnc.vncip;
+		            	vnc_port = result.data.vnc.vncport;
+		            	vnc_pass = result.data.vnc.vncpassword;		            	
+		            }
+		            else {
+		            	// AJAX call returned failed
+		            	// *************************** FIX ME ******************************
+		            }
+		        }
+			}
+
+			// Make AJAX call to retrieve server details
+            $.ajax({
+                url: "{% url 'solusvm:getdetails' service_id server.id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });				
+		}
+
+		// Fetch ISO list from SolusVM via AJAX
+		function getIsoList() {
+			// onSuccess callback function
+			function onSuccessCallback(result) {
+		        if(!jQuery.isEmptyObject(result)) {
+		            if(result.success == 1) {
+		            	// AJAX call returned success
+		            	for(iso in result.data.isos) {
+		            		$("#iso-select").append('<OPTION>'+result.data.isos[iso]+'</OPTION>');
+		            	}
+		            }
+		            else {
+		            	// AJAX call returned failed
+		            	// *************************** FIX ME ******************************
+		            }
+		        }				
+			}
+
+            $.ajax({
+                url: "{% url 'solusvm:getisos' service_id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });		  				
+		}
+
+		jQuery(document).ready(function() { 
+			getSolusStats();
+			getIsoList();
+		});		
+	</script>
+{% endblock %}
+
+{% block extension_only_content %}
+ <!-- BEGIN SOLUSVM CONTENT -->
+
+ 	<div id="vnc_applet_placeholder"></div>
+	<div id="flash-message hidden"></div>
+
+    <!-- BEGIN SOLUSVM CONTENT HEADER -->
+    <div class="row page-head">
+        <div class="col-md-12"><i class="fa fa-edit"></i>&nbsp;<h3>KVM/XEN Hosting</h3></div>
+    </div>
+    <!-- END SOLUSVM CONTENT HEADER -->
+
+    <!-- BEGIN SOLUSVM CONTAINER -->
+    <div class="row">
+		<!-- BEGIN VSERVER CONTROLS -->	
+		<div class="well">
+			<!-- BEGIN VSERVER CONTENT HEADER -->
+			<div class="control-group text-center">
+				<h3>Control Panel</h3>
+				<a href="https://vcp.vservercenter.com" target="_blank" title="SolusVM Control Panel">https://vcp.vservercenter.com</a>
+            </div><br />
+            <!-- END VSERVER CONTENT HEADER -->
+
+            <!-- BEGIN VSERVER CONTROLS CONTAINER -->
+			<div class="control-group text-center">
+				<button type="button" class="btn btn-success" onclick='sendPost("{% url 'solusvm:boot' service_id server.id %}", {})'>boot</button>
+				<button type="button" class="btn btn-warning" onclick='sendPost("{% url 'solusvm:reboot' service_id server.id %}", {})'>reboot</button>
+				<button type="button" class="btn btn-danger" onclick='sendPost("{% url 'solusvm:shutdown' service_id server.id %}", {})'>shutdown</button>
+				<br /><br />
+				<button type="button" class="btn" onclick='start_vnc_applet()'>Open Console</button>
+			</div><br />		
+			<!-- END VSERVER CONTROLS CONTAINER -->
+
+			<!-- BEGIN VSERVER SELECTS CONTAINER -->
+			<div id="solus-selects-container">
+				<div class="control-group">
+                    <label class="control-label" for="iso">ISO</label>
+					<div class="input-group text-left">
+						<select name="iso" id="iso-select" class="form-control" autocomplete="off">
+							<option default value="none"></option>
+						</select>
+						<span class="input-group-btn">
+							<button type="button" class="btn btn-primary" onclick='sendPost("{% url 'solusvm:mount' service_id server.id %}", {"iso": $("#iso-select").val()})'>Set</button>
+						</span>
+					</div>       
+                </div>    
+				<div class="control-group">
+                    <label class="control-label" for="bootorder">Boot Order</label>
+					<div class="input-group text-left">
+						<select name="bootorder" id="bootorder" class="form-control" autocomplete="off">
+							<option value="dc">(1) CDROM, (2) HDD</option>
+							<option value="cd">(1) HDD, (2) CDROM</option>
+							<option value="d">CDROM</option>
+							<option value="c">HDD</option>
+						</select>
+
+                        <span class="input-group-btn">
+                        	<button type="button" class="btn btn-primary" onclick='sendPost("{% url 'solusvm:set_bootorder' service_id server.id %}", {"bootorder": $("#bootorder").val()})'>Set</button>
+                        </span>
+                    </div>
+                </div> 
+            </div>
+            <!-- END VSERVER SELECTS CONTAINER -->                             
+		</div>
+		<!-- END VSERVER CONTROLS -->
+
+		<!-- BEGIN VSERVER STATS CONTAINER -->						
+		<div id="solus-stats-container">
+			<!-- BEGIN VSERVER STATS TABLE -->
+			<table class="table table-striped table-bordered table-hover" id="vm-stats-table">
+				<tr><td>Hypversior</td><td id="stats-type"></td></tr>
+				<tr><td>Node</td><td id="stats-node"></td></tr>
+				<tr><td>Hostname</td><td id="stats-hostname"></td></tr>
+				<tr><td>MAC Address</td><td id="stats-mac"></td></tr>
+				<tr><td>Disk Space</td><td id="stats-hdd"></td></tr>
+				<tr><td>Memory</td><td id="stats-ram"></td></tr>
+				<tr><td>IP Addresses</td><td id="stats-ipaddresses"></td></tr>
+				<tr><td>Bandwidth</td><td id="stats-bandwidth"></td></tr>			
+			</table>
+			<!-- END VSERVER STATS TABLE -->
+		</div>
+		<!-- END VSERVER STATS CONTAINER -->
+	</div>
+    <!-- END SOLUSVM CONTAINER -->
+
+ <!-- END SOLUSVM CONTENT -->
+{% endblock %}
