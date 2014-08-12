@@ -104,25 +104,6 @@ class AuthenticationLogger(RequestLogger):
     def __unicode__(self):
         return "%s %s from %s @ %s" % (self.user, self.category, self.ip, self.timestamp)   
 
-class ErrorLogger(RequestLogger):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=False, blank=False)
-    message = models.CharField(max_length=512, null=False, blank=False)
-    category = models.CharField(max_length=16, null=False, blank=False)
-
-    def log(self, request, category, message):
-        ErrorLogger.objects.create(
-            user=request.user,
-            message=message,
-            category=category,
-            uri=request.build_absolute_uri(), 
-            ip=get_client_ip(request), 
-            user_agent=request.META['HTTP_USER_AGENT'], 
-            request_method=request.META['REQUEST_METHOD'], 
-            post=json.dumps(request.POST), 
-            get=json.dumps(request.GET), 
-            cookies=json.dumps(request.COOKIES)
-        )        
-
 
 @receiver(user_logged_in)
 def log_login(sender, request, user, **kwargs):

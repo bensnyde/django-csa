@@ -1,15 +1,17 @@
 # System
-from django.http import HttpResponseForbidden
-from django.shortcuts import render, get_object_or_404
+import logging
 # Project
 from django.conf import settings
 from apps.servers.models import Server
-from apps.loggers.models import ErrorLogger, ActionLogger
+from apps.loggers.models import ActionLogger
 from common.decorators import validated_request, validated_service
 from common.helpers import format_ajax_response
 from libs.vmware import Vsphere
 # App
 from .forms import MountISOForm, SnapshotPathForm, CreateSnapshotForm
+
+
+logger = logging.getLogger(__name__)
 
 
 @validated_request(None)
@@ -40,19 +42,21 @@ def get_stats(request, server_ids, server_id):
             *data:
                 statistics:
     """
-    if int(server_id) not in server_ids:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized service in apps.vmware.views.get_stats")
-        return HttpResponseForbidden()
-    else:
-        server = get_object_or_404(Server, pk=server_id)    
+    try:
+        if int(server_id) not in server_ids:
+            raise Exception("Forbidden: specified Server does not belong to specified Service.")
 
-    pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
-    statistics = pysph.get_statistics()
+        server = Server.objects.get(pk=server_id)     
 
-    if statistics:
-        return format_ajax_response(True, "Retrieved server statistics successfully.", {'statistics': statistics})
-    else:
-        ErrorLogger().log(request, "API", "API call to apps.vmware.views.get_stats failed.")
+        pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
+        statistics = pysph.get_statistics()
+
+        if statistics:
+            return format_ajax_response(True, "Retrieved server statistics successfully.", {'statistics': statistics})
+        else:
+            raise Exception("Pysphere's get_statistics() returned False.")
+    except Exception as ex:
+        logger.error("Failed to get_stats: %s" % ex)
         return format_ajax_response(False, "There was a error retrieving server statistics.")
 
 
@@ -84,19 +88,21 @@ def get_isos(request, server_ids, server_id):
             *data:
                 isos:             
     """
-    if int(server_id) not in server_ids:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized service in apps.vmware.views.get_isos")
-        return HttpResponseForbidden()
-    else:
-        server = get_object_or_404(Server, pk=server_id)    
+    try:
+        if int(server_id) not in server_ids:
+            raise Exception("Forbidden: specified Server does not belong to specified Service.")
 
-    pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
-    iso_list = pysph.get_iso_list("SpursNA1-ISO")
+        server = Server.objects.get(pk=server_id)    
 
-    if iso_list:
-        return format_ajax_response(True, "Retrieved ISO listing successfully.", {'isos': iso_list})
-    else:
-        ErrorLogger().log(request, "API", "API call to apps.vmware.views.get_isos failed.")
+        pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
+        iso_list = pysph.get_iso_list(settings.VMWARE["iso_datastore"])
+
+        if iso_list:
+            return format_ajax_response(True, "Retrieved ISO listing successfully.", {'isos': iso_list})
+        else:
+            raise Exception("Pysphere's get_iso_list(%s) returned False." % settings.VMWARE["iso_datastore"])
+    except Exception as ex:
+        logger.error("Failed to get_iso_list: %s" % ex)
         return format_ajax_response(False, "There was a error retrieving available ISO's.")   
 
 
@@ -128,19 +134,21 @@ def get_snapshots(request, server_ids, server_id):
             *data:
                 snapshots:
     """
-    if int(server_id) not in server_ids:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized service in apps.vmware.views.get_snapshots")
-        return HttpResponseForbidden()
-    else:
-        server = get_object_or_404(Server, pk=server_id)            
+    try:
+        if int(server_id) not in server_ids:
+            raise Exception("Forbidden: specified Server does not belong to specified Service.")
 
-    pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
-    snapshots = pysph.get_snapshots()
+        server = Server.objects.get(pk=server_id)             
 
-    if snapshots:
-        return format_ajax_response(True, "Successfully retrieved snapshots.", {'snapshots': snapshots})
-    else:
-        ErrorLogger().log(request, "API", "API call to apps.vmware.views.get_snapshots failed.")
+        pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
+        snapshots = pysph.get_snapshots()
+
+        if snapshots:
+            return format_ajax_response(True, "Successfully retrieved snapshots.", {'snapshots': snapshots})
+        else:
+            raise Exception("Pysphere's get_snapshots() returned False.")
+    except Exception as ex:
+        logger.error("Failed to get_snapshots: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving current snapshots.")  
 
 
@@ -170,24 +178,24 @@ def reboot(request, server_ids, server_id):
             success: boolean result of API call
             message: string response message from API call
     """
-    if int(server_id) not in server_ids:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized service in apps.vmware.views.reboot")
-        return HttpResponseForbidden()
-    else:
-        server = get_object_or_404(Server, pk=server_id)     
+    try:
+        if int(server_id) not in server_ids:
+            raise Exception("Forbidden: specified Server does not belong to specified Service.")
 
-    graceful = False
-    if request.POST['graceful'] == 1:
-        graceful = True
+        server = Server.objects.get(pk=server_id)    
 
-    pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
-    result = pysph.reboot()
+        graceful = (False, True)[request.POST["graceful"]==1]
 
-    if result:
-        ActionLogger().log(request.user, "modified", "Rebooted", "vServer %s" % server.sid)
-        return format_ajax_response(True, "Server rebooted successfully.")
-    else:
-        ErrorLogger().log(request, "API", "API call to apps.vmware.views.reboot failed.")
+        pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
+        result = pysph.reboot()
+
+        if result:
+            ActionLogger().log(request.user, "modified", "Rebooted", "vServer %s" % server.sid)
+            return format_ajax_response(True, "Server rebooted successfully.")
+        else:
+            raise Exception("Pysphere's reboot() returned False.")
+    except Exception as ex:
+        logger.error("Failed to reboot: %s" % ex)
         return format_ajax_response(False, "There was a error rebooting the server.")
     
 
@@ -217,24 +225,24 @@ def shutdown(request, server_ids, server_id):
             success: boolean result of API call
             message: string response message from API call
     """
-    if int(server_id) not in server_ids:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized service in apps.vmware.views.shutdown")
-        return HttpResponseForbidden()
-    else:
-        server = get_object_or_404(Server, pk=server_id)         
-    
-    graceful = False
-    if request.POST['graceful'] == 1:
-        graceful = True
+    try:
+        if int(server_id) not in server_ids:
+            raise Exception("Forbidden: specified Server does not belong to specified Service.")
 
-    pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
-    result = pysph.shutdown(graceful)
+        server = Server.objects.get(pk=server_id)    
 
-    if result:
-        ActionLogger().log(request.user, "modified", "Shutdown", "vServer %s" % server.sid) 
-        return format_ajax_response(True, "Server shutdown successfully.")
-    else:
-        ErrorLogger().log(request, "API", "API call to apps.vmware.views.shutdown failed.")
+        graceful = (False, True)[request.POST["graceful"]==1]
+
+        pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
+        result = pysph.shutdown(graceful)
+
+        if result:
+            ActionLogger().log(request.user, "modified", "Shutdown", "vServer %s" % server.sid) 
+            return format_ajax_response(True, "Server shutdown successfully.")
+        else:
+            raise Exception("Pysphere's shutdown(%s) returned False." % graceful)
+    except Exception as ex:
+        logger.error("Failed to shutdown: %s" % ex)
         return format_ajax_response(False, "There was a error shutting down the server.")
 
 
@@ -264,20 +272,22 @@ def boot(request, server_ids, server_id):
             success: boolean result of API call
             message: string response message from API call
     """
-    if int(server_id) not in server_ids:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized service in apps.vmware.views.boot")
-        return HttpResponseForbidden()
-    else:
-        server = get_object_or_404(Server, pk=server_id)    
+    try:
+        if int(server_id) not in server_ids:
+            raise Exception("Forbidden: specified Server does not belong to specified Service.")
 
-    pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
-    result = pysph.boot()
+        server = Server.objects.get(pk=server_id)    
 
-    if result:
-        ActionLogger().log(request.user, "modified", "Booted", "vServer %s" % server.sid)
-        return format_ajax_response(True, "Server booted successfully.")
-    else:
-        ErrorLogger().log(request, "API", "API call to apps.vmware.views.boot failed.")
+        pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
+        result = pysph.boot()
+
+        if result:
+            ActionLogger().log(request.user, "modified", "Booted", "vServer %s" % server.sid)
+            return format_ajax_response(True, "Server booted successfully.")
+        else:
+            raise Exception("Pysphere's boot() returned False.")
+    except Exception as ex:
+        logger.error("Failed to boot: %s" % ex)
         return format_ajax_response(False, "There was a error booting the server.")
 
 
@@ -308,23 +318,27 @@ def mount_iso(request, server_ids, server_id):
             success: boolean result of API call
             message: string response message from API call
     """
-    if int(server_id) not in server_ids:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized service in apps.vmware.views.mount_iso")
-        return HttpResponseForbidden()
-    else:
-        server = get_object_or_404(Server, pk=server_id)    
+    try:
+        if int(server_id) not in server_ids:
+            raise Exception("Forbidden: specified Server does not belong to specified Service.")
 
-    pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
-    if request.POST["iso"] == "":
-        result = pysph.unmount_iso()
-    else:
-        result = pysph.mount_iso('[SpursNA1-ISO] %s' % request.form.cleaned_data["iso"])
+        server = Server.objects.get(pk=server_id)       
 
-    if result:
-        ActionLogger().log(request.user, "modified", "ISO %s" % request.form.cleaned_data["iso"], "vServer %s" % server.sid)
-        return format_ajax_response(True, "ISO mounted successfully.")
-    else:
-        ErrorLogger().log(request, "API", "API call to apps.vmware.views.mount_iso failed.")
+        pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
+
+        if request.POST["iso"] == "":
+            result = pysph.unmount_iso()
+        else:
+            iso = "[%s] %s" % (settings.VMWARE["iso_datastore"], request.form.cleaned_data["iso"]) 
+            result = pysph.mount_iso(iso)
+
+        if result:
+            ActionLogger().log(request.user, "modified", "ISO %s" % request.form.cleaned_data["iso"], "vServer %s" % server.sid)
+            return format_ajax_response(True, "ISO mounted successfully.")
+        else:
+            raise Exception(("Pysphere's mount_iso(%s) returned False." % iso, "Pysphere's unmount_iso() returned False.")[reqeust.POST["iso"]==""])
+    except Exception as ex:
+        logger.error("Failed to mount_iso: %s" % ex)
         return format_ajax_response(False, "There was a error mounting the specified ISO.")
 
 
@@ -355,20 +369,22 @@ def delete_snapshot(request, server_ids, server_id):
             success: boolean result of API call
             message: string response message from API call
     """
-    if int(server_id) not in server_ids:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized service in apps.vmware.views.delete_snapshot")
-        return HttpResponseForbidden()
-    else:
-        server = get_object_or_404(Server, pk=server_id)    
+    try:
+        if int(server_id) not in server_ids:
+            raise Exception("Forbidden: specified Server does not belong to specified Service.")
 
-    pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
-    result = pysph.delete_snapshot(request.form.cleaned_data["path"])
+        server = Server.objects.get(pk=server_id)      
 
-    if result:
-        ActionLogger().log(request.user, "deleted", "Snapshot %s" % request.form.cleaned_data["path"], "vServer %s" % server.sid)
-        return format_ajax_response(True, "Snapshot deleted successfully.")
-    else:
-        ErrorLogger().log(request, "API", "API call to apps.vmware.views.delete_snapshot failed.")
+        pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
+        result = pysph.delete_snapshot(request.form.cleaned_data["path"])
+
+        if result:
+            ActionLogger().log(request.user, "deleted", "Snapshot %s" % request.form.cleaned_data["path"], "vServer %s" % server.sid)
+            return format_ajax_response(True, "Snapshot deleted successfully.")
+        else:
+            raise Exception("Pysphere's delete_snapshot(%s) returned False." % request.form.cleaned_data["path"])
+    except Exception as ex:
+        logger.error("Failed to delete_snapshot: %s" % ex)
         return format_ajax_response(False, "There was a error deleting the specified snapshot.")
 
 
@@ -399,20 +415,22 @@ def revert_snapshot(request, server_ids, server_id):
             success: boolean result of API call
             message: string response message from API call
     """
-    if int(server_id) not in server_ids:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized service in apps.vmware.views.revert_snapshot")
-        return HttpResponseForbidden()
-    else:
-        server = get_object_or_404(Server, pk=server_id)    
+    try:
+        if int(server_id) not in server_ids:
+            raise Exception("Forbidden: specified Server does not belong to specified Service.")
 
-    pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
-    result = pysph.revert_snapshot(request.form.cleaned_data["path"])
+        server = Server.objects.get(pk=server_id)   
 
-    if result:
-        ActionLogger().log(request.user, "modified", "Reverted snapshot %s" % request.form.cleaned_data["path"], "vServer %s" % server.sid)
-        return format_ajax_response(True, "Specified snapshot loaded successfully.")
-    else:
-        ErrorLogger().log(request, "API", "API call to apps.vmware.views.revert_snapshot failed.")
+        pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
+        result = pysph.revert_snapshot(request.form.cleaned_data["path"])
+
+        if result:
+            ActionLogger().log(request.user, "modified", "Reverted snapshot %s" % request.form.cleaned_data["path"], "vServer %s" % server.sid)
+            return format_ajax_response(True, "Specified snapshot loaded successfully.")
+        else:
+            raise Exception("Pysphere's revert_snapshot(%s) returned False." % request.form.cleaned_data["path"])
+    except Exception as ex:
+        logger.error("Failed to revert_snapshot: %s" % ex)
         return format_ajax_response(False, "There was a error reverting to specified snapshot.")
 
 
@@ -443,19 +461,20 @@ def create_snapshot(request, server_ids, server_id):
             success: boolean result of API call
             message: string response message from API call
     """
-    if int(server_id) not in server_ids:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized service in apps.vmware.views.create_snapshot")
-        return HttpResponseForbidden()
-    else:
-        server = get_object_or_404(Server, pk=server_id)    
+    try:
+        if int(server_id) not in server_ids:
+            raise Exception("Forbidden: specified Server does not belong to specified Service.")
 
-    pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
-    if pysph.get_snapshots_count() < 5:
+        server = Server.objects.get(pk=server_id)   
+
+        pysph = Vsphere(settings.VMWARE["address"], settings.VMWARE["username"], settings.VMWARE["password"], server.sid)
         result = pysph.create_snapshot(request.form.cleaned_data["name"], request.form.cleaned_data["description"])
 
-    if result:
-        ActionLogger().log(request.user, "created", "snapshot %s" % request.form.cleaned_data["name"], "vServer %s" % server.sid)
-        return format_ajax_response(True, "Snapshot created successfully.")
-    else:
-        ErrorLogger().log(request, "API", "API call to apps.vmware.views.create_snapshot failed.")
+        if result:
+            ActionLogger().log(request.user, "created", "snapshot %s" % request.form.cleaned_data["name"], "vServer %s" % server.sid)
+            return format_ajax_response(True, "Snapshot created successfully.")
+        else:
+            raise Exception("Pysphere's create_snapshot(%s, %s) returned False." % (request.form.cleaned_data["name"], request.form.cleaned_data["description"]))
+    except Exception as ex:
+        logger.error("Failed to create_snapshot: %s" % ex)
         return format_ajax_response(False, "There was an error creating the snapshot.")

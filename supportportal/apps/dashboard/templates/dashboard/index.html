@@ -42,7 +42,7 @@
 
             // Make the AJAX call
             $.ajax({
-                url: "{% url 'news:getnews' %}",
+                url: "{% url 'announcements:getnews' %}",
                 type: "POST",
                 success: onSuccessCallback,
                 error: defaultErrorCallback

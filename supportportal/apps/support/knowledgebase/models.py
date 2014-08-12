@@ -20,13 +20,13 @@ class Tag(models.Model):
 
 class Article(models.Model):
     author = models.ForeignKey(settings.AUTH_USER_MODEL, null=False, blank=False, related_name="knowledgebase_author")
-    title = models.SlugField(max_length=128, blank=False, null=False)
+    title = models.CharField(max_length=128, blank=False, null=False)
     contents = models.TextField(blank=False, null=False)
     created = models.DateTimeField(editable=False)
     modified = models.DateTimeField()
     views = models.PositiveIntegerField(default=0)
     category = models.ForeignKey(Category, blank=False, null=False)
-    tags = models.ManyToManyField(Tag)
+    tags = models.ManyToManyField(Tag, blank=True, null=True)
 
     def __unicode__(self):
         return '%s' % (self.title)
@@ -49,6 +49,7 @@ class Article(models.Model):
         	"title": self.title,
         	"views": self.views,
         	"category": self.category.title,
+            "category_id": self.category.pk,
         	"created": defaultfilters.date(self.created, "SHORT_DATETIME_FORMAT"),
         	"modified": defaultfilters.date(self.modified, "SHORT_DATETIME_FORMAT"),
         	"contents": self.contents,

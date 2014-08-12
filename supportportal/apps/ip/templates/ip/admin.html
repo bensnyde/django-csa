@@ -1,0 +1,506 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+{% load common_tags %}
+
+{% block sitetitle %}| Support{% endblock %}
+{% block heading %}Support <small>IP Space</small>{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a>Support</a></li>
+	<li><a href="{% url 'ip:admin' %}">IP Space</a></li>
+  <li>Management</li>
+{% endblock %}
+
+{% block js %}
+	<script type="text/javascript">
+    // Customizes modal with specifications
+    function buildModal(label, body, saveaction) {
+        $('#flash-message').hide();
+        $('#mlabel').html(label);
+        $('#mbody').html(body);    
+        $('#msave').attr('onclick', saveaction);        
+        $("#mmodal").modal('show');
+    } 
+
+    function defaultSuccessCallback(result) {
+        if(!jQuery.isEmptyObject(result)) {
+            $('#flash-message').fadeIn();
+            if(result.success == 1) {
+                $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+                setTimeout("$('.modal.in').modal('hide')",2000);
+            }
+            else {
+                $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+                $.each(result.errors, function(k,v) {
+                  $("#"+k+"-help").closest('div').addClass("has-error");
+                  $("#"+k+"-help").html(v);
+                });                       
+            }
+            setTimeout("$('#flash-message').fadeOut()",2000);
+        }   
+    }  
+
+    function setNetwork() {
+        $.ajax({
+            url: "{% url 'ip:setnetwork' %}",
+            data: $("#set-network-address-form").serialize(),
+            type: "POST",
+            success: defaultSuccessCallback,
+            error: defaultErrorCallback
+        });            
+    }  
+
+      function getVlans() {
+        $("#vlans-table-tbody").html("");
+
+        function onSuccessCallback(result) {
+            if(!jQuery.isEmptyObject(result)) {
+                if(result.success == 1) {
+                    for(x in result.data.vlans) {
+                        $("#vlans-table-tbody").append(' \
+                            <tr data-id="'+result.data.vlans[x].id+'"> \
+                                <td>'+result.data.vlans[x].number+'</td> \
+                                <td>'+result.data.vlans[x].name+'</td> \
+                                <td>'+result.data.vlans[x].description+'</td> \
+                                <td><a href="#" class="btn btn-primary edit-vlan">Edit</a><a href="#" class="btn btn-warning del-vlan">Delete</a></td> \
+                            </tr>'
+                        );
+                    }
+                }
+                else {
+                    $("#vlans-table-tbody").append("<tr><td colspan=4>Error fetching vlans listing.</td></tr>");
+                }
+            }   
+        }  
+
+        $.ajax({
+            url: "{% url 'ip:getvlan' %}",
+            type: "POST",
+            success: onSuccessCallback,
+            error: defaultErrorCallback
+        });            
+      } 
+
+      function getVrfs() {
+        $("#vrfs-table-tbody").html("");
+
+        function onSuccessCallback(result) {
+            if(!jQuery.isEmptyObject(result)) {
+                $('#flash-message').fadeIn();
+                if(result.success == 1) {
+                    for(x in result.data.vrfs) {
+                        $("#vrfs-table-tbody").append(' \
+                            <tr data-id="'+result.data.vrfs[x].id+'"> \
+                                <td>'+result.data.vrfs[x].distinguisher+'</td> \
+                                <td>'+result.data.vrfs[x].name+'</td> \
+                                <td>'+result.data.vrfs[x].description+'</td> \
+                                <td><a href="#" class="btn btn-primary edit-vrf">Edit</a><a href="#" class="btn btn-warning del-vrf">Delete</a></td> \
+                            </tr>'
+                        );
+                    }
+                }
+                else {
+                    $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+                    $.each(result.errors, function(k,v) {
+                      $("#"+k+"-help").closest('div').addClass("has-error");
+                      $("#"+k+"-help").html(v);
+                    });                       
+                }
+                setTimeout("$('#flash-message').fadeOut()",2000);
+            }   
+        }  
+
+        $.ajax({
+            url: "{% url 'ip:getvrf' %}",
+            type: "POST",
+            success: onSuccessCallback,
+            error: defaultErrorCallback
+        });            
+      }
+
+    function vrfDefaultSuccessCallback(result) {
+        if(!jQuery.isEmptyObject(result)) {
+            $('#flash-message').fadeIn();
+            if(result.success == 1) {
+                $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+                getVrfs();
+                $('.modal.in').modal('hide');
+            }
+            else {
+                $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+                $.each(result.errors, function(k,v) {
+                  $("#"+k+"-help").closest('div').addClass("has-error");
+                  $("#"+k+"-help").html(v);
+                });                       
+            }
+            setTimeout("$('#flash-message').fadeOut()",2000);
+        }   
+    } 
+
+      function deleteVrf() {
+        $.ajax({
+            url: "{% url 'ip:delvrf' %}",
+            type: "POST",
+            data: $("#vrf-form").serialize(),
+            success: vrfDefaultSuccessCallback,
+            error: defaultErrorCallback
+        });            
+      }
+
+      function setVrf() {
+        $.ajax({
+            url: "{% url 'ip:setvrf' %}",
+            type: "POST",
+            data: $("#vrf-form").serialize(),
+            success: vrfDefaultSuccessCallback,
+            error: defaultErrorCallback
+        });            
+      }
+
+    // Build and display Add Zone modal
+    function build_vrf_modal(vrf_id=0, action="create", distinguisher="", name="", description="") {
+        console.log(vrf_id);
+        switch(action) {
+          case 'delete':
+            var modal_title = "Delete VRF";
+            var modal_body = "Are you sure you want to delete the selected VRF?<form id='vrf-form'><input type='hidden' name='vrf_id' value='"+vrf_id+"' /></form>";
+            var modal_onclick_action = "deleteVrf()";
+            break;
+          case 'edit':           
+          case 'create':
+          default:
+            var modal_title = "Set VRF"; 
+            var modal_onclick_action = "setVrf()";
+            var modal_body = ' \
+              <form id="vrf-form"> \
+                <div class="form-group"> \
+                    <label class="control-label col-md-3">Number</label> \
+                    <div class="controls col-md-9"> \
+                        <input class="form-control" id="vrf-distinguisher" name="distinguisher" type="text" value="'+distinguisher+'" /> \
+                        <span id="distinguisher-help" class="help-block"></span> \
+                    </div> \
+                </div> \
+                <div class="form-group"> \
+                    <label class="control-label col-md-3">Name</label> \
+                    <div class="controls col-md-9"> \
+                        <input class="form-control" id="vrf-name" name="name" type="text" value="'+name+'" /> \
+                        <span id="name-help" class="help-block"></span> \
+                    </div> \
+                </div> \
+                <div class="form-group"> \
+                    <label class="control-label col-md-3">Description</label> \
+                    <div class="controls col-md-9"> \
+                        <input class="form-control" id="vrf-description" name="description" type="text" value="'+description+'" /> \
+                        <span id="description-help" class="help-block"></span> \
+                    </div> \
+                </div> \
+                <input type="hidden" name="vrf_id" value="'+vrf_id+'"/> \
+              </form>';            
+            break;
+        }
+
+        buildModal(modal_title, modal_body, modal_onclick_action);            
+    }      
+
+    function vlanDefaultSuccessCallback(result) {
+        if(!jQuery.isEmptyObject(result)) {
+            $('#flash-message').fadeIn();
+            if(result.success == 1) {
+                $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+                getVlans();
+                $('.modal.in').modal('hide');
+            }
+            else {
+                $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+                $.each(result.errors, function(k,v) {
+                  $("#"+k+"-help").closest('div').addClass("has-error");
+                  $("#"+k+"-help").html(v);
+                });                       
+            }
+            setTimeout("$('#flash-message').fadeOut()",2000);
+        }   
+    }
+
+    function deleteVlan() {
+        $.ajax({
+            url: "{% url 'ip:delvlan' %}",
+            type: "POST",
+            data: $("#vlan-form").serialize(),
+            success: vlanDefaultSuccessCallback,
+            error: defaultErrorCallback
+        });            
+    }
+
+      function setVlan() {
+        $.ajax({
+            url: "{% url 'ip:setvlan' %}",
+            type: "POST",
+            data: $("#vlan-form").serialize(),
+            success: vlanDefaultSuccessCallback,
+            error: defaultErrorCallback
+        });            
+      }
+
+    // Build and display Add Zone modal
+    function build_vlan_modal(vlan_id=0, action="create", number="", name="", description="") {
+        console.log(vlan_id);
+        switch(action) {
+          case 'delete':
+            var modal_title = "Delete VLAN";
+            var modal_body = "Are you sure you want to delete the selected VLAN?<form id='vlan-form'><input type='hidden' name='vlan_id' value='"+vlan_id+"' /></form>";
+            var modal_onclick_action = "deleteVlan()";
+            break;
+          case 'edit':           
+          case 'create':
+          default:
+            var modal_title = "Set VLAN"; 
+            var modal_onclick_action = "setVlan()";
+            var modal_body = ' \
+              <form id="vlan-form"> \
+                <div class="form-group"> \
+                    <label class="control-label col-md-3">Number</label> \
+                    <div class="controls col-md-9"> \
+                        <input class="form-control" id="vlan-number" name="number" type="text" value="'+number+'" /> \
+                        <span id="number-help" class="help-block"></span> \
+                    </div> \
+                </div> \
+                <div class="form-group"> \
+                    <label class="control-label col-md-3">Name</label> \
+                    <div class="controls col-md-9"> \
+                        <input class="form-control" id="vlan-name" name="name" type="text" value="'+name+'" /> \
+                        <span id="name-help" class="help-block"></span> \
+                    </div> \
+                </div> \
+                <div class="form-group"> \
+                    <label class="control-label col-md-3">Description</label> \
+                    <div class="controls col-md-9"> \
+                        <input class="form-control" id="vlan-description" name="description" type="text" value="'+description+'" /> \
+                        <span id="description-help" class="help-block"></span> \
+                    </div> \
+                </div> \
+                <input type="hidden" name="vlan_id" value="'+vlan_id+'"/> \
+              </form>';            
+            break;
+        }
+
+        buildModal(modal_title, modal_body, modal_onclick_action);            
+    }  
+
+        function getCompanies() {
+            // Destroy existing
+            $("#companies").html("<OPTION value=0></OPTION>");    
+
+            // onSuccess callback function
+            function onSuccessCallback(result) {
+                if(!jQuery.isEmptyObject(result)) {
+                    if(result.success == 1) {
+                        // AJAX call returned successful
+                        for(x in result.data.companies) {
+                            $("#companies").append('<OPTION value="'+result.data.companies[x].id+'">'+result.data.companies[x].name+'</OPTION>');
+                        }
+                    }
+                }               
+            }
+
+            // Make the AJAX call
+            $.ajax({
+                url: "{%url 'companies:getcompanies' %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });
+        }
+
+        function getCompanyServices() {
+            // Destroy existing
+            $("#services").html("");    
+
+            // onSuccess callback function
+            function onSuccessCallback(result) {
+                if(!jQuery.isEmptyObject(result)) {
+                    if(result.success == 1) {
+                        // AJAX call returned successful
+                        for(x in result.data.services) {
+                            $("#service").append('<OPTION value="'+result.data.services[x].id+'">'+result.data.services[x].name+'</OPTION>');
+                        }
+                    }
+                }               
+            }
+
+            // Make the AJAX call
+            $.ajax({
+                url: "{%url 'companies:getservices' %}",
+                type: "POST",
+                data: {"company_id": $("#companies option:selected").val()},
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });
+        }
+
+
+	</script>
+{% endblock %}
+
+{% block jquery_document_ready %}
+    getCompanies();
+    getVlans();
+    getVrfs();
+
+    $('#vlans-table-tbody')
+        .on('click', 'a.del-vlan', function (e) {
+            e.preventDefault();
+            build_vlan_modal($(this).closest('tr').data('id'), "delete");
+        })    
+        .on('click', 'a.edit-vlan', function (e) {
+            e.preventDefault();
+            build_vlan_modal($(this).closest('tr').data('id'), "edit", $(this).closest('tr').find("td").eq(0).html(), $(this).closest('tr').find("td").eq(1).html(), $(this).closest('tr').find("td").eq(2).html());
+        });
+
+    $('#vrfs-table-tbody')
+        .on('click', 'a.del-vrf', function (e) {
+            e.preventDefault();
+            build_vrf_modal($(this).closest('tr').data('id'), "delete");
+        })    
+        .on('click', 'a.edit-vrf', function (e) {
+            e.preventDefault();
+            build_vrf_modal($(this).closest('tr').data('id'), "edit", $(this).closest('tr').find("td").eq(0).html(), $(this).closest('tr').find("td").eq(1).html(), $(this).closest('tr').find("td").eq(2).html());
+        });
+
+    $('#companies').on('change', function (e) {              
+        getCompanyServices();
+    });
+{% endblock %}
+
+{% block content %}
+ <!-- BEGIN IP SPACE MANAGEMENT CONTENT -->
+    <!-- BEGIN NETWORKADDRESS CONTAINER HEAD -->
+    <div class="row page-head">
+        <div class="col-md-12"><i class="fa fa-edit"></i>&nbsp;<h3 id="article-title">IP Space</h3></div>
+    </div>
+    <!-- END NETWORKADDRESS CONTAINER HEAD -->
+    <!-- BEGIN NETWORKADDRESS CONTAINER BODY -->
+	<div class="row">
+
+      <form id="set-network-address-form">
+        {% for field in networkaddressform %}
+          <div class="form-group">
+            <label class="control-label col-md-3">{{ field.label_tag }}</label>
+            <div class="controls col-md-9">
+              {{ field|addcss:"form-control" }}
+              <span id="{{ field.html_name }}-help" class="help-block"></span>
+            </div>
+          </div>
+        {% endfor %} 
+
+      <div class="form-group">
+        <label class="control-label col-md-3">Companies</label>
+        <div class="controls col-md-9">
+            <select name="companies" id="companies" autocomplete="off" class="form-control"></select>
+          <span id="companies-help" class="help-block"></span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="control-label col-md-3">Services</label>
+        <div class="controls col-md-9">
+            <select name="service" id="service" autocomplete="off" class="form-control"></select>
+          <span id="services-help" class="help-block"></span>
+        </div>
+      </div>      
+
+        <div class="form-actions">
+          <div class="col-md-offset-3 col-md-9">
+            <a class="btn btn-primary" onclick="setNetwork()"><i class="fa fa-plus"></i> Submit</a>                        
+          </div>
+        </div>                         
+      </form>  
+	</div>
+    <!-- END NETWORKADDRESS CONTAINER BODY -->  
+
+    <!-- BEGIN VLAN CONTAINER HEAD -->
+    <div class="row page-head">
+        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3 id="article-title">VLANs</h3></div>
+        <div class="col-md-6 text-right">        
+            <div class="btn-group">
+                <a role="button" class="badge" onclick="build_vlan_modal()">Create <i class="fa fa-plus"></i></a>                
+            </div>
+        </div>           
+    </div>
+    <!-- END VLAN CONTAINER HEAD -->
+    <!-- BEGIN VLAN CONTAINER BODY -->
+    <div class="row">
+        <!-- BEGIN VLAN TABLE -->
+        <table id="vlans-table" class="table table-hover">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>&nbsp;</th>
+                </tr>
+            </thead>
+            <tbody id="vlans-table-tbody">
+            </tbody>
+        </table>
+        <!-- END VLAN TABLE -->
+    </div>
+    <!-- END VLAN CONTAINER BODY -->
+
+    <!-- BEGIN VRF CONTAINER HEAD -->
+    <div class="row page-head">
+        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3 id="article-title">VRFs</h3></div>
+        <div class="col-md-6 text-right">        
+            <div class="btn-group">
+                <a role="button" class="badge" onclick="build_vrf_modal()">Create <i class="fa fa-plus"></i></a>                
+            </div>
+        </div>           
+    </div>
+    <!-- END VRF CONTAINER HEAD -->
+    <!-- BEGIN VRF CONTAINER BODY -->
+    <div class="row">
+        <!-- BEGIN VRF TABLE -->
+        <table id="vrfs-table" class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Distinguisher</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>&nbsp;</th>
+                </tr>
+            </thead>
+            <tbody id="vrfs-table-tbody">
+            </tbody>
+        </table>
+        <!-- END VRF TABLE -->
+    </div>
+    <!-- END VRF CONTAINER BODY -->    
+
+    <!-- BEGIN MODAL -->
+    <div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <!-- BEGIN MODAL HEADER -->
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
+                    <h3 id="mlabel"></h3>
+                </div>
+                <!-- END MODAL HEADER -->
+                <!-- BEGIN MODAL BODY -->
+                <div class="modal-body">
+                    <div id="flash-message"></div>
+                    <div class="well" id="mbody"></div>
+                </div>
+                <!-- END MODAL BODY -->
+                <!-- BEGIN MODAL FOOTER -->
+                <div class="modal-footer" id="modalfooter">
+                    <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
+                    <button id="msave" class="btn btn-primary">Ok</button>
+                </div>
+                <!-- END MODAL FOOTER -->
+            </div>
+        </div>
+    </div>
+    <!-- END MODAL -->    
+ <!-- END IP SPACE MANAGEMENT CONTENT -->   
+{% endblock %}

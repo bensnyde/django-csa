@@ -30,8 +30,8 @@ urlpatterns = patterns('',
      url(r'^accounts/contact/', include('apps.contacts.urls', namespace="contacts")),
      url(r'^accounts/company/', include('apps.companies.urls', namespace="companies")),
      # Backend
-     url(r'^root/', include('backend.urls', namespace="backend")),
-     url(r'^news/', include('news.urls', namespace="news")),
+     url(r'^root/', include('apps.backend.urls', namespace="backend")),
+     url(r'^announcements/', include('apps.announcements.urls', namespace="announcements")),
 )
 
 if settings.DEBUG:

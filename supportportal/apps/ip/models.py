@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
 from libs.ipaddr import ip_network
+from apps.companies.models import Company
 
 class NetworkAddress(models.Model):
     address = models.IPAddressField()
@@ -8,25 +9,23 @@ class NetworkAddress(models.Model):
     description = models.CharField(max_length=256, null=True, blank=True)
     parent = models.ForeignKey('self', null=True, blank=True)
     vlan = models.ForeignKey('Vlan', null=True, blank=True)
-    vrf = models.ForeignKey('Vrf', null=True, blank=True)    
+    vrf = models.ForeignKey('Vrf', null=True, blank=True)
+    owner = models.ForeignKey(Company, null=True, blank=True)  
 
     def __unicode__(self):
         return "%s/%d" % (self.address, self.cidr)
 
     def get_netmask(self):
-        net = ip_network(self)
-        return str(net.netmask)
+        return str(ip_network(self).netmask)
 
     def get_numhosts(self):
-        net = ip_network(self)
         hosts = []
-        for x in net.iterhosts():
+        for x in ip_network(self).iterhosts():
             hosts.append(str(x))
         return hosts
 
     def does_ip_belong_to(self, ipaddr):
-        net = ip_network(self)
-        if ip_network(ipaddr) in net:
+        if ip_network(ipaddr) in ip_network(self):
             return True
         else:
             return False
@@ -48,7 +47,7 @@ class IPAddress(models.Model):
     network = models.ForeignKey(NetworkAddress)
     
     def __unicode__(self):
-        return "%s" % (self.address)       
+        return "%s" % (self.address)
 
     class Meta:
         unique_together = ['address', 'network'] 
@@ -59,18 +58,15 @@ class Vrf(models.Model):
     description = models.CharField(max_length=256)
 
     def __unicode__(self):
-        return "%s/%d" % (self.name, self.distinguisher)
+        return "(%s) %s" % (self.distinguisher, self.name)
 
     def dump_to_dict(self, full=False):
-        result = {
+        return {
+            'id': self.pk,        
             'distinguisher': self.distinguisher,
-            'name': self.name
+            'name': self.name,
+            'description': self.description
         }
-
-        if full:
-            result.update({'description': self.description})
-
-        return result
 
 
 class Vlan(models.Model):
@@ -81,13 +77,10 @@ class Vlan(models.Model):
     def __unicode__(self):
         return "%s (%d)" % (self.name, self.number)
 
-    def dump_to_dict(self, full=False):
-        result = {
+    def dump_to_dict(self):
+        return {
+            'id': self.pk,
             'number': self.number,
-            'name': self.name
-        }        
-
-        if full:
-            result.update({'description': self.description})
-
-        return result
+            'name': self.name,
+            'description': self.description
+        }

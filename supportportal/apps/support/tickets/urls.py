@@ -7,7 +7,7 @@ urlpatterns = patterns('',
     url(r'^(?P<ticket_id>\d+)/$', views.detail, name='detail'),
     # AJAX
     url(r'^summary/$', views.get_summary, name='summary'),
-    url(r'^gettickets/$', views.get_company_tickets, name='gettickets'),
+    url(r'^gettickets/$', views.get_tickets, name='gettickets'),
     url(r'^getticket/(?P<ticket_id>\d+)/$', views.get_ticket, name='getticket'),
     url(r'^create_ticket/$', views.create_ticket, name='create_ticket'),
     url(r'^create_ticket/(?P<service_id>\d+)/$', views.create_ticket, name='create_ticket'),

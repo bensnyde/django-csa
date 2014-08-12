@@ -1,4 +1,5 @@
 # System
+import logging
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 # Project
@@ -8,6 +9,9 @@ from common.helpers import format_ajax_response
 from libs.cpanel_ftp import Cpanel
 # App
 from .forms import AddFtpForm, DelFtpForm, SetQuotaForm, ChpwForm
+
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -58,10 +62,14 @@ def get_accounts(request, cpanel_username):
             *data:
                 accounts: list of ftp accounts from API call
     """
-    accounts = Cpanel(cpanel_username).listftpwithdisk()
-    if accounts:
-        return format_ajax_response(True, "FTP Accounts retrieved successfully.", {"accounts": accounts})
-    else:
+    try:
+        accounts = Cpanel(cpanel_username).listftpwithdisk()
+        if accounts:
+            return format_ajax_response(True, "FTP Accounts retrieved successfully.", {"accounts": accounts})
+        else:
+            raise Exception("CpanelFTP library call to listftpwithdisk() returned False.")
+    except Exception as ex:
+        logger.error("Failed to get_accounts: %s" % ex)
         return format_ajax_response(False, "There wasn an error retrieving the FTP account listing.")
 
 
@@ -92,10 +100,14 @@ def get_sessions(request, cpanel_username):
             *data: 
                 sessions: list of ftp sessions from API call
     """
-    sessions = Cpanel(cpanel_username).listftpsessions()
-    if sessions:
-        return format_ajax_response(True, "FTP Sessions retrieved successfully.", {"sessions": sessions})
-    else:
+    try:
+        sessions = Cpanel(cpanel_username).listftpsessions()
+        if sessions:
+            return format_ajax_response(True, "FTP Sessions retrieved successfully.", {"sessions": sessions})
+        else:
+            raise Exception("CpanelFTP library call to listftpsessions() returned False.")
+    except Exception as ex:
+        logger.error("Failed to get_sessions: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving FTP sessions listing.")
 
 
@@ -129,10 +141,14 @@ def createaccount(request, cpanel_username):
             success: int status result of API call
             message: str response message from API call
     """
-    if Cpanel(cpanel_username).addftp(request.form.cleaned_data['username'], request.form.cleaned_data['password'], request.form.cleaned_data['quota'], request.form.cleaned_data['homedir']):
-        ActionLogger().log(request.user, "created", "FTP Account", "FTP Account %s" % request.form.cleaned_data['username'])
-        return format_ajax_response(True, "FTP Account created successfully.")
-    else:
+    try:
+        if Cpanel(cpanel_username).addftp(request.form.cleaned_data['username'], request.form.cleaned_data['password'], request.form.cleaned_data['quota'], request.form.cleaned_data['homedir']):
+            ActionLogger().log(request.user, "created", "FTP Account", "FTP Account %s" % request.form.cleaned_data['username'])
+            return format_ajax_response(True, "FTP Account created successfully.")
+        else:
+            raise Exception("CpanelFTP library call to addftp(%s, %s, %s, %s) returned False." % (request.form.cleaned_data['username'], request.form.cleaned_data['password'], request.form.cleaned_data['quota'], request.form.cleaned_data['homedir']))
+    except Exception as ex:
+        logger.error("Failed to createaccount: %s" % ex)
         return format_ajax_response(False, "There was an error creating the FTP account.")
 
 
@@ -164,10 +180,14 @@ def delaccount(request, cpanel_username):
             success: int status result of API call
             message: str response message from API call
     """
-    if Cpanel(cpanel_username).delftp(request.form.cleaned_data['username'], request.form.cleaned_data['destroy']):
-        ActionLogger().log(request.user, "modified", "Password", "FTP Account %s" % request.form.cleaned_data['username'])
-        return format_ajax_response(True, "FTP Account deleted successfully.")
-    else:
+    try:
+        if Cpanel(cpanel_username).delftp(request.form.cleaned_data['username'], request.form.cleaned_data['destroy']):
+            ActionLogger().log(request.user, "modified", "Password", "FTP Account %s" % request.form.cleaned_data['username'])
+            return format_ajax_response(True, "FTP Account deleted successfully.")
+        else:
+            raise Exception("CpanelFTP library call to delftp(%s, %s) returned False." % (reqeust.form.clenaed_data["username"], request.form.cleaned_data["destroy"]))
+    except Exception as ex:
+        logger.error("Failed to delaccount: %s" % ex)
         return format_ajax_response(False, "There was an error deleting the FTP account.")
 
 
@@ -199,10 +219,14 @@ def chpw(request, cpanel_username):
             success: int status result of API call
             message: str response message from API call
     """
-    if Cpanel(cpanel_username).passwd(request.form.cleaned_data['username'], request.form.cleaned_data['password']):
-        ActionLogger().log(request.user, "modified", "Password", "FTP Account %s" % request.form.cleaned_data['username'])
-        return format_ajax_response(True, "FTP account password updated successfully.")
-    else:
+    try:
+        if Cpanel(cpanel_username).passwd(request.form.cleaned_data['username'], request.form.cleaned_data['password']):
+            ActionLogger().log(request.user, "modified", "Password", "FTP Account %s" % request.form.cleaned_data['username'])
+            return format_ajax_response(True, "FTP account password updated successfully.")
+        else:
+            raise Exception("CpanelFTP library call to passwd(%s, %s) returned False." % (request.form.cleaned_data['username'], request.form.cleaned_data['password']))
+    except Exception as ex:
+        logger.error("Failed to chpw: %s" % ex)
         return format_ajax_response(False, "There was an error updating the ftp account password.")
 
 
@@ -234,8 +258,12 @@ def setquota(request, cpanel_username):
             success: int status result of API call
             message: str response message from API call
     """
-    if Cpanel(cpanel_username).setquota(request.form.cleaned_data['username'], request.form.cleaned_data['quota']):
-        ActionLogger().log(request.user, "modified", "Quota %s" % request.form.cleaned_data["quota"], "FTP Account %s" % request.form.cleaned_data['username']) 
-        return format_ajax_response(True, "FTP account quota updated successfully.")
-    else:
+    try:
+        if Cpanel(cpanel_username).setquota(request.form.cleaned_data['username'], request.form.cleaned_data['quota']):
+            ActionLogger().log(request.user, "modified", "Quota %s" % request.form.cleaned_data["quota"], "FTP Account %s" % request.form.cleaned_data['username']) 
+            return format_ajax_response(True, "FTP account quota updated successfully.")
+        else:
+            raise Exception("CpanelFTP library call to setquota(%s, %s) returned False." % (request.form.cleaned_data['username'], request.form.cleaned_data['quota']))
+    except Exception as ex:
+        logger.error("Failed to setquota: %s" % ex)
         return format_ajax_response(False, "There was an error updating the FTP account quota.")

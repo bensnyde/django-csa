@@ -1,14 +1,18 @@
 # System
+import logging
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 # Project
 from common.helpers import format_ajax_response
 from common.decorators import validated_request, validated_service, validated_staff
-from apps.loggers.models import ErrorLogger, ActionLogger
+from apps.loggers.models import ActionLogger
 # App
 from .helpers import *
 from .models import NetworkAddress, IPAddress, Vrf, Vlan
 from .forms import IPAddressForm, NetworkAddressForm, NetworkAddressAddForm, VlanForm, VrfForm
+
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -55,6 +59,25 @@ def request_ip_space(request):
     return render(request, 'ip/request.html')    
 
 
+@validated_staff
+def admin(request):
+    """Request IP Space View
+
+        Displays IPRequestForm for submitting IP requests.
+
+    Middleware
+        See SETTINGS for active Middleware.
+    Decorators
+        @validated_staff
+            request.user.is_staff must be True
+    Parameters
+        request: HttpRequest
+    Returns
+        HttpResponse (ip/admin.html)
+    """    
+    return render(request, 'ip/admin.html', {'networkaddressform': NetworkAddressAddForm()})    
+
+
 @validated_request(None)
 @validated_service
 def get_networks(request, network_address_ids):
@@ -92,7 +115,7 @@ def get_networks(request, network_address_ids):
 
         return format_ajax_response(True, "NetworkAddress listing retrieved successfully.", {"networks": network_list})
     except Exception as ex:
-        ErrorLogger().log(request, "Error", "Failed to fetch NetworkAddress listing in apps.ip.views.get_networks: %s" % ex)
+        logger.error("Failed to get_networks: %s" % ex)
         return format_ajax_response(False, "There was a problem retrieving the NetworkAddress listing.")
 
 
@@ -127,24 +150,21 @@ def get_hosts(request, network_address_ids):
                     description: str description
                     ptr: str rDNS record
     """
-    try:
-        # Retrieve NetworkAddress          
+    try:   
         ip, net_size = request.form.cleaned_data["parent"].split('/')
         parent = NetworkAddress.objects.get(address=ip, cidr=int(net_size))
+
+        if parent.id not in network_address_ids:
+            raise Exception("Forbidden: specified NetworkAddress doesn't belong to specified Service.")
+
+        hosts = get_ipaddresses_and_ptrs_from_networkaddress(parent, ip)
+        if hosts is False:
+            raise Exception("No hosts or PTRs returned for specified NetworkAddress.")
+
+        return format_ajax_response(True, "Hosts listing retrieved successfully.", {'hosts': hosts})
     except Exception as ex:
-        ErrorLogger().log(request, "Error", "Failed to get hosts in apps.ip.views.get_hosts: %s" % ex)
+        logger.error("Failed to get_hosts: %s" % ex)
         return format_ajax_response(False, "There was a problem retrieving hosts listing.")        
-
-    # Ensure NetworkAddress belongs to specified Service
-    if parent.id not in network_address_ids:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized service_var NetworkAddress apps.ip.views.get_hosts") 
-        return format_ajax_response(False, "Unauthorized access to protected resource.")
-
-    hosts = get_ipaddresses_and_ptrs_from_networkaddress(parent, ip)
-    if hosts is False:
-        return format_ajax_response(False, "There was a problem retrieving hosts listing.")
-
-    return format_ajax_response(True, "Hosts listing retrieved successfully.", {'hosts': hosts})
 
 
 @validated_request(IPAddressForm)
@@ -178,38 +198,33 @@ def get_host_details(request, network_address_ids):
                     ptr: str ip ptr dns record
     """
     try:
-        # Validate NetworkAddress
         ip, net_size = request.form.cleaned_data["network"].split('/')
         parent = NetworkAddress.objects.get(address=ip, cidr=int(net_size))
+
+        if parent.id not in network_address_ids:
+            raise Exception("Forbidden: specified NetworkAddress doesn't belong to specified Service.")
+
+        if not parent.does_ip_belong_to(request.form.cleaned_data['address']):
+            raise Exception("Forbidden: specified IPAddress doesn't belong to specified NetworkAddress.") 
+
+        # Fetch IPAddress
+        try:
+            ip = IPAddress.objects.get(address=request.form.cleaned_data['address'])
+            description = ip.description
+        except:
+            description = ""         
+
+        # Fetch PTR
+        zone = get_dns_reverse_zone(request.form.cleaned_data['address'])
+        ptr = get_ptr_from_zone(request.form.cleaned_data['address'], zone)
+        if not ptr:
+            ptr = ""
+
+        return format_ajax_response(True, "Host details retrieved successfully.", {"host": {'description': description, 'ptr': ptr}})
     except Exception as ex:
-        ErrorLogger().log(request, "Error", "Failed to get hosts in apps.ip.views.get_host_details: %s" % ex)
+        logger.error("Failed to get_host_details: %s" % ex)
         return format_ajax_response(False, "There was a problem retrieving host details.")     
 
-    if parent.id not in network_address_ids:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized service_var in apps.ip.views.get_host_details") 
-        return format_ajax_response(False, "Unauthorized access to protected resource.")
-
-    # Ensure specified IPAddress belongs to specified NetworkAddress
-    if not parent.does_ip_belong_to(request.form.cleaned_data['address']):
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized service_var in apps.ip.views.get_host_details") 
-        return format_ajax_response(False, "Unauthorized access to protected resource.")    
-
-    # Fetch IPAddress object
-    try:
-        ip = IPAddress.objects.get(address=request.form.cleaned_data['address'])
-        description = ip.description
-    except:
-        description = ""
-
-    # Fetch PTR record from CpanelDNS
-    zone = get_dns_reverse_zone(request.form.cleaned_data['address'])
-    ptr = get_ptr_from_zone(request.form.cleaned_data['address'], zone)
-    if not ptr:
-        # Log error
-        ptr = ""
-
-    return format_ajax_response(True, "Host details retrieved successfully.", {"host": {'description': description, 'ptr': ptr}})
-  
 
 @validated_request(IPAddressForm)
 @validated_service
@@ -241,59 +256,51 @@ def set_host_details(request, network_address_ids):
         # Retrieve NetworkAddress
         ip, net_size = request.form.cleaned_data["network"].split('/')
         parent = NetworkAddress.objects.get(address=ip, cidr=int(net_size))
+
+        if parent.id not in network_address_ids:
+            raise Exception("Forbidden: specified NetworkAddress doesn't belong to specified Service.")
+
+        if not parent.does_ip_belong_to(request.form.cleaned_data['address']):
+            raise Exception("Forbidden: specified IPAddress doesn't belong to specified NetworkAddress.")
+
+        if request.form.cleaned_data['description'] == "" and request.form.cleaned_data['ptr'] == "":
+            # Unset both records 
+            iprecord_success = unset_ip_record(request.form.cleaned_data['address'])
+            ptrrecord_success = set_ptr_from_zone(request.form.cleaned_data['address'], None)
+        elif request.form.cleaned_data['description'] == "":
+            # Unset IPAddress, set PTR  
+            iprecord_success = unset_ip_record(request.form.cleaned_data['address'])
+            ptrrecord_success = set_ptr_from_zone(request.form.cleaned_data['address'], request.form.cleaned_data['ptr'])
+        elif request.form.cleaned_data['ptr'] == "":
+            # Unset PTR, set IPAddress  
+            iprecord_success = set_ip_record(parent, request.form.cleaned_data['address'], request.form.cleaned_data['description'])
+            ptrrecord_success = set_ptr_from_zone(request.form.cleaned_data['address'], None)
+        else:
+            # Set both records   
+            ptrrecord_success = set_ptr_from_zone(request.form.cleaned_data['address'], request.form.cleaned_data['ptr'])             
+            iprecord_success = set_ip_record(parent, request.form.cleaned_data['address'], request.form.cleaned_data['description'])
+
+        # Logging and response
+        if ptrrecord_success and iprecord_success:
+            ActionLogger().log(request.user, "set",  "PTR Record %s" % request.form.cleaned_data['address'], request.form.cleaned_data['network'])
+            ActionLogger().log(request.user, "set", "Host %s" % ip, "Network %s" % request.POST['network'])
+            return format_ajax_response(True, "Host record set successfully.")  
+        elif ptrrecord_success:
+            ActionLogger().log(request.user, "set",  "PTR Record %s" % request.form.cleaned_data['address'], request.form.cleaned_data['network'])
+            return format_ajax_response(True, "PTR record was set but there was a problem setting the Description.")
+        elif iprecord_success:
+            ActionLogger().log(request.user, "set", "Host %s" % ip, "Network %s" % request.POST['network'])  
+            return format_ajax_response(True, "Host record was set but there was a problem setting the PTR record.")      
+        else:
+            raise Exception("Failed to set IPAddress and PTR record.")    
     except Exception as ex:
-        ErrorLogger().log(request, "Error", "Failed to get hosts in apps.ip.views.set_host_details: %s" % ex)
+        logger.error("Failed to set_host_details: %s" % ex)
         return format_ajax_response(False, "There was a problem setting the host record.")  
-
-    # Ensure NetworkAddress belongs to specified Service        
-    if parent.id not in network_address_ids:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized service_var in apps.ip.views.set_host_details") 
-        return format_ajax_response(False, "Unauthorized access to protected resource.")
-
-    # Ensure specified IPAddress belongs to specified NetworkAddress
-    if not parent.does_ip_belong_to(request.form.cleaned_data['address']):
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized service_var in apps.ip.views.set_host_details") 
-        return format_ajax_response(False, "Unauthorized access to protected resource.")
-
-    if request.form.cleaned_data['description'] == "" and request.form.cleaned_data['ptr'] == "":
-        # Unset both records 
-        iprecord_success = unset_ip_record(request.form.cleaned_data['address'])
-        ptrrecord_success = set_ptr_from_zone(request.form.cleaned_data['address'], None)
-    elif request.form.cleaned_data['description'] == "":
-        # Unset IPAddress, set PTR  
-        iprecord_success = unset_ip_record(request.form.cleaned_data['address'])
-        ptrrecord_success = set_ptr_from_zone(request.form.cleaned_data['address'], request.form.cleaned_data['ptr'])
-    elif request.form.cleaned_data['ptr'] == "":
-        # Unset PTR, set IPAddress  
-        iprecord_success = set_ip_record(parent, request.form.cleaned_data['address'], request.form.cleaned_data['description'])
-        ptrrecord_success = set_ptr_from_zone(request.form.cleaned_data['address'], None)
-    else:
-        # Set both records   
-        ptrrecord_success = set_ptr_from_zone(request.form.cleaned_data['address'], request.form.cleaned_data['ptr'])             
-        iprecord_success = set_ip_record(parent, request.form.cleaned_data['address'], request.form.cleaned_data['description'])
-
-    # Logging and response
-    if ptrrecord_success and iprecord_success:
-        ActionLogger().log(request.user, "set",  "PTR Record %s" % request.form.cleaned_data['address'], request.form.cleaned_data['network'])
-        ActionLogger().log(request.user, "set", "Host %s" % ip, "Network %s" % request.POST['network'])
-        return format_ajax_response(True, "Host record set successfully.")  
-    elif ptrrecord_success:
-        ActionLogger().log(request.user, "set",  "PTR Record %s" % request.form.cleaned_data['address'], request.form.cleaned_data['network'])
-        ErrorLogger().log(request, "Error", "Failed to set IPAddress record in apps.ip.views.set_host_details")
-        return format_ajax_response(True, "PTR record was set but there was a problem setting the Description.")
-    elif iprecord_success:
-        ActionLogger().log(request.user, "set", "Host %s" % ip, "Network %s" % request.POST['network'])  
-        ErrorLogger().log(request, "Error", "Failed to set PTR record in apps.ip.views.set_host_details")
-        return format_ajax_response(True, "Host record was set but there was a problem setting the PTR record.")      
-    else:
-        ErrorLogger().log(request, "Error", "Failed to set IPAddress record in services.ip.views.set_host_details")
-        ErrorLogger().log(request, "Error", "Failed to set PTR record in services.ip.views.set_host_details")
-        return format_ajax_response(False, "There was a problem setting the host record.")
 
 
 @validated_staff
 @validated_request(NetworkAddressAddForm)
-def set_network(request, service_id):    
+def set_network(request):    
     """NetworkAddress Setter
 
         Creates new NetworkAddress record or updates existing if networkaddress.pk.
@@ -316,23 +323,41 @@ def set_network(request, service_id):
             success: int response status
             message: str response message
     """
-    if "networkaddress_id" not in request.POST or request.POST["networkaddress_id"] is not 0:
-        # Create
-        network = create_network(request.form.cleaned_data)
-        if network:
-            if add_network_id_to_servie_vars(request.user, service_id, network.id):
-                return format_ajax_response(True, "NetworkAddress created successfully.")
-            else:
-                # LOG ME 
-                return format_ajax_repsonse(False, "NetworkAddress was created but could not be allocated.")
+    try: 
+        if "networkaddress_id" not in request.POST or not int(request.POST["networkaddress_id"]):
+            # Create NetworkAddress
+            network = NetworkAddress.objects.create(address=request.form.cleaned_data["address"], cidr=request.form.cleaned_data["cidr"], description=request.form.cleaned_data["description"], vlan=request.form.cleaned_data["vlan"])
+
+            # Assign NetworkAddress to Service
+            if 'service' in request.POST and int(request.POST['service']):
+                service = Service.objects.get(pk=int(request.POST['service']))
+                service_vars = request.user.get_service_vars('/services/ip/', int(request.POST['service']))
+                if service_vars:
+                    service_vars["network_address_ids"].append(network.pk)
+                    service.vars = json.dumps(service_vars)
+                    service.save()
+                else:
+                    raise Exception("user.get_service_vars('/services/ip/', %s) returned False." % int(request.POST['service']))
+
+            ActionLogger().log(request.user, "created", "NetworkAddress %s" % network)
+            return format_ajax_response(True, "NetworkAddress created successfully.")
         else:
-            return format_ajax_response(False, "There was a problem creating the NetworkAddress.")
-    else:
-        # Update
-        if update_network(int(request.POST['networkaddress_id']), request.form.cleaned_data):
+            # Update NetworkAddress
+            network = NetworkAddress.objects.get(pk=request.POST["networkaddress_id"])
+            network.address = request.form.cleaned_data["address"]
+            network.cidr = request.form.cleaned_data["cidr"]
+            network.description = request.form.cleaned_data["description"]
+            network.vlan = request.form.cleaned_data["vlan"]
+            network.save()
+
+
+            # Code for reallocation goes here
+
+            ActionLogger().log(request.user, "modified", "NetworkAddress %s" % network)
             return format_ajax_response(True, "NetworkAddress updated successfully.")
-        else:
-            return format_ajax_response(False, "There was a problem updating the NetworkAddress.")
+    except Exception as ex:
+        logger.error("Failed to set_network: %s" % ex)
+        return format_ajax_response(False, "There was a problem setting the NetworkAddress.")
 
 
 @validated_staff
@@ -360,12 +385,12 @@ def delete_network(request):
             message: str response message
     """ 
     try:
-        network = request.POST.getlist('networkaddress_id[]')
+        network = request.POST.getlist('networkaddress_id')
         NetworkAddress.objects.filter(pk__in=network).delete()
         ActionLogger().log(request.user, "deleted", "NetworkAddress %s" % network)
         return format_ajax_response(True, "NetworkAddress record(s) deleted successfully.")
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Failed to delete NetworkAddress(es) in apps.ip.views.delete_network: %s" % ex)
+        logger.error("Failed to delete_network: %s" % ex)
         return format_ajax_response(False, "There was a problem deleting the NetworkAddress record(s).")
 
 
@@ -398,15 +423,18 @@ def get_vlan(request):
                 description: str vlan description
                 number: int vlan number
     """
-    if "vlan_id" not in request.POST or request.POST["vlan_id"] is not 0:
-        data = get_vlan_index()
-    else:
-        data = get_vlan_detail(request.POST["vlan_id"])
-
-    if data:
-        return format_ajax_response(True, "Vlan record retrieved successfully.")
-    else:
-        return format_ajax_response(False, "There was an error retrieving the Vlan record.")
+    try:
+        if "vlan_id" not in request.POST or not int(request.POST["vlan_id"]):
+            vlans = []
+            for vlan in Vlan.objects.all():
+                vlans.append(vlan.dump_to_dict())
+            return format_ajax_response(True, "Vlan listing retrieved successfully.", {'vlans': vlans})
+        else:
+            vlan = Vlan.objects.get(pk=int(request.POST["vlan_id"])).dump_to_dict(True)
+            return format_ajax_response(True, "Vlan record retrieved successfully.", {'vlan': vlan})
+    except Exception as ex:
+        logger.error("Failed to get_vlan: %s" % ex)
+        return format_ajax_response(False, "There was an error retreiving the Vlan record.")
   
 
 @validated_staff
@@ -434,14 +462,22 @@ def set_vlan(request):
             success: int response status
             message: str response message
     """
-    if "vlan_id" not in request.POST or request.POST["vlan_id"] is not 0:
-        result = create_vlan(request.form.cleaned_data)
-    else:
-        result = updat_vlan(request.POST["vlan_id"], request.form.cleaned_data)
+    try:
+        if "vlan_id" not in request.POST or not int(request.POST["vlan_id"]):
+            vlan = Vlan.objects.create(name=request.form.cleaned_data["name"], number=request.form.cleaned_data["number"], description=request.form.cleaned_data["description"])
+            ActionLogger().log(request.user, "created", "Vlan %s" % vlan)
+            return format_ajax_response(True, "Vlan record created successfully.")
+        else:
+            vlan = Vlan.objects.get(pk=int(request.POST["vlan_id"]))
+            vlan.name = request.form.cleaned_data["name"]
+            vlan.number = request.form.cleaned_data["number"]
+            vlan.description = request.form.cleaned_data["description"]
+            vlan.save()
 
-    if result:
-        return format_ajax_response(True, "Vlan record set successfully.")
-    else:
+            ActionLogger().log(request.user, "modified", "Vlan %s" % vlan)
+            return format_ajax_response(True, "Vlan record updated successfully.")
+    except Exception as ex:
+        logger.error("Failed to set_vlan: %s" % ex)
         return format_ajax_response(False, "There was an error setting the Vlan record.")
 
 
@@ -471,12 +507,12 @@ def delete_vlan(request):
             message: str response message
     """ 
     try:
-        vlans = request.POST.getlist('vlan_id[]')
+        vlans = request.POST.getlist('vlan_id')
         Vlan.objects.filter(pk__in=vlans).delete()
         ActionLogger().log(request.user, "deleted", "Vlan %s" % vlans)
         return format_ajax_response(True, "Vlan record(s) deleted successfully.")
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Failed to delete Vlan(s) in apps.ip.views.delete_vlan: %s" % ex)
+        logger.error("Failed to delete_vlan: %s" % ex)
         return format_ajax_response(False, "There was a problem deleting the specified Vlans")
 
 
@@ -505,14 +541,22 @@ def set_vrf(request):
             success: int response status
             message: str response message
     """
-    if "vrf_id" not in request.POST or request.POST["vrf_id"] is not 0:
-        result = create_vrf(request.form.cleaned_data)
-    else:
-        result = update_vrf(request.POST["vrf_id"], request.form.cleaned_data)
+    try:
+        if "vrf_id" not in request.POST or not int(request.POST["vrf_id"]):
+            vrf = Vrf.objects.create(name=request.form.cleaned_data["name"], distinguisher=request.form.cleaned_data["distinguisher"], description=request.form.cleaned_data["description"])
+            ActionLogger().log(request.user, "created", "Vrf %s" % vrf)
+            return format_ajax_response(True, "Vrf record created successfully.")
+        else:
+            vrf = Vrf.objects.get(pk=int(request.POST["vrf_id"]))
+            vrf.name = request.form.cleaned_data["name"]
+            vrf.distinguisher = request.form.cleaned_data["distinguisher"]
+            vrf.description = request.form.cleaned_data["description"]
+            vrf.save()
 
-    if result:
-        return format_ajax_response(True, "Vrf record set successfully.")
-    else:
+            ActionLogger().log(request.user, "modified", "Vrf %s" % vrf)
+            return format_ajax_response(True, "Vrf record updated successfully.")
+    except Exception as ex:
+        logger.error("Failed to set_vrf: %s" % ex)
         return format_ajax_response(False, "There was an error setting the Vrf record.")
 
 
@@ -546,15 +590,18 @@ def get_vrf(request):
                     name: str vrf name
                     description: str vrf description
     """
-    if "vrf_id" not in request.POST or request.POST["vrf_id"] is not 0:
-        data = get_vrf_index()
-    else:
-        data = get_vrf_detail(request.POST["vrf_id"])
-
-    if data:
-        return format_ajax_response(True, "Vrf listing retrieved successfully.", {'vrf': data})
-    else:
-        return format_ajax_response(False, "There was an error retrieving the Vrf listing.")
+    try:
+        if "vrf_id" not in request.POST or not int(request.POST["vrf_id"]):
+            vrfs = []
+            for vrf in Vrf.objects.all():
+                vrfs.append(vrf.dump_to_dict())
+            return format_ajax_response(True, "Vrf listing retrieved successfully.", {'vrfs': vrfs})   
+        else:
+            vrf = Vrf.objects.get(pk=int(request.POST["vrf_id"])).dump_to_dict(True)
+            return format_ajax_response(True, "Vrf listing retrieved successfully.", {'vrf': vrf})
+    except Exception as ex:
+        logger.error("Failed to get_vrf: %s" % ex)
+        return format_ajax_response(False, "There was an error retrieving vrf listing.")
 
 
 @validated_staff
@@ -582,10 +629,10 @@ def delete_vrf(request):
             message: str response message
     """ 
     try:
-        vrf = request.POST.getlist('vrf_id[]')
+        vrf = request.POST.getlist('vrf_id')
         Vrf.objects.filter(pk__in=vrf).delete()
         ActionLogger().log(request.user, "deleted", "Vrf %s" % vrf)
         return format_ajax_response(True, "Vrf record(s) deleted successfully.")
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Failed to delete Vrf(s) in apps.ip.views.delete_vrf: %s" % ex)
+        logger.error("Failed to delete_vrf: %s" % ex)
         return format_ajax_response(False, "There was a problem deleting the Vrf record(s).")

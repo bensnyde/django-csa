@@ -8,7 +8,7 @@ class Coupler(models.Model):
 		return self.name	
 
 class Service(models.Model):
-	name = models.SlugField(max_length=64, blank=False, null=False)
+	name = models.CharField(max_length=64, blank=False, null=False)
 	coupler = models.ForeignKey(Coupler, blank=False, null=False)
 	vars = models.CharField(max_length=256, blank=True, null=True)
 

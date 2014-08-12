@@ -1,13 +1,15 @@
 # System
+import logging
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
-from django.http import HttpResponseForbidden
 # Project
-from apps.loggers.models import ErrorLogger
 from common.decorators import validated_request
 from common.helpers import format_ajax_response
 # App
 from .forms import ContactForm
+
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -69,5 +71,5 @@ def feedback(request):
         send_mail(request.form.cleaned_data['subject'], request.form.cleaned_data['message'], request.user, to_email)
         return format_ajax_response(True, "Message delivered successfully.")
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Message could not be sent from apps.support.contacts.views.feedback: %s" % ex)
+        logger.error("Failed to feedback: %s" % ex)
         return format_ajax_response(False, "There was an error delivering the message.")

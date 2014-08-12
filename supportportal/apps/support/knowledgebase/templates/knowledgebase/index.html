@@ -90,7 +90,14 @@
 	<!-- BEING KNOWLEDGEBASE CONTAINER -->
 	     <!-- BEGIN CONTAINER HEAD -->
 	    <div class="row page-head">
-	        <div class="col-md-12"><i class="fa fa-edit"></i>&nbsp;<h3>Knowledgebase</h3></div>
+	        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Knowledgebase</h3></div>
+	        {% if user.is_staff %}
+	        <div class="col-md-6 text-right">        
+	            <div class="btn-group">
+	                <a href="{% url 'knowledgebase:admin' %}" role="button" id="create-ticket-button" class="badge" data-toggle="modal">Administer <i class="fa fa-plus"></i></a>
+	            </div>
+	        </div>	        
+	        {% endif %}
 	    </div>
 	    <!-- END CONTAINER HEAD -->
 	    <!-- BEGIN CONTAINER BODY -->

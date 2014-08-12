@@ -1,12 +1,16 @@
 # System
+import logging
 from django.shortcuts import render
 # Project
-from apps.loggers.models import ErrorLogger, ActionLogger
+from apps.loggers.models import ActionLogger
 from common.decorators import validated_request, validated_staff
 from common.helpers import format_ajax_response
 # App
 from .models import Article, Tag, Category, get_categories_annotate_articles, increment_articles_views
 from .forms import CategoryForm, TagForm, ArticleForm
+
+
+logger = logging.getLogger(__name__)
 
 
 def index(request):
@@ -43,6 +47,24 @@ def detail(request, article_id):
             article_id: int article id
     """
     return render(request, 'knowledgebase/detail.html', {'article_id': article_id})
+
+
+@validated_staff
+def admin(request, article_id=0):
+    """Knowledgebase Index View
+
+        Lists categories and popular/recently modified articles. 
+
+    Middleware
+        See SETTINGS for active Middleware.
+    Decorators
+        None   
+    Parameters
+        request: HttpRequest
+    Returns
+        HttpReponse (knowledgebase/admin.html)
+    """
+    return render(request, 'knowledgebase/admin.html', {'article_id': article_id})
 
 
 @validated_request(None)
@@ -85,7 +107,7 @@ def get_summary(request):
 
         return format_ajax_response(True, "Knowledgebase overview retrieved successfully.", {'newest': newest_list,'popular': popular_list,'categories': kb_categories})
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Failed to retrieve summary in apps.support.knowledgebase.get_summary: %s" % ex)
+        logger.error("Failed to get_summary: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving the knowledgebase overview.")
   
 
@@ -126,7 +148,7 @@ def get_article(request, article_id):
         increment_articles_views(article_id)
         return format_ajax_response(True, "Knowledgebase article retrieved successfully.", {"article": article.dump_to_dict()})
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Failed to retrieve Article in apps.support.knowledgebase.get_article: %s" % ex)
+        logger.error("Failed to get_article: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving the knowledgebase article.")
 
 
@@ -161,22 +183,34 @@ def set_article(request):
     """
     try:
         # Update existing Article if article_id exists, else create new Article
-        if "article_id" not in request.POST or request.POST["article_id"] is not 0:
+        if "article_id" not in request.POST or not int(request.POST["article_id"]):
             # Create new Article
             article = Article.objects.create(category=request.form.cleaned_data["category"], contents=request.form.cleaned_data["contents"], title=request.form.cleaned_data["title"], author=request.user) 
 
+            tags = request.POST.getlist('tags', 0)
+            if tags:
+                article.tags.add(*tags)
+                article.save()
+
             ActionLogger().log(request.user, "created", "Knowledgebase Article %s" % article)
-            return format_ajax_response(True, "Knowledgebase article created successfully.")
+            return format_ajax_response(True, "Knowledgebase article created successfully.", {"article_id": article.pk})
         else:
             # Update existing category
             article = Article.objects.get(pk=int(request.POST["article_id"]))
             article.title = request.form.cleaned_data["title"]
+            article.contents = request.form.cleaned_data["contents"]
+            article.category = request.form.cleaned_data["category"]
+
+            article.tags.clear()
+            tags = request.POST.getlist('tags', 0)
+            if tags:
+                article.tags.add(*tags)
             article.save()
 
             ActionLogger().log(request.user, "modified", "Knowledgebase Article %s" % article)
-            return format_ajax_response(True, "Knowledgebase article updated successfully.")
+            return format_ajax_response(True, "Knowledgebase article updated successfully.", {"article_id": article.pk})
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Failed to set Article in apps.support.knowledgebase.set_article: %s" % ex)
+        logger.error("Failed to set_article: %s" % ex)
         return format_ajax_response(False, "There was an error setting the knowledgebase article.")
 
 
@@ -205,12 +239,12 @@ def delete_article(request):
             message: str response message
     """        
     try:
-        articles = request.POST.getlist('article_id[]')
+        articles = request.POST.getlist('article_id')
         Article.objects.filter(pk__in=articles).delete()
         ActionLogger().log(request.user, "deleted", "Knowledgebase Article %s" % articles)
         return format_ajax_response(True, "Knowledgebase article(s) deleted successfully.")
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Failed to delete Article(s) in apps.support.knowledgebase.delete_article: %s" % ex)
+        logger.error("Failed to delete_article: %s" % ex)
         return format_ajax_response(False, 'There was an error deleting the knowledgebase article(s).')
 
 
@@ -243,7 +277,7 @@ def set_tag(request):
     """
     try:
         # Update existing Tag if tag_id exists, else create new Tag
-        if "tag_id" not in request.POST or request.POST["tag_id"] is not 0:
+        if "tag_id" not in request.POST or not int(request.POST["tag_id"]):
             # Create new Tag
             tag = Tag.objects.create(title=request.form.cleaned_data["title"]) 
 
@@ -258,7 +292,7 @@ def set_tag(request):
             ActionLogger().log(request.user, "modified", "Knowledgebase Tag %s" % tag)
             return format_ajax_response(True, "Knowledgebase tag updated successfully.")
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Failed to create Tag in apps.support.knowledgebase.set_tag: %s" % ex)
+        logger.error("Failed to set_tag: %s" % ex)
         return format_ajax_response(False, "There was an error setting the specified knowledgebase tag.")
 
 
@@ -287,12 +321,12 @@ def delete_tag(request):
             message: str response message
     """        
     try:
-        tags = request.POST.getlist('tag_id[]')
+        tags = request.POST.getlist('tag_id')
         tag = Tag.objects.filter(pk__in=tags).delete()
         ActionLogger().log(request.user, "deleted", "Knowledgebase Tag(s) %s" % tags)
         return format_ajax_response(True, "Knoweldgebase tag(s) deleted successfully.")
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Failed to delete Tag(s) in apps.support.knowledgebase.delete_tag: %s" % ex)
+        logger.error("Failed to delete_tag: %s" % ex)
         return format_ajax_response(False, "There was an error deleting the specified knowledgebase tag(s).")     
 
 
@@ -330,7 +364,7 @@ def get_tags(request):
 
         return format_ajax_response(True, "Knowledgebase tags retrieved successfully.", {"tags": tags})
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Failed to retrieve Tags in apps.support.knowledgebase.get_tags: %s" % ex)
+        logger.error("Failed to get_tags: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving the knowledgebase tags.")
 
 
@@ -368,7 +402,7 @@ def get_categories(request):
 
         return format_ajax_response(True, "Knowledgebase categories retrieved successfully.", {"categories": categories})
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Failed to retrieve Categories in apps.support.knowledgebase.get_categories: %s" % ex)
+        logger.error("Failed to get_categories: %s" % ex)
         return format_ajax_response(False, "There was an error retreiving the knowledgebase categories.")
 
 
@@ -397,12 +431,12 @@ def delete_category(request):
             message: str response message
     """        
     try:
-        categories = request.POST.getlist('category_id[]')
+        categories = request.POST.getlist('category_id')
         category = Category.objects.filter(pk__in=categories).delete()
         ActionLogger().log(request.user, "deleted", "Knowledgebase Category %s" % categories)
         return format_ajax_response(True, "Knowledgebase category(s) deleted successfully.")
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Failed to delete Category in apps.support.knowledgebase.delete_category: %s" % ex)
+        logger.error("Failed to delete_category: %s" % ex)
         return format_ajax_response(False, "There was an error deleting knowledgebase category(s).")
 
 
@@ -435,7 +469,7 @@ def set_category(request):
     """
     try:
         # Update existing category if category_id exists, else create new Category
-        if "category_id" not in request.POST or request.POST["category_id"] is not 0:
+        if "category_id" not in request.POST or not int(request.POST["category_id"]):
             # Create new Category
             category = Category.objects.create(title=request.form.cleaned_data["title"]) 
 
@@ -450,5 +484,5 @@ def set_category(request):
             ActionLogger().log(request.user, "modified", "Knowledgebase Category %s" % category)
             return format_ajax_response(True, "Knowledgebase category updated successfully.")
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Failed to create Category in apps.support.knowledgebase.set_category: %s" % ex)
+        logger.error("Failed to set_category: %s" % ex)
         return format_ajax_response(False, "There was an error setting the knowledgebase category.")

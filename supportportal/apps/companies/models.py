@@ -3,16 +3,10 @@ from datetime import datetime
 from apps.services.models import Service
 from django.core.validators import RegexValidator
 
-class Industry(models.Model):
-	name = models.CharField(max_length=64, blank=False, null=False, validators=[RegexValidator(regex='^[a-zA-Z0-9\\/\-/\' ]*$', message='Only alphanumeric characters, spaces, slashes, hyphens and apostraphes are allowed.'),])
-
-	def __unicode__(self):
-		return '%s' % (self.name)
 
 class Company(models.Model):
 	name = models.CharField(max_length=255, unique=True, db_index=True, validators=[RegexValidator(regex="^[a-zA-Z0-9 \',.-]*$", message='Only alphanumeric characters, spaces, commas, periods, hyphens and apostraphes are allowed.'),])
 	description = models.TextField(blank=True, null=True)
-	industry = models.ForeignKey(Industry, blank=True, null=True)
 	created = models.DateTimeField(editable=False)
 	modified = models.DateTimeField()
 	website = models.URLField(blank=True, null=True)
@@ -40,7 +34,6 @@ class Company(models.Model):
 		return {
 			'name': self.name,
 			'description': self.description,
-			'industry': self.industry.name,
 			'created': str(self.created),
 			'modified': str(self.modified),
 			'website': self.website,

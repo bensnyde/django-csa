@@ -1,18 +1,17 @@
-from django.conf import settings
 import urllib2
 import StringIO
-#from PIL import Image
 import tempfile
-from libs.zenoss import *
-from django.http import HttpResponseForbidden, HttpResponse
+import logging
+from django.conf import settings
 from apps.servers.models import Server
-from apps.loggers.models import ErrorLogger
 from common.decorators import validated_request
 from common.helpers import format_ajax_response
+from libs.zenoss import *
 
 
-
+logger = logging.getLogger(__name__)
 zenoss = Zenoss(settings.ZENOSS['address'], settings.ZENOSS['username'], settings.ZENOSS['password'])
+
 
 @validated_request(None)
 def get_interface_graphs(request, service_id, server_id):
@@ -40,12 +39,11 @@ def get_interface_graphs(request, service_id, server_id):
                     title: str graph title
                     url: str graph url
     """
-    server = __get_validated_server(request.user, service_id, server_id)
-    if not server:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized service in apps.zenoss.views.get_interface_graphs")
-        return HttpResponseForbidden()
-
     try:
+        server = __get_validated_server(request.user, service_id, server_id)
+        if not server:
+            raise Exception("Forbidden: specified Server does belong to specified Service.")
+
         graphs = []
         result =  zenoss.get_device_graphs(server.uplink, request.POST["drange"])["result"]["data"]
         for graph in result:
@@ -53,7 +51,7 @@ def get_interface_graphs(request, service_id, server_id):
 
         return format_ajax_response(True, "Interface graphs retrieved successfully.", {'graphs': graphs})
     except Exception as ex:
-        ErrorLogger().log(request, "Error", "Error fetching interface graphs in apps.zenoss.views.get_interface_graphs: %s" % ex)
+        logger.error("Error fetching Zenoss uplink interface graphs: %s" % ex)
         return format_ajax_response(False, "There was a problem retrieving the interface graphs.")
 
 
@@ -89,17 +87,16 @@ def get_interface_details(request, service_id, server_id):
                     allowBlank:
                     anchor:
                     name:
-    """    
-    server = __get_validated_server(request.user, service_id, server_id)
-    if not server:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized server in apps.zenoss.views.get_interface_details")
-        return HttpResponseForbidden(server_id)
-
+    """
     try:
+        server = __get_validated_server(request.user, service_id, server_id)
+        if not server:
+            raise Exception("Forbidden: specified Server does belong to specified Service.")
+
         result = zenoss.get_interface_form(server.uplink)["result"]["form"]["items"][0]["items"]
         return format_ajax_response(True, "Interface details retrieved successfully.", {'details': result})
     except Exception as ex:
-        ErrorLogger().log(request, "Error", "Error fetching interface details in apps.zenoss.views.get_interface_details: %s" % ex)
+        logger.error("Error fetching Zenoss uplink interface details: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving the interface details.")
 
 
@@ -126,17 +123,16 @@ def get_interface_events(request, service_id, server_id):
             message: str result message
             *data:
                 events:
-    """        
-    server = __get_validated_server(request.user, service_id, server_id)
-    if not server:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized server in apps.zenoss.views.get_interface_events")
-        return HttpResponseForbidden()
-
+    """
     try:
+        server = __get_validated_server(request.user, service_id, server_id)
+        if not server:
+            raise Exception("Forbidden: specified Server does belong to specified Service.")
+
         result =  zenoss.get_events(server.uplink)["result"]["events"]
         return format_ajax_response(True, "Interface events retrieved successfully.", {'events': result})
     except Exception as ex:
-        ErrorLogger().log(request, "Error", "Error fetching interface events in apps.zenoss.views.get_interface_events: %s" % ex)
+        logger.error("Error fetching Zenoss uplink interface events: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving the interface events.")       
 
 
@@ -155,13 +151,11 @@ def __get_validated_server(user, service_id, server_id):
 def __fetch_zenoss_graph(image_url):
     try:
         img = urllib2.urlopen("http://radarzen.cybercon.net"+image_url).read()
-#       im = Image.open(StringIO.StringIO(img))
-#       im.verify()
 
         with tempfile.NamedTemporaryFile(suffix=".png", dir=settings.MEDIA_ROOT, delete=False) as f:
             f.write(img)
             f.close()
 
             return f.name[f.name.rfind('/')+1:]
-    except Exception, e:    
-        return str(e)    
+    except Exception as ex:    
+        return False

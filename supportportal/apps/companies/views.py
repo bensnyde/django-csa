@@ -1,16 +1,19 @@
 # System
+import logging
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
 # Project
 from apps.contacts.models import Contact
 from apps.contacts.forms import ContactForm
-from apps.loggers.models import ErrorLogger, ActionLogger
+from apps.loggers.models import ActionLogger
 from common.decorators import validated_request, validated_staff
 from common.helpers import format_ajax_response
 # App 
 from .models import Company
 from .forms import CompanyForm
+
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -100,8 +103,49 @@ def get_companies(request):
 
         return format_ajax_response(True, "Companies list retrieved successfully.", {'companies': companies})
     except Exception as ex:
-        ErrorLogger().log(request, "Error", "Error enumerating Companies in apps.companies.views.get_companies: %s" % ex)
+        logging.error("failed to get_companies: %s" % ex)
         return format_ajax_response(False, "There was a problem retrieving the companies listing.")
+
+
+@validated_staff
+@validated_request(None)
+def get_services(request):
+    """Get Companies
+
+        Retrieves listing of Companies. 
+
+    Middleware
+        See SETTINGS for active Middleware.
+    Decorators
+        @validated_staff
+            request.user.is_staff() must be True    
+        @validated_request
+            request.method must be POST
+            request.is_ajax() must be True
+            request.user.is_authenticated() must be True
+    Parameters
+        request: HttpRequest
+    Returns
+        HttpResponse (JSON)
+            success: int status result 
+            message: str response message 
+            *data:
+                companies:
+                    name: str company name
+                    status: bool company status
+                    id: int company id
+    """    
+    try:
+        company = Company.objects.get(pk=int(request.POST['company_id']))
+
+        services = []
+        for service in company.services.all():
+            services.append({'name': service.name, 'id': service.pk})
+
+        return format_ajax_response(True, "Company's services retrieved successfully.", {'services': services})
+    except Exception as ex:
+        logging.error("failed to get_services: %s" % ex)
+        return format_ajax_response(False, "There was a problem retrieving the company's services.")
 
 
 @validated_request(None)
@@ -128,7 +172,6 @@ def get(request, company_id):
                 company:
                     name: 
                     description: 
-                    industry: 
                     created: 
                     modified: 
                     website: 
@@ -139,17 +182,16 @@ def get(request, company_id):
                     zip: 
                     phone:
                     fax:      
-    """    
-    if not (request.user.company_id == int(company_id) or request.user.is_admin == True):
-        ErrorLogger().log(request, "Forbidden", "Unauthorized attempt to modify resources in apps.companies.views.get")
-        return HttpResponseForbidden() 
-
-    company = get_object_or_404(Company, pk=company_id)
-
+    """
     try:
+        company = Company.objects.get(pk=company_id)
+
+        if not (request.user.company_id == int(company_id) or request.user.is_admin == True):
+            raise Exception("Fobiden: requesting user doesn't have permission to specified Company.")
+
         return format_ajax_response(True, "Company profile retrieved successfully.", {'company': company.dump_to_dict()})
     except Exception as ex:
-        ErrorLogger().log(request, "Error", "Error fetching Company in apps.companies.views.get: %s" % ex)
+        logger.error("Failed to get: %s" % ex)
         return format_ajax_response(False, "There was a problem retrieving the company profile.")
 
 
@@ -175,7 +217,6 @@ def set(request, company_id):
             city:
             state:
             zip:
-            industry:
             website:
             phone:
             fax:
@@ -185,29 +226,31 @@ def set(request, company_id):
             success: int status result 
             message: str response message 
     """
-    # Ensure requesting user has access to update specified profile
-    if not (request.user.company_id == int(company_id) or request.user.is_admin == True):
-        ErrorLogger().log(request, "Forbidden", "Unauthorized attempt to modify resources in apps.companies.views.set")
-        return HttpResponseForbidden()        
-      
-    if request.user.is_staff and not int(company_id):
-        form = CompanyForm(request.POST)
-        if form.is_valid():
-            company = form.save()
-            ActionLogger().log(request.user, "created", "Company %s" % company)
-            return format_ajax_response(True, "Company created successfully.")
-        else:
-            return format_ajax_response(False, "Form data failed validation.", errors=dict((k, [unicode(x) for x in v]) for k,v in form.errors.items()))                 
-    else:
-        company = get_object_or_404(Company, pk=company_id)
+    try:
+        if not (request.user.company_id == int(company_id) or request.user.is_admin == True):
+            raise Exception("Fobiden: requesting user doesn't have permission to specified Company.")
 
-        form = CompanyForm(request.POST, instance=company)
-        if form.is_valid():
-            form.save()
-            ActionLogger().log(request.user, "modified", "Company %s" % company)
-            return format_ajax_response(True, "Company profile updated successfully.") 
+        if request.user.is_staff and not int(company_id):
+            form = CompanyForm(request.POST)
+            if form.is_valid():
+                company = form.save()
+                ActionLogger().log(request.user, "created", "Company %s" % company)
+                return format_ajax_response(True, "Company created successfully.")
+            else:
+                return format_ajax_response(False, "Form data failed validation.", errors=dict((k, [unicode(x) for x in v]) for k,v in form.errors.items()))                 
         else:
-            return format_ajax_response(False, "Form data failed validation.", errors=dict((k, [unicode(x) for x in v]) for k,v in form.errors.items()))
+            company = Company.objects.get(pk=company_id)
+
+            form = CompanyForm(request.POST, instance=company)
+            if form.is_valid():
+                form.save()
+                ActionLogger().log(request.user, "modified", "Company %s" % company)
+                return format_ajax_response(True, "Company profile updated successfully.") 
+            else:
+                return format_ajax_response(False, "Form data failed validation.", errors=dict((k, [unicode(x) for x in v]) for k,v in form.errors.items()))
+    except Exception as ex:
+        logger.error("Failed to set: %s" % ex)
+        return format_ajax_response(False, "There was an error setting the Company record.")
 
 
 @validated_request(None)
@@ -237,21 +280,20 @@ def get_contacts(request, company_id):
                     role: 
                     id:
                     email:
-    """       
-    if not (request.user.company_id == int(company_id) or request.user.is_admin == True):
-        ErrorLogger().log(request, "Forbidden", "Unauthorized attempt to modify resources in apps.companies.views.get_contacts")
-        return HttpResponseForbidden() 
-
-    company = get_object_or_404(Company, pk=company_id)       
-
+    """
     try:
+        company = Company.objects.get(pk=company_id)
+
+        if not (request.user.company_id == int(company_id) or request.user.is_admin == True):
+            raise Exception("Fobiden: requesting user doesn't have permission to specified Company.")
+
         contacts = []
         for contact in Contact.objects.filter(company=company):
             contacts.append(contact.dump_to_dict())
 
         return format_ajax_response(True, "Company contacts listing retrieved successfully.", {'contacts': contacts})
     except Exception as ex:
-        ErrorLogger().log(request, "Error", "Error enumerating Company Contacts in apps.companies.views.get_contacts: %s" % ex)
+        logger.error("Failed to get_contacts: %s" % ex)
         return format_ajax_response(False, "There was a problem retrieving company contacts listing.")
 
 
@@ -285,14 +327,13 @@ def get_feeds(request, company_id):
                         email:
                         id:
                         name:
-    """   
-    if request.user.company_id != int(company_id):
-        ErrorLogger().log(request, "Forbidden", "Unauthorized attempt to modify resources in apps.companies.views.get_feeds")
-        return HttpResponseForbidden() 
-
-    company = get_object_or_404(Company, pk=company_id)
-
+    """
     try:
+        company = Company.objects.get(pk=company_id)
+
+        if not (request.user.company_id == int(company_id) or request.user.is_admin == True):
+            raise Exception("Fobiden: requesting user doesn't have permission to specified Company.")
+
         activities = []
         for action in ActionLogger.objects.filter(actor__in=Contact.objects.filter(company=company)).order_by("-timestamp")[:10]:
             activities.append(action.dump_to_dict())
@@ -303,5 +344,5 @@ def get_feeds(request, company_id):
 
         return format_ajax_response(True, "Feeds retrieved successfully.", {'feeds': {'activities': activities,'recent_users': recent_users}})
     except Exception as ex:
-        ErrorLogger().log(request, "Error", "Error fetching Company feeds in apps.companies.views.get_feeds: %s" % ex)
+        logger.error("Failed to get_feeds: %s" % ex)
         return format_ajax_response(False, "There was a problem retrieving the feeds.")

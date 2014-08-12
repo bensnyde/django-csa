@@ -4,6 +4,7 @@ from datetime import datetime
 from apps.companies.models import Service
 from apps.contacts.models import Contact
 from django.template import defaultfilters
+from django.utils.timesince import timesince
 
 class Ticket(models.Model):
     # Ticket Status choices
@@ -60,6 +61,8 @@ class Ticket(models.Model):
                 "date": defaultfilters.date(self.date, "SHORT_DATETIME_FORMAT"), 
                 "priority": self.priority,
                 "flagged": self.flagged,
+                "owner": self.owner.get_full_name(),
+                "lastupdate": timesince(self.date)
             }                  
 
         return response        

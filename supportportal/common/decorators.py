@@ -2,13 +2,17 @@ from django.core.urlresolvers import reverse
 from django.http import HttpResponse, HttpResponseNotAllowed, HttpResponseForbidden, HttpResponseBadRequest, HttpResponseRedirect
 from django.utils.safestring import mark_safe
 from functools import wraps
-from apps.loggers.models import ErrorLogger
+import logging
 import json
+
+
+logger = logging.getLogger(__name__)
 
 _ERROR_MSG = '<!DOCTYPE html><html lang="en"><body><h1>%s</h1><p>%%s</p></body></html>'
 _400_ERROR = _ERROR_MSG % '400 Bad Request'
 _403_ERROR = _ERROR_MSG % '403 Forbidden'
 _405_ERROR = _ERROR_MSG % '405 Not Allowed'
+
 
 def validated_request(FormClass=None, method='POST', login_required=True, ajax_required=True):
     def decorator(view_func):
@@ -43,8 +47,8 @@ def validated_service(function):
             
         service_vars = request.user.get_service_vars(bpath, kwargs["service_id"])
         if not service_vars:
-            ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized service.") 
-            return HttpResponseForbidden("Service ID does not belong to the requesting user.")
+            logger.error("Forbidden: requesting user doesn't have permission to access specified Service.") 
+            return HttpResponseForbidden()
         
         kwargs.pop("service_id", None)
         kwargs.update(service_vars)
@@ -56,8 +60,8 @@ def validated_staff(function):
     @wraps(function)
     def decorator(request, *args, **kwargs):
         if not request.user.is_staff:
-            ErrorLogger().log(request, "Forbidden", "non-staff contact attempted administrative function.") 
-            return HttpResponseForbidden("Illegal request.")
+            logger.error("Forbidden: requesting user does not have permission to access Staff resources.")
+            return HttpResponseForbidden()
 
         return function(request, *args, **kwargs)
     return decorator    

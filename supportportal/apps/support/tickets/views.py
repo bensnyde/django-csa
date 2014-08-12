@@ -1,15 +1,19 @@
 # System
+import logging
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render
 from django.http import HttpResponseForbidden, HttpResponseRedirect
 from django.core.urlresolvers import reverse
 # Project
-from apps.loggers.models import ErrorLogger, ActionLogger
+from apps.loggers.models import ActionLogger
 from common.decorators import validated_request, validated_staff
 from common.helpers import format_ajax_response
 # App
 from .models import Ticket, Post, get_ticket_contacts_list, set_ticket_contacts_list, get_tickets_summary, get_companies_active_contacts
 from .forms import TicketForm, PostForm, TicketIDForm, PostIDForm
+
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -53,7 +57,7 @@ def detail(request, ticket_id):
 
 
 @validated_request(None)
-def get_company_tickets(request):
+def get_tickets(request):
     """Get Tickets
 
         Retrieves listing of all open tickets belonging to requesting user's company.
@@ -75,13 +79,21 @@ def get_company_tickets(request):
                 tickets: 
     """    
     try:
+        if request.user.is_staff:
+            if "flagged" in request.POST and request.POST["flagged"]==1:
+                qset =  Ticket.objects.filter(status="Open").filter(flagged=True).order_by("-priority")
+            else: 
+                qset = Ticket.objects.filter(status="Open").order_by("-priority")
+        else:
+            qset = Ticket.objects.filter(owner_id__company_id=request.user.company_id).filter(status="Open").order_by('-priority')
+
         tickets = []
-        for ticket in Ticket.objects.filter(owner_id__company_id=request.user.company_id).filter(status="Open").order_by('-priority'):
+        for ticket in qset:
             tickets.append(ticket.dump_to_dict())
 
         return format_ajax_response(True, "Tickets listing retrieved successfully.", {"tickets": tickets })
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Failed to retrieve company tickets in apps.support.tickets.views.get_company_tickets: %s" % ex)
+        logger.error("Failed to get_company_tickets: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving the tickets listing.")
 
 
@@ -116,7 +128,7 @@ def get_ticket(request, ticket_id):
 
         return format_ajax_response(True, "Ticket posts listing retrieved successfully.", {"ticket": ticket.dump_to_dict(full=True, admin=request.user.is_staff)})
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Failed to retreive ticket in apps.support.tickets.views.get_ticket: %s" % ex)           
+        logger.error("Failed to get_ticket: %s" % ex)          
         return format_ajax_response(False, "There was an error retrieving ticket posts.")       
 
 
@@ -152,7 +164,7 @@ def get_summary(request):
         summary = get_tickets_summary(request.user.id, request.user.company_id)
         return format_ajax_response(True, "Tickets summary retrieved successfully.", {"summary": summary})
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Failed to retrieve tickets summary for AJAX request on apps.support.tickets.views.get_summary: %s" % ex)
+        logger.error("Failed to get_summary: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving the tickets summary.")
 
 
@@ -187,9 +199,9 @@ def set_contacts(request):
             ActionLogger().log(request.user, "modified", "Contacts %s" % contacts, "Ticket %s" % ticket.id)
             return format_ajax_response(True, "Tickets's contacts set successfully.")
         else:
-            raise Exception()
+            raise Exception("set_ticket_contacts_list(%s, %s) returned False." % (ticket.id, contacts))
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Failed to set ticket's contacts in apps.support.tickets.views.set_contacts: %s" % ex)
+        logger.error("Failed to set_contacts: %s" % ex)
         return format_ajax_response(False, "There wasn an error setting thet ticket's contacts.")
 
 
@@ -217,7 +229,7 @@ def set_post(request):
     ticket = get_object_or_404(Ticket, pk=request.form.cleaned_data['ticket_id'])
 
     if ticket.owner.company_id != request.user.company_id:
-        ErrorLogger().log(request, "Forbidden", "User made a forbidden request to a Ticket in support.tickets.views.create_post")
+        logger.error("Forbidden: requesting user doesn't have permission to specified Company's resources.")
         return HttpResponseForbidden()    
 
     post_form = PostForm(request.POST, request.FILES)
@@ -232,7 +244,7 @@ def set_post(request):
         ActionLogger().log(request.user, "created", "Post %s" % post.id, "Ticket %s" % ticket.id)
     else:
         # Form validation failed
-        ErrorLogger().log(request, "Forms", "Form submitted to support.tickets.views.create_post failed validation: %s" % post_form.errors)
+        pass
 
     # Redirect to ticket
     return HttpResponseRedirect(reverse('tickets:detail', kwargs=({'ticket_id':request.form.cleaned_data['ticket_id']})))
@@ -351,7 +363,7 @@ def toggle_visibility(request):
         Post.objects.create(ticket=post.ticket, author=request.user, contents=message)
         return format_ajax_response(True, "Post visibility toggled successfully.")  
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Failed to toggle post's visibility in apps.support.tickets.views.toggle_visibility: %s" % ex) 
+        logger.error("Failed to toggle_visibility: %s" % ex)
         return format_ajax_response(False, "There was an error toggling the post's visibility.")
 
 
@@ -391,5 +403,5 @@ def toggle_flag(request):
         Post.objects.create(ticket=post.ticket, author=request.user, contents=message)
         return format_ajax_response(True, "Post's flag toggled successfully.")  
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Failed to toggle post's flag in apps.support.tickets.views.toggle_flag: %s" % ex) 
+        logger.error("Failed to toggle_flag: %s" % ex)
         return format_ajax_response(False, "There was an error toggling post's flag.")

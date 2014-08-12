@@ -1,4 +1,5 @@
 # System
+import logging
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
@@ -6,10 +7,13 @@ from django.shortcuts import get_object_or_404, render
 from common.decorators import validated_request
 from common.helpers import format_ajax_response
 from apps.companies.models import Company
-from apps.loggers.models import ErrorLogger, ActionLogger, AuthenticationLogger
+from apps.loggers.models import ActionLogger, AuthenticationLogger
 # App
 from .forms import ContactForm, ContactPasswordForm
 from .models import Contact
+
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -33,7 +37,7 @@ def detail(request, user_id):
     user = get_object_or_404(Contact, pk=user_id)
 
     if not user.company == request.user.company:
-        ErrorLogger().log(request, "Forbidden", "Attempt to view user details from unassociated company in apps.contacts.views.detail")
+        logger.error("Forbidden: requesting user doesn't have permission to specified Company's Contacts.")
         return HttpResponseForbidden()
 
     return render(request, 'contacts/detail.html', {'user_details': user})
@@ -65,13 +69,12 @@ def create(request):
             success: int status result
             message: str response message
     """
-    company = get_object_or_404(Company, pk=int(request.POST["company"])) 
-
-    if not (request.user.company_id == company.pk or request.user.is_admin == True):
-        ErrorLogger().log(request, "Forbidden", "Attempt to view user details from unassociated company in apps.contacts.views.create")
-        return HttpResponseForbidden()
-
     try:
+        company = Company.objects.get(pk=int(request.POST["company"]))
+
+        if not (request.user.company_id == company.pk or request.user.is_admin == True):
+            raise Exception("Forbidden: requesting user doesn't have permission to specified Company's Contacts.")        
+
         contact = Contact.objects.create_user(
             email=request.form.cleaned_data["email"],
             first_name=request.form.cleaned_data["first_name"],
@@ -92,7 +95,7 @@ def create(request):
         ActionLogger().log(request.user, "created",  "Contact %s" % contact)
         return format_ajax_response(True, "Contact created successfully.")
     except Exception as ex:
-        ErrorLogger().log(request, "Error", "Error creating contact in apps.contacts.views.create: %s" % ex)
+        logger.error("Failed to create: %s" % ex)
         return format_ajax_response(False, "There was an error creating contact.")
 
 
@@ -119,16 +122,15 @@ def get(request, user_id):
             *data:
                 contact:
     """   
-    contact = get_object_or_404(Contact, pk=user_id)
-
-    if not contact.company == request.user.company:
-        ErrorLogger().log(request, "Forbidden", "Attempt to view contact details from unassociated company in apps.contacts.views.get")
-        return HttpResponseForbidden()
-
     try: 
+        contact = Contact.objects.get(pk=user_id)
+
+        if not contact.company == request.user.company:
+            raise Exception("Forbidden: requesting user doesn't have permission to specified Company's Contacts.")
+
         return format_ajax_response(True, "Contact retrieved successfully.", {'contact': contact.dump_to_dict(full=True)})
     except Exception as ex:
-        ErrorLogger().log(request, "Error", "Error retrieving contact in apps.contacts.views.get: %s" % ex)
+        logger.error("Failed to get: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving contact.")
 
 
@@ -161,20 +163,17 @@ def set(request):
         HttpResponse (JSON)
             success: int status result 
             message: str response message 
-    """    
-    user_id = request.POST.get('user_id', 0)
-    if user_id:
-        user = get_object_or_404(Contact, pk=user_id)
-
-    # Ensure requesting user has access to update specified profile
-    if not (request.user.company_id == user.company_id or request.user.is_admin == True):
-        ErrorLogger().log(request, "Forbidden", "Attempt to view user details from unassociated company in apps.contacts.views.set")
-        return HttpResponseForbidden()
-
+    """
     try:
+        user = Contact.objects.get(pk=int(request.POST['user_id']))  
+        
+        if not (request.user.company_id == user.company_id or request.user.is_admin == True):
+            raise Exception("Forbidden: requesting user doesn't have permission to access specified Company's Contacts.")
+
         form = ContactForm(request.POST, instance=user)
         if form.is_valid():
             user = form.save()
+
             if form.cleaned_data["role"] == "Admin":
                 user.is_admin = True
             else:
@@ -186,7 +185,7 @@ def set(request):
         else:
             return format_ajax_response(False, "Form data failed validation.", errors=dict((k, [unicode(x) for x in v]) for k,v in form.errors.items()))
     except Exception as ex:
-        ErrorLogger().log(request, "Error", "Error setting contact in apps.contacts.views.set: %s" % ex)
+        logger.error("Failed to set: %s" % ex)
         return format_ajax_response(False, "There was an error updating specified contact.")
 
 
@@ -214,14 +213,12 @@ def chpw(request):
             success: int status result
             message: str response message
     """
-    user = get_object_or_404(Contact, pk=int(request.POST['user_id']))
-
-    # Ensure requesting user has access to update specified profile
-    if not (request.user.company_id == user.company_id or request.user.is_admin == True):
-        ErrorLogger().log(request, "Forbidden", "Attempt to view user details from unassociated company in apps.contacts.views.chpw")
-        return HttpResponseForbidden()    
-
     try:
+        user = Contact.objects.get(pk=int(request.POST['user_id']))  
+        
+        if not (request.user.company_id == user.company_id or request.user.is_admin == True):
+            raise Exception("Forbidden: requesting user doesn't have permission to access specified Company's Contacts.")
+
         if user.check_password(request.form.cleaned_data['old_password']):
             user.set_password(request.form.cleaned_data['new_password'])
             user.save()
@@ -231,7 +228,7 @@ def chpw(request):
         else:
             return format_ajax_response(False, "Incorrect password supplied.")
     except Exception as ex:
-        ErrorLogger().log(request, "Error", "Error setting contact password in apps.contacts.views.chpw: %s" % ex)
+        logger.error("Failed to chpw: %s" % ex)
         return format_ajax_response(False, "There was an error setting password for specified contact.")
 
 
@@ -267,13 +264,12 @@ def get_logs(request, user_id):
                     timestamp:
                     actor:
     """    
-    user = get_object_or_404(Contact, pk=user_id)
-
-    if not user.company == request.user.company:
-        ErrorLogger().log(request, "Forbidden", "Attempt to view user details from unassociated company in apps.contacts.views.get_logs")
-        return HttpResponseForbidden()
-
     try:
+        user = Contact.objects.get(pk=user_id)  
+        
+        if not (request.user.company_id == user.company_id or request.user.is_admin == True):
+            raise Exception("Forbidden: requesting user doesn't have permission to access specified Company's Contacts.")
+
         authloggers = []
         for auth in AuthenticationLogger.objects.filter(user__id=user_id).order_by("-timestamp")[:10]:
             authloggers.append(auth.dump_to_dict())
@@ -284,5 +280,5 @@ def get_logs(request, user_id):
 
         return format_ajax_response(True, "Logs retrieved successfully.", {'authentication': authloggers, 'action': actionloggers})
     except Exception as ex:
-        ErrorLogger().log(request, "Error", "Error setting contact password in apps.contacts.views.get_logs: %s" % ex)
+        logger.error("Failed to get_logs: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving the logs.")

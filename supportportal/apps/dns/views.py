@@ -1,15 +1,18 @@
 # System
-from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden
-from django.shortcuts import render
 import json
+import logging
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
 # Project
-from apps.loggers.models import ErrorLogger, ActionLogger
+from apps.loggers.models import ActionLogger
 from common.decorators import validated_request, validated_service
 from common.helpers import format_ajax_response
 from libs.cpanel_dns import Cpanel
 # App
 from .forms import AddZoneForm, AddRecordForm, AddMxRecordForm, AddSrvRecordForm, ZoneForm, DeleteRecordForm
+
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -84,11 +87,14 @@ def getzones(request, cpanel_username):
                 zones:
                     domain: str domain name
     """
-    zones = Cpanel().listZones(cpanel_username)
-    
-    if zones:
-        return format_ajax_response(True, "Zones listing retrieved successfully.", {"zones": zones})
-    else:
+    try:
+        zones = Cpanel().listZones(cpanel_username)
+        if zones:
+            return format_ajax_response(True, "Zones listing retrieved successfully.", {"zones": zones})
+        else:
+            raise Exception("CpanelDNS library call to listZones(%s) returned False." % cpanel_username)
+    except Exception as ex:
+        logger.error("Failed to getzones: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving zones listing.")
 
 
@@ -121,16 +127,17 @@ def getrecords(request, cpanel_username):
             *data:
                 records:
     """
-    # Validate specified domain
-    if does_domain_belong_to_username(cpanel_username, request.form.cleaned_data['zone']) == False:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized domain in services.dns.views.getzone") 
-        return HttpResponseForbidden()
+    try:
+        if not does_domain_belong_to_username(cpanel_username, request.form.cleaned_data['zone']):
+            raise Exception("Forbidden: specified Domain doesn't belong to specified Service.")
 
-    records = Cpanel().listZone(request.form.cleaned_data['zone'])
-
-    if records:
-        return format_ajax_response(True, "Records retrieved successfully.", {"records": records})
-    else:
+        records = Cpanel().listZone(request.form.cleaned_data['zone'])
+        if records:
+            return format_ajax_response(True, "Records retrieved successfully.", {"records": records})
+        else:
+            raise Exception("CpanelDNS library call to listZone(%s) returned False." % request.form.cleaned_data["zone"])
+    except Exception as ex:
+        logger.error("failed to getrecords: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving the zone records.")
 
 
@@ -167,71 +174,52 @@ def addrecord(request, cpanel_username):
             success: int status result of API call
             message: str response message from API call
     """ 
-    # Conditionally select Form for POST validation
-    if request.POST['rtype'] == 'MX':
-        form = AddMxRecordForm(request.POST)
-    elif request.POST['rtype'] == 'SRV':
-        form = AddSrvRecordForm(request.POST)
-    else:
-        form = AddRecordForm(request.POST)
-
-    # Validate Form
-    if form.is_valid():
-        # Validate specified domain
-        if does_domain_belong_to_username(cpanel_username, form.cleaned_data['zone']) == False:
-            ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized domain in services.dns.views.addrecord") 
-            return HttpResponseForbidden()
-
-        # Build data container for API call
-        data = {
-            'name': form.cleaned_data['domain'], 
-            'ttl': form.cleaned_data['ttl'], 
-            'zone': form.cleaned_data['zone'], 
-            'type': form.cleaned_data['rtype']
-        }
-
-        # Conditionally update data with specified fields
-        if form.cleaned_data['rtype'] == 'A' or form.cleaned_data['rtype'] == 'A6' or form.cleaned_data['rtype'] == 'AAAA':
-            data.update({
-                'address': form.cleaned_data['record']
-            })
-        elif form.cleaned_data['rtype'] == 'TXT':
-            data.update({
-                'txtdata': form.cleaned_data['record']
-            })
-        elif form.cleaned_data['rtype'] == 'CNAME':
-            data.update({
-                'cname': form.cleaned_data['record']
-            })
-        elif form.cleaned_data['rtype'] == 'NS':
-            data.update({
-                'nsdname': form.cleaned_data['record']
-            })
-        elif form.cleaned_data['rtype'] == 'PTR':
-            data.update({
-                'ptrdname': form.cleaned_data['record']
-            })
-        elif form.cleaned_data['rtype'] == 'MX':
-            data.update({
-                'priority': form.cleaned_data['priority'], 
-                'exchange': form.cleaned_data['record']
-            })
-        elif form.cleaned_data['rtype'] == 'SRV':
-            data.update({
-                'priority': form.cleaned_data['priority'], 
-                'weight': form.cleaned_data['weight'], 
-                'port': form.cleaned_data['port'], 
-                'target': form.cleaned_data['record']
-            })
-
-        if Cpanel().addZoneRecord(**data):
-            ActionLogger().log(request.user, "created",  "%s Record" % form.cleaned_data['rtype'], form.cleaned_data['zone'])
-            return format_ajax_response(True, "Record created successfully.")
+    try:
+        # Conditionally select Form for POST validation
+        if request.POST['rtype'] == 'MX':
+            form = AddMxRecordForm(request.POST)
+        elif request.POST['rtype'] == 'SRV':
+            form = AddSrvRecordForm(request.POST)
         else:
-            ErrorLogger().log(request, "Error", "Error adding record to zone in apps.dns.views.addrecord.")
-            return format_ajax_response(False, "There was an error creating the record.")
-    else:
-        return format_ajax_response(False, "Form data failed validation.", errors=dict((k, [unicode(x) for x in v]) for k,v in form.errors.items()))
+            form = AddRecordForm(request.POST)
+
+        if form.is_valid():
+            if not does_domain_belong_to_username(cpanel_username, request.form.cleaned_data['zone']):
+                raise Exception("Forbidden: specified Domain doesn't belong to specified Service.")
+
+            data = {
+                'name': form.cleaned_data['domain'], 
+                'ttl': form.cleaned_data['ttl'], 
+                'zone': form.cleaned_data['zone'], 
+                'type': form.cleaned_data['rtype']
+            }
+
+            # Conditionally update data container with additional fields depending on record type
+            if form.cleaned_data['rtype'] == 'A' or form.cleaned_data['rtype'] == 'A6' or form.cleaned_data['rtype'] == 'AAAA':
+                data.update({'address': form.cleaned_data['record']})
+            elif form.cleaned_data['rtype'] == 'TXT':
+                data.update({'txtdata': form.cleaned_data['record']})
+            elif form.cleaned_data['rtype'] == 'CNAME':
+                data.update({'cname': form.cleaned_data['record']})
+            elif form.cleaned_data['rtype'] == 'NS':
+                data.update({'nsdname': form.cleaned_data['record']})
+            elif form.cleaned_data['rtype'] == 'PTR':
+                data.update({'ptrdname': form.cleaned_data['record']})
+            elif form.cleaned_data['rtype'] == 'MX':
+                data.update({'priority': form.cleaned_data['priority'], 'exchange': form.cleaned_data['record']})
+            elif form.cleaned_data['rtype'] == 'SRV':
+                data.update({'priority': form.cleaned_data['priority'], 'weight': form.cleaned_data['weight'], 'port': form.cleaned_data['port'], 'target': form.cleaned_data['record']})
+
+            if Cpanel().addZoneRecord(**data):
+                ActionLogger().log(request.user, "created",  "%s Record" % form.cleaned_data['rtype'], form.cleaned_data['zone'])
+                return format_ajax_response(True, "Record created successfully.")
+            else:
+                raise Exception("CpanelDNS library call to addZoneRecord() returned False.")
+        else:
+            return format_ajax_response(False, "Form data failed validation.", errors=dict((k, [unicode(x) for x in v]) for k,v in form.errors.items()))
+    except Exception as ex:
+        logger.error("Failed to addrecord: %s" % ex)
+        return format_ajax_response(False, "There was an error creating the record.")
 
 
 @validated_request(DeleteRecordForm)
@@ -262,16 +250,17 @@ def deleterecord(request, cpanel_username):
             success: int status result of API call
             message: str response message from API call
     """
-    # Validate specified domain
-    if does_domain_belong_to_username(cpanel_username, request.form.cleaned_data['zone']) == False:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized domain in apps.dns.views.deleterecord") 
-        return HttpResponseForbidden()
+    try:
+        if not does_domain_belong_to_username(cpanel_username, request.form.cleaned_data['zone']):
+            raise Exception("Forbidden: specified Domain doesn't belong to specified Service.")
 
-    if Cpanel().deleteZoneRecord(request.form.cleaned_data['zone'], request.form.cleaned_data['line']):
-        ActionLogger().log(request.user, "deleted",  "Line %s" % request.form.cleaned_data['line'], request.form.cleaned_data['zone'])
-        return format_ajax_response(True, "Record deleted successfully.")
-    else:
-        ErrorLogger().log(request, "Error", "Error deleting record from zone in apps.dns.views.deleterecord.")
+        if Cpanel().deleteZoneRecord(request.form.cleaned_data['zone'], request.form.cleaned_data['line']):
+            ActionLogger().log(request.user, "deleted",  "Line %s" % request.form.cleaned_data['line'], request.form.cleaned_data['zone'])
+            return format_ajax_response(True, "Record deleted successfully.")
+        else:
+            raise Exception("CpanelDNS library call to deleteZonerecord(%s, %s) returned False." % (request.form.cleaned_data['zone'], request.form.cleaned_data['line']))
+    except Exception as ex:
+        logger.error("Failed to deleterecord: %s" % ex)
         return format_ajax_response(False, "There was an error deleting the record.")
 
 
@@ -303,11 +292,14 @@ def createzone(request, cpanel_username):
             success: int status result of API call
             message: str response message from API call
     """
-    if Cpanel().addZone(request.form.cleaned_data['domain'], request.form.cleaned_data['ip'], cpanel_username):
-        ActionLogger().log(request.user, "created",  "Zone %s" % request.form.cleaned_data['domain'])
-        return format_ajax_response(True, "Zone created successfully.")
-    else:
-        ErrorLogger().log(request, "Error", "Error creating zone in apps.dns.views.createzone.")
+    try:
+        if Cpanel().addZone(request.form.cleaned_data['domain'], request.form.cleaned_data['ip'], cpanel_username):
+            ActionLogger().log(request.user, "created",  "Zone %s" % request.form.cleaned_data['domain'])
+            return format_ajax_response(True, "Zone created successfully.")
+        else:
+            raise Exception("CpanelDNS library call to addZone(%s, %s, %s) returned False." % (request.form.cleaned_data['domain'], request.form.cleaned_data['ip'], cpanel_username))
+    except Exception as ex:
+        logger.error("Failed to createzone: %s" % ex)
         return format_ajax_response(False, "There was an error creating the zone.")
 
 
@@ -338,16 +330,17 @@ def deletezone(request, cpanel_username):
             success: int status result of API call
             message: str response message from API call
     """
-    # Ensure domain belongs to cpanel_username
-    if does_domain_belong_to_username(cpanel_username, request.form.cleaned_data['zone']) == False:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized domain in services.dns.views.deletezone") 
-        return HttpResponseForbidden()
+    try:
+        if not does_domain_belong_to_username(cpanel_username, request.form.cleaned_data['zone']):
+            raise Exception("Forbidden: specified Domain doesn't belong to specified Service.")
 
-    if Cpanel().deleteZone(request.form.cleaned_data['zone']):
-        ActionLogger().log(request.user, "deleted",  "Zone %s" % request.form.cleaned_data['zone'])
-        return format_ajax_response(True, "Zone deleted successfully.")
-    else:
-        ErrorLogger().log(request, "Error", "Error deleting zone in apps.dns.views.deletezone.")
+        if Cpanel().deleteZone(request.form.cleaned_data['zone']):
+            ActionLogger().log(request.user, "deleted",  "Zone %s" % request.form.cleaned_data['zone'])
+            return format_ajax_response(True, "Zone deleted successfully.")
+        else:
+            raise Exception("CpanelDNS library call to deleteZone(%s) returned False." % request.form.cleaned_data["zone"])
+    except Exception as ex:
+        logger.error("Failed to deletezone: %s" % ex)
         return format_ajax_response(False, "There was an error deleting the zone.")
 
 
@@ -370,8 +363,7 @@ def search(user, service_id, querystr):
     """ 
     service_vars = user.get_service_vars("/services/dns/", service_id)
     if not service_vars:
-        ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized service in services.solusvm.views.index") 
-        return HttpResponseForbidden()
+        return False
 
     matches = []
     for domain in Cpanel().listZones(service_vars["cpanel_username"])['data']['zones']:

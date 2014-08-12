@@ -1,11 +1,17 @@
 # System
-from django.contrib.auth.decorators import login_required
+import logging
 from django.shortcuts import render
 # Project
+from apps.ip.forms import NetworkAddressAddForm
+from apps.companies.forms import CompanyForm
+from apps.loggers.models import ActionLogger
+from common.decorators import validated_request, validated_staff
 # App
 
+logger = logging.getLogger(__name__)
 
-@login_required
+
+@validated_staff
 def index(request):
     """DNS List View
 
@@ -23,4 +29,4 @@ def index(request):
         HttpResponse (dns/index.html)
             service_id: int service id
     """
-    return render(request, 'services/index.html')
+    return render(request, 'backend/index.html', {'companyform': CompanyForm(), 'networkaddressform': NetworkAddressAddForm()})

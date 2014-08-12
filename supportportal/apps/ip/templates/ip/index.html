@@ -183,16 +183,7 @@
                 error: defaultErrorCallback
             });     
         }
-
-        function setNetwork() {
-            $.ajax({
-                url: "{% url 'ip:setnetwork' service_id %}",
-                data: $("#set-network-address-form").serialize(),
-                type: "POST",
-                success: defaultSuccessCallback,
-                error: defaultErrorCallback
-            });            
-        }      
+   
 
         function buildHostModal() {
 
@@ -233,11 +224,13 @@
     <!-- BEGIN CONTENT HEADER -->
     <div class="row page-head">
         <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Networks</h3></div>
+        {% if user.is_staff %}
         <div class="col-md-6 text-right">        
             <div class="btn-group">
-                <a onclick="getHostDetails($('#ip_address').val());$('#mmodal2').modal('show');" role="button" class="badge" data-toggle="modal">Create Network Address <i class="fa fa-plus"></i></a>                
+                <a href="{% url 'ip:admin' %}" role="button" class="badge" data-toggle="modal">Administer <i class="fa fa-plus"></i></a>                
             </div>
         </div>        
+        {% endif %}
     </div>
     <!-- END CONTENT HEADER -->
 
@@ -325,49 +318,6 @@
         </div>
     </div>
     <!-- END MODAL -->
-
-    <!-- BEGIN MODAL -->
-    <div id="mmodal2" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <!-- BEGIN MODAL HEADER -->
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
-                    <h3 id="mlabel">Set Network Address</h3>
-                </div>
-                <!-- END MODAL HEADER -->
-                <!-- BEGIN MODAL BODY -->
-                <div class="modal-body">
-                    <div id="flash-message"></div>
-                    <div id="mbody" class="well">
-                        <form id="set-network-address-form">
-                            <table class="table table-striped table-bordered table-hover" id="set-network-address-table">
-                                {% for field in networkaddressform %}
-                                    <tr class="form-group">
-                                        <td><label class="control-label">{{ field.label_tag }}</label></td>
-                                        <td>
-                                            <div class="controls">
-                                                {{ field|addcss:"form-control" }}
-                                                <span id="{{ field.html_name }}-help" class="help-inline"></span>
-                                            </div>            
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </table>                        
-                        </form>  
-                    </div>
-                </div>
-                <!-- END MODAL BODY -->
-                <!-- BEGIN MODAL FOOTER -->
-                <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
-                    <button id="msave" class="btn btn-primary" onclick="setNetwork()">Ok</button>
-                </div>
-                <!-- END MODAL FOOTER -->
-            </div>
-        </div>
-    </div>
-    <!-- END MODAL -->    
 
     <div class="text-center">
         <a href="{% url 'ip:request_space' %}"><button class="btn btn-primary" id="tickets-create"> Request Additional IP Space </button></a>

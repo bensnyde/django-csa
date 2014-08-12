@@ -1,8 +1,9 @@
 # System
+import logging
 from django.conf import settings
 from django.shortcuts import render
 # Project
-from apps.loggers.models import ErrorLogger, ActionLogger
+from apps.loggers.models import ActionLogger
 from common.decorators import validated_request
 from common.helpers import format_ajax_response
 from libs.opensrs import *
@@ -10,6 +11,7 @@ from libs.opensrs import *
 from .forms import DomainForm, DomainRegisterForm
 
 
+logger = logging.getLogger(__name__)
 srs = OpenSRS(settings.OPENSRS["id"], settings.OPENSRS["key"], False);
 
 
@@ -98,11 +100,15 @@ def name_suggest(request):
             "is_success": "1"
         }
     """
-    result = srs.name_suggest(request.form.cleaned_data['domain'])
+    try:
+        result = srs.name_suggest(request.form.cleaned_data['domain'])
 
-    if result["response_code"] == "200":
-        return format_ajax_response(True, "Suggestions retrieved successfully.", {"urls": result["attributes"]})
-    else:
+        if result["response_code"] == "200":
+            return format_ajax_response(True, "Suggestions retrieved successfully.", {"urls": result["attributes"]})
+        else:
+            raise Exception("Opensrs library call to name_suggest(%s) returned False." % request.form.cleaned_data["domain"])
+    except Exception as ex:
+        logger.error("Failed to name_suggest: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving domain suggestions.")
 
 
@@ -132,12 +138,16 @@ def check_transfer(request):
                     transferrable: bool
                     reason: str
                     noservice:
-    """    
-    result = srs.check_transfer(request.form.cleaned_data['domain'])
+    """
+    try:
+        result = srs.check_transfer(request.form.cleaned_data['domain'])
 
-    if result["response_code"] == "200":
-        return format_ajax_response(True, "Transfer status retrieved successfully.", {"attributes": result["attributes"]})
-    else:
+        if result["response_code"] == "200":
+            return format_ajax_response(True, "Transfer status retrieved successfully.", {"attributes": result["attributes"]})
+        else:
+            raise Exception("Opensrs library call to check_transfer(%s) returned False." % request.form.cleaned_data["domain"])
+    except Exception as ex:
+        logger.error("Failed to check_transfer: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving the transfer status.")
 
 
@@ -166,11 +176,15 @@ def get_domain_price(request):
                 attributes:
                     price: float
     """
-    result = srs.get_domain_price(request.form.cleaned_data['domain'], 1, False)
+    try:
+        result = srs.get_domain_price(request.form.cleaned_data['domain'], 1, False)
 
-    if result["response_code"] == "200":
-        return format_ajax_response(True, "Domain price retrieved successfully.", {"attributes": result["attributes"]})
-    else:
+        if result["response_code"] == "200":
+            return format_ajax_response(True, "Domain price retrieved successfully.", {"attributes": result["attributes"]})
+        else:
+            raise Exception("Opensrs library call to get_domain_price(%s, 1, False) returned False." % reqeuest.form.cleaned_data["domain"])
+    except Exception as ex:
+        logger.error("Failed to get_domain_price: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving the domain price.")
 
 
@@ -198,11 +212,15 @@ def get_balance(request):
                     hold_balance: float
                     balance: float
     """
-    result = srs.balance()
+    try:
+        result = srs.balance()
 
-    if result["response_code"] == "200":
-        return format_ajax_response(True, "Balance retrieved successfully.", {"attributes": result["attributes"]})
-    else:
+        if result["response_code"] == "200":
+            return format_ajax_response(True, "Balance retrieved successfully.", {"attributes": result["attributes"]})
+        else:
+            raise Exception("Opensrs library call to balance() returned False.")
+    except Exception as ex:
+        logger.error("Failed to get_balance: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving account balance.")
 
 
@@ -236,19 +254,22 @@ def register_domain(request):
     """
     return False
     
-    # Make register domain call to OpenSRS
-    result = srs.domain_register(
-        form.cleaned_data['domain'], 
-        form.cleaned_data['owner'], 
-        form.cleaned_data['period'], 
-        form.cleaned_data['username'], 
-        form.cleaned_data['password'], 
-        None, 
-        form.cleaned_data['auto_renew']
-    )
+    try:
+        result = srs.domain_register(
+            form.cleaned_data['domain'], 
+            form.cleaned_data['owner'], 
+            form.cleaned_data['period'], 
+            form.cleaned_data['username'], 
+            form.cleaned_data['password'], 
+            None, 
+            form.cleaned_data['auto_renew']
+        )
 
-    if result["response_code"] == "200":
-        ActionLogger().log(request.user, "registered", "Domain %s" % request.form.cleaned_data['domain'])
-        return format_ajax_response(True, "Domain registered successfully.", {"result": result})
-    else:
+        if result["response_code"] == "200":
+            ActionLogger().log(request.user, "registered", "Domain %s" % request.form.cleaned_data['domain'])
+            return format_ajax_response(True, "Domain registered successfully.", {"result": result})
+        else:
+            raise Exception("Opensrs library call to domain_register(%s, %s, %s, %s, %s, None, %s) returned False." % (form.cleaned_data["domain"], form.cleaned_data["owner"], form.cleaned_data["period"], form.cleaned_data["username"], form.cleaned_data["password"], form.cleaned_data["auto_renew"]))
+    except Exception as ex:
+        logger.error("Failed to register_domain: %s" % ex)
         return format_ajax_response(False, "There was an error registering the domain.")

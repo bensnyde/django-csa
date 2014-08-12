@@ -1,19 +1,22 @@
 # System
 import json
+import logging
 from django.core.urlresolvers import reverse
-from django.http import HttpResponse
-from django.template import RequestContext, loader
+from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 # Project
-from apps.search.forms import SearchForm
 from apps.dns.views import search as dnssearch
 from apps.support.tickets.models import search as ticketsearch
 from apps.support.knowledgebase.models import search as kbsearch
 from apps.companies.models import Company, search as companysearch
 from apps.contacts.models import search as customersearch
-from apps.loggers.models import ErrorLogger
+from common.helpers import format_ajax_response
+# App
+from .forms import SearchForm
 
-errorlogger = ErrorLogger()
+
+logger = logging.getLogger(__name__)
+
 
 @login_required
 def results(request):
@@ -50,19 +53,10 @@ def results(request):
                 if result:
                     matches.update({service.name: result})              
 
-        if request.is_ajax(): 
-            # Return JSON 
-            return HttpResponse(json.dumps(matches), mimetype='application/json')
+    if request.is_ajax(): 
+        return format_ajax_response(True, "Search results retrieved successfully.", {"matches": matches})
     else:
-        errorlogger.log(request, "Requests", "Anomalous HttpRequest to search.views.results")
-    # Render and return Template
-
-    template = loader.get_template('search/results.html')
-    context = RequestContext(request, {
-        'querystr': querystr,       
-        'matches': matches,
-    })
-    return HttpResponse(template.render(context))
+        return render(request, 'search/results.html', {'querystr': querystr, 'matches': matches})
 
 
 def query_support_knowledgebase(querystr):

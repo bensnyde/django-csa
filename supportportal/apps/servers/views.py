@@ -1,16 +1,19 @@
 # System
-from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden
-from django.shortcuts import render, get_object_or_404
 import json
+import logging
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, get_object_or_404
 # Project
 from apps.services.models import Service
-from apps.loggers.models import ErrorLogger, ActionLogger
+from apps.loggers.models import ActionLogger
 from common.decorators import validated_request, validated_service
 from common.helpers import format_ajax_response
 # App
 from .models import Server
 from .forms import ServerForm
+
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -99,7 +102,7 @@ def get_servers(request, server_ids):
 
         return format_ajax_response(True, "Servers listing retrieved successfully.", {'servers': servers_list})
     except Exception as ex:
-        ErrorLogger().log(request, "Error", "Error retrieving servers listing in apps.servers.views.get_servers: %s" % ex) 
+        logger.error("Failed to get_servers: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving the servers listing.")
 
 
@@ -142,11 +145,10 @@ def get_server(request, server_ids, server_id):
                     name:
     """
     try:
-        server = Server.objects.get(pk=server_id)
-        details = server.dump_to_dict(full=True)
-        return format_ajax_response(True, "Server details retrieved successfully.", {'server': details})
+        server = Server.objects.get(pk=server_id).dump_to_dict(full=True)
+        return format_ajax_response(True, "Server details retrieved successfully.", {'server': server})
     except Exception as ex:
-        ErrorLogger().log(request, "Error", "Error retrieving servers listing in apps.servers.views.get_server: %s" % ex) 
+        logger.error("Failed to get_server: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving the server details.")
 
 
@@ -176,8 +178,7 @@ def set_server(request, service_id):
         # Validate service_id
         service_vars = request.user.get_service_vars('/services/server/', service_id)
         if not service_vars:
-            ErrorLogger().log(request, "Forbidden", "User attempted access to unauthorized service.") 
-            return HttpResponseForbidden("Service ID does not belong to the requesting user.")
+            raise Exception("Forbidden: specified Service doesn't belong to requesting user's Company.")
 
         # Update existing if news_id exists, else create new
         if "server_id" in request.POST and request.POST['server_id']:
@@ -192,8 +193,7 @@ def set_server(request, service_id):
                     return format_ajax_response(False, "Form data failed validation.", errors=dict((k, [unicode(x) for x in v]) for k,v in form.errors.items()))
             else:
                 # Deny attempt to modify Server that is not in Service's Server_ID's
-                ErrorLogger().log(request, "Forbidden", "Attempt to modify Server outside of Service in apps.servers.views.set_server.")
-                return format_ajax_response(False, "Unauthorized attempt to modify protected resource.")               
+                raise Exception("Forbidden: specified Server does not belong to specified Service.")           
         else:          
             form = ServerForm(request.POST)
             if form.is_valid():
@@ -208,7 +208,7 @@ def set_server(request, service_id):
             else:
                 return format_ajax_response(False, "Form data failed validation.", errors=dict((k, [unicode(x) for x in v]) for k,v in form.errors.items())) 
     except Exception as ex:
-        ErrorLogger().log(request, "Failed", "Error setting Server in apps.servers.views.set_server: %s" % ex)
+        logger.error("Failed to set_server: %s" % ex)
         return format_ajax_response(False, "There was an error setting the Server.")
 
 
@@ -242,5 +242,5 @@ def delete_server(request, server_ids, server_id):
         server = Server.objects.get(pk=server_id).delete()
         return format_ajax_response(True, "Server deleted successfully.")
     except Exception as ex:
-        ErrorLogger().log(request, "Error", "Error deleting server in apps.servers.views.delete_server: %s" % ex) 
+        logger.error("Failed to delete_server: %s" % ex)
         return format_ajax_response(False, "There was an error deleting the specified server.")

@@ -4,6 +4,8 @@ from apps.support.knowledgebase import views
 urlpatterns = patterns('',
     # Views
     url(r'^$', views.index, name='index'),
+    url(r'^admin/$', views.admin, name='admin'),
+    url(r'^admin/(?P<article_id>\d+)/$$', views.admin, name='admin'),
     url(r'^(?P<article_id>\d+)/$', views.detail, name='detail'),
     # AJAX
     url(r'^getsummary/$', views.get_summary, name='getsummary'),
