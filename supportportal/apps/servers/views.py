@@ -20,19 +20,19 @@ logger = logging.getLogger(__name__)
 def index(request, service_id):
     """Server Index View
 
-        Retrieves a listing of Servers. 
+        Retrieves a listing of Servers.
 
     Middleware
         See SETTINGS for active Middleware.
     Decorators
         @login_required
-            request.user.is_authenticated() must be True        
+            request.user.is_authenticated() must be True
     Paremeters
         request: HttpRequest
         service_id: int service id
     Returns
         HttpResponse (servers/index.html)
-            service_id: int service id 
+            service_id: int service id
             serverform: form ServerForm
     """
     return render(request, 'servers/index.html', {'service_id': service_id, 'serverform': ServerForm()})
@@ -48,7 +48,7 @@ def detail(request, service_id, server_id):
         See SETTINGS for active Middleware.
     Decorators
         @login_required
-            request.user.is_authenticated() must be True      
+            request.user.is_authenticated() must be True
     Paremeters
         request: HttpRequest
         service_id: int service id
@@ -73,13 +73,13 @@ def get_servers(request, server_ids):
     Middleware
         See SETTINGS for active Middleware.
     Decorators
-        @validated_request 
+        @validated_request
             request.method must be POST
             request.is_ajax() must be True
             request.user.is_authenticated() must be True
         @validated_service
             service_id must belong to request.user.company.services
-            service.vars is injected into view parameter              
+            service.vars is injected into view parameter
     Paremeters
         request: HttpRequest
         server_ids: int list of servers in service
@@ -116,13 +116,13 @@ def get_server(request, server_ids, server_id):
     Middleware
         See SETTINGS for active Middleware.
     Decorators
-        @validated_request 
+        @validated_request
             request.method must be POST
             request.is_ajax() must be True
             request.user.is_authenticated() must be True
         @validated_service
             service_id must belong to request.user.company.services
-            service.vars is injected into view parameter              
+            service.vars is injected into view parameter
     Paremeters
         request: HttpRequest
         server_ids: int list of servers in service
@@ -154,26 +154,26 @@ def get_server(request, server_ids, server_id):
 
 @validated_request(None)
 def set_server(request, service_id):
-    """Set Server 
+    """Set Server
 
         Creates new Server record, or updates existing if server.pk is specified.
 
     Middleware
         See SETTINGS for active Middleware.
     Decorators
-        @validated_request 
+        @validated_request
             request.method must be POST
             request.is_ajax() must be True
             request.user.is_authenticated() must be True
     Paremeters
         request: HttpRequest
-            *server_id: int server id        
+            *server_id: int server id
         service_id: int service id
     Returns
         HttpResponse (JSON)
             success: int result
             message: str response message
-    """       
+    """
     try:
         # Validate service_id
         service_vars = request.user.get_service_vars('/services/server/', service_id)
@@ -193,8 +193,8 @@ def set_server(request, service_id):
                     return format_ajax_response(False, "Form data failed validation.", errors=dict((k, [unicode(x) for x in v]) for k,v in form.errors.items()))
             else:
                 # Deny attempt to modify Server that is not in Service's Server_ID's
-                raise Exception("Forbidden: specified Server does not belong to specified Service.")           
-        else:          
+                raise Exception("Forbidden: specified Server does not belong to specified Service.")
+        else:
             form = ServerForm(request.POST)
             if form.is_valid():
                 server = form.save()
@@ -204,9 +204,9 @@ def set_server(request, service_id):
                 Service.objects.filter(pk=service_id).update(vars=json.dumps(service_vars))
 
                 ActionLogger().log(request.user, "created", "Server %s" % server)
-                return format_ajax_response(True, "Server created successfully.")             
+                return format_ajax_response(True, "Server created successfully.")
             else:
-                return format_ajax_response(False, "Form data failed validation.", errors=dict((k, [unicode(x) for x in v]) for k,v in form.errors.items())) 
+                return format_ajax_response(False, "Form data failed validation.", errors=dict((k, [unicode(x) for x in v]) for k,v in form.errors.items()))
     except Exception as ex:
         logger.error("Failed to set_server: %s" % ex)
         return format_ajax_response(False, "There was an error setting the Server.")
@@ -222,13 +222,13 @@ def delete_server(request, server_ids, server_id):
     Middleware
         See SETTINGS for active Middleware.
     Decorators
-        @validated_request 
+        @validated_request
             request.method must be POST
             request.is_ajax() must be True
             request.user.is_authenticated() must be True
         @validated_service
             service_id must belong to request.user.company.services
-            service.vars is injected into view parameter              
+            service.vars is injected into view parameter
     Paremeters
         request: HttpRequest
         server_ids: int list of servers in service

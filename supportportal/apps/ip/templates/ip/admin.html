@@ -8,7 +8,7 @@
 
 {% block breadcrumbs %}
 	<li><a>Support</a></li>
-	<li><a href="{% url 'ip:admin' %}">IP Space</a></li>
+	<li><a href="{% url 'ip:index' %}">IP Space</a></li>
   <li>Management</li>
 {% endblock %}
 
@@ -28,7 +28,9 @@
             $('#flash-message').fadeIn();
             if(result.success == 1) {
                 $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
-                setTimeout("$('.modal.in').modal('hide')",2000);
+                setTimeout("$('.modal.in').modal('hide')",2000);                
+                resetForm();
+                getNetworks();
             }
             else {
                 $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
@@ -244,7 +246,6 @@
 
     // Build and display Add Zone modal
     function build_vlan_modal(vlan_id=0, action="create", number="", name="", description="") {
-        console.log(vlan_id);
         switch(action) {
           case 'delete':
             var modal_title = "Delete VLAN";
@@ -287,65 +288,206 @@
         buildModal(modal_title, modal_body, modal_onclick_action);            
     }  
 
-        function getCompanies() {
-            // Destroy existing
-            $("#companies").html("<OPTION value=0></OPTION>");    
 
-            // onSuccess callback function
-            function onSuccessCallback(result) {
-                if(!jQuery.isEmptyObject(result)) {
-                    if(result.success == 1) {
-                        // AJAX call returned successful
-                        for(x in result.data.companies) {
-                            $("#companies").append('<OPTION value="'+result.data.companies[x].id+'">'+result.data.companies[x].name+'</OPTION>');
+    // Fetch Networks
+    function getNetworks() {
+        // Destroy existing
+        $("#networks-list-tbody").html("");
+
+        // onSuccess callback function
+        function onSuccessCallback(result) {
+            if(!jQuery.isEmptyObject(result)) {
+                if(result.success == 1) {
+                    // AJAX call returned successful
+                    for(x in result.data.networks) {
+                        var tmp = '<tr data-id="'+result.data.networks[x].id+'"><td>';
+                        if(result.data.networks[x].parent) {
+                            tmp = tmp + '--';
                         }
-                    }
-                }               
-            }
+                        tmp = tmp +result.data.networks[x].address+'</td> \
+                            <td>/'+result.data.networks[x].cidr+'</td> \
+                            <td>'+result.data.networks[x].vlan+'</td> \
+                            <td>'+result.data.networks[x].owner+'</td> \
+                            <td>'+result.data.networks[x].description+'</td> \
+                            <td> \
+                                <a href="#" class="btn-primary edit-network" role="button">Edit</a> \
+                                <a href="#" class="btn-primary resize-network" role="button">Resize</a> \
+                                <a href="#" class="btn-info split-network" role="button">Split</a> \
+                                <a href="#" class="btn-warning truncate-network" role="button">Truncate</a> \
+                            </td> \
+                        </tr>'
 
-            // Make the AJAX call
-            $.ajax({
-                url: "{%url 'companies:getcompanies' %}",
-                type: "POST",
-                success: onSuccessCallback,
-                error: defaultErrorCallback
-            });
+                        $("#networks-list-tbody").append(tmp);
+
+                        {% if parent %}
+                            for(y in result.data.networks[x].usable_hosts) {
+                                $("#ip_address").append('<OPTION>'+result.data.networks[x].usable_hosts[y]+'</OPTION>');
+                            }
+                        {% endif %}                            
+                    }
+                }
+                else {
+                    // AJAX call returned failed
+                    $("#networks-list-tbody").html("<tr><td colspan=5>"+result.message+"</td></tr>");
+                }           
+            }
         }
 
-        function getCompanyServices() {
-            // Destroy existing
-            $("#services").html("");    
+        // Make AJAX call to retrieve Networks
+        $.ajax({
+            url: "{% url 'ip:getnetworks' %}",
+            type: "POST",
+            success: onSuccessCallback,
+            error: defaultErrorCallback
+        });        
+    }
 
-            // onSuccess callback function
-            function onSuccessCallback(result) {
-                if(!jQuery.isEmptyObject(result)) {
-                    if(result.success == 1) {
-                        // AJAX call returned successful
-                        for(x in result.data.services) {
-                            $("#service").append('<OPTION value="'+result.data.services[x].id+'">'+result.data.services[x].name+'</OPTION>');
-                        }
+    // Fetch Networks
+    function getSplitOptions(id) {
+        // Destroy existing
+        $("#split-select").html("");
+
+        // onSuccess callback function
+        function onSuccessCallback(result) {
+            if(!jQuery.isEmptyObject(result)) {
+                if(result.success == 1) {
+                    // AJAX call returned successful
+                    for(x in result.data.options) {
+                        $("#split-select").append('<OPTION value="'+result.data.options[x].prefix+'">'+result.data.options[x].numnets+' x /'+result.data.options[x].prefix+' ('+result.data.options[x].numnets+' x '+result.data.options[x].numhosts+' hosts)</OPTION>');                  
                     }
-                }               
+                }       
             }
-
-            // Make the AJAX call
-            $.ajax({
-                url: "{%url 'companies:getservices' %}",
-                type: "POST",
-                data: {"company_id": $("#companies option:selected").val()},
-                success: onSuccessCallback,
-                error: defaultErrorCallback
-            });
         }
 
+        // Make AJAX call to retrieve Networks
+        $.ajax({
+            url: "{% url 'ip:getsplitopts' %}",
+            type: "POST",
+            data: {'networkaddress_id': id},
+            success: onSuccessCallback,
+            error: defaultErrorCallback
+        });        
+    }    
 
+    // Build and display Add Zone modal
+    function build_edit_network_modal(id, action="") {
+        switch(action) {
+          case 'truncate':
+            var modal_title = "Truncate Network"; 
+            var modal_onclick_action = "truncateNetwork()";
+            var modal_body = 'Truncating will purge all IPAddress and PTR records belonging to subnet. Are you sure you wish to proceed?<form id="truncate-network-form"><input type="hidden" name="networkaddress_id" value="'+id+'" /></form>';
+            break;          
+          case 'resize':  
+            var modal_title = "Resize Network"; 
+            var modal_onclick_action = "resizeNetwork()";
+            var modal_body = 'Any IPAddress objects belonging to Network must reside inside the new block or the request will fail.<form id="resize-network-form"><input type="hidden" name="networkaddress_id" value="'+id+'" /><input type="text" name="new_cidr" /></form>';
+            break;
+          case 'split':
+          default:
+            getSplitOptions(id);
+            var modal_title = "Split Network"; 
+            var modal_onclick_action = "splitNetwork()";
+            var modal_body = ' \
+                <form id="split-network-form" class="form"> \
+                    <input type="hidden" name="networkaddress_id" value="'+id+'" /> \
+                    <div>Number of Subnets: <select name="new_cidr" id="split-select" autocorrect="off"></select></div> \
+                    <div>Group under: <input type="checkbox" name="group_under" / ></div> \
+                </form>';
+            break;
+        }
+
+        
+        buildModal(modal_title, modal_body, modal_onclick_action);            
+    }
+
+      function splitNetwork() {
+        $.ajax({
+            url: "{% url 'ip:split' %}",
+            type: "POST",
+            data: $("#split-network-form").serialize(),
+            success: defaultSuccessCallback,
+            error: defaultErrorCallback
+        });            
+      }    
+
+      function resizeNetwork() {
+        $.ajax({
+            url: "{% url 'ip:resize' %}",
+            type: "POST",
+            data: $("#resize-network-form").serialize(),
+            success: defaultSuccessCallback,
+            error: defaultErrorCallback
+        });            
+      }
+
+
+      function truncateNetwork() {
+        $.ajax({
+            url: "{% url 'ip:truncate' %}",
+            type: "POST",
+            data: $("#truncate-network-form").serialize(),
+            success: defaultSuccessCallback,
+            error: defaultErrorCallback
+        });            
+      }
+
+    // Fetch Networks
+    function getNetwork(id) {
+        resetForm();
+        $("#id_address").attr("readonly", true);
+        $("#id_cidr").attr("readonly", true);
+
+        // onSuccess callback function
+        function onSuccessCallback(result) {
+            if(!jQuery.isEmptyObject(result)) {
+                if(result.success == 1) {
+                    // AJAX call returned successful
+                    $("#id_address").val(result.data.network.address);
+                    $("#id_cidr").val(result.data.network.cidr);
+                    $("#id_description").val(result.data.network.description);
+                    $("#id_parent").val(result.data.network.parent);
+                    $("#id_vrf").val(result.data.network.vrf_pk);
+                    $("#id_vlan").val(result.data.network.vlan_pk);
+                    $("#id_owner").val(result.data.network.owner_pk);
+                    $("#id_networkaddress_id").val(id);
+                }
+                else {
+                    // AJAX call returned failed
+                    $("#networks-list-tbody").html("<tr><td colspan=5>"+result.message+"</td></tr>");
+                }           
+            }
+        }
+
+        // Make AJAX call to retrieve Networks
+        $.ajax({
+            url: "{% url 'ip:getnetwork' %}",
+            type: "POST",
+            data: {'networkaddress_id': id},
+            success: onSuccessCallback,
+            error: defaultErrorCallback
+        });        
+    }      
+
+    function resetForm() {
+        $("#id_address").val("");
+        $("#id_cidr").val("");
+        $("#id_description").val("");
+        $("#id_parent").val("");
+        $("#id_vrf").val("");
+        $("#id_vlan").val("");
+        $("#id_owner").val("");
+        $("#id_networkaddress_id").val("0");     
+
+        $("#id_address").attr("readonly", false);   
+        $("#id_cidr").attr("readonly", false);
+    }
 	</script>
 {% endblock %}
 
 {% block jquery_document_ready %}
-    getCompanies();
     getVlans();
     getVrfs();
+    getNetworks();
 
     $('#vlans-table-tbody')
         .on('click', 'a.del-vlan', function (e) {
@@ -367,9 +509,23 @@
             build_vrf_modal($(this).closest('tr').data('id'), "edit", $(this).closest('tr').find("td").eq(0).html(), $(this).closest('tr').find("td").eq(1).html(), $(this).closest('tr').find("td").eq(2).html());
         });
 
-    $('#companies').on('change', function (e) {              
-        getCompanyServices();
-    });
+    $('#networks-list-table')
+        .on('click', 'a.edit-network', function (e) {
+            e.preventDefault();
+            getNetwork($(this).closest('tr').data('id'));
+        })      
+        .on('click', 'a.truncate-network', function (e) {
+            e.preventDefault();
+            build_edit_network_modal($(this).closest('tr').data('id'), "truncate");
+        })   
+        .on('click', 'a.resize-network', function (e) {
+            e.preventDefault();
+            build_edit_network_modal($(this).closest('tr').data('id'), "resize");
+        })             
+        .on('click', 'a.split-network', function (e) {
+            e.preventDefault();
+            build_edit_network_modal($(this).closest('tr').data('id'), "split");
+        });        
 {% endblock %}
 
 {% block content %}
@@ -381,8 +537,9 @@
     <!-- END NETWORKADDRESS CONTAINER HEAD -->
     <!-- BEGIN NETWORKADDRESS CONTAINER BODY -->
 	<div class="row">
-
+        <div id="flash-message"></div>
       <form id="set-network-address-form">
+        <input type="hidden" name="networkaddress_id" id="id_networkaddress_id" value="0" />
         {% for field in networkaddressform %}
           <div class="form-group">
             <label class="control-label col-md-3">{{ field.label_tag }}</label>
@@ -391,32 +548,35 @@
               <span id="{{ field.html_name }}-help" class="help-block"></span>
             </div>
           </div>
-        {% endfor %} 
-
-      <div class="form-group">
-        <label class="control-label col-md-3">Companies</label>
-        <div class="controls col-md-9">
-            <select name="companies" id="companies" autocomplete="off" class="form-control"></select>
-          <span id="companies-help" class="help-block"></span>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="control-label col-md-3">Services</label>
-        <div class="controls col-md-9">
-            <select name="service" id="service" autocomplete="off" class="form-control"></select>
-          <span id="services-help" class="help-block"></span>
-        </div>
-      </div>      
+        {% endfor %}    
 
         <div class="form-actions">
           <div class="col-md-offset-3 col-md-9">
-            <a class="btn btn-primary" onclick="setNetwork()"><i class="fa fa-plus"></i> Submit</a>                        
+            <a class="btn btn-primary" onclick="setNetwork()"><i class="fa fa-plus"></i> Submit</a>
+            <a class="btn btn-warning" onclick="resetForm()"><i class="fa fa-minus"></i> Reset</a>               
           </div>
         </div>                         
       </form>  
 	</div>
     <!-- END NETWORKADDRESS CONTAINER BODY -->  
+
+        <!-- BEGIN NETWORKS TABLE -->
+        <table class="table table-hover" id="networks-list-table">
+            <thead>
+                <tr>
+                    <th>Network Address</th>
+                    <th>CIDR</th>
+                    <th>Vlan</th>
+                    <th>Owner</th>
+                    <th>Description</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="networks-list-tbody"></tbody>
+        </table>
+        <!-- END NETWORKS TABLE -->
+
+
 
     <!-- BEGIN VLAN CONTAINER HEAD -->
     <div class="row page-head">

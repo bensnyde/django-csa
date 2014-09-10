@@ -8,6 +8,12 @@ class ContactForm(ModelForm):
 		exclude = ['last_login', 'password', 'created', 'company', 'is_admin', 'is_active']
 		unique_together = ['email', 'company']
 
+class ContactCreationForm(ModelForm):
+	class Meta:
+		model = Contact
+		exclude = ['last_login', 'created', 'company', 'is_admin', 'is_active']
+		unique_together = ['email', 'company']
+
 class ContactPasswordForm(forms.Form):
 	old_password = forms.CharField()
 	new_password = forms.CharField()

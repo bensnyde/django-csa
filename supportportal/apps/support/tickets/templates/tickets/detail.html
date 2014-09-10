@@ -25,12 +25,12 @@
 						$('#modify-cc-list').fadeOut();
 						setTimeout(getTicket(), 1000);
 						$('.modal.in').modal('hide');
-					}					
+					}
 					else {
 						// AJAX call returned failed
 						$('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
 					}
-				}				
+				}
 			}
 
 			// Make the AJAX call
@@ -40,8 +40,8 @@
                 type: "POST",
                 success: onSuccessCallback,
                 error: defaultErrorCallback
-            });			
-		}	
+            });
+		}
 
 		// Fetch Ticket via AJAX
 		function getTicket() {
@@ -72,48 +72,45 @@
 
 						// Posts
 						for(x in result.data.ticket.posts) {
-							var attachment = ""
+							var attachment = '<div class="pull-right">';
 							if(result.data.ticket.posts[x].attachment) {
-								attachment = ' \
-								<div class="pull-right"> \
-									<small>Attachment: <a href="'+result.data.ticket.posts[x].attachment.url+'">'+result.data.ticket.posts[x].attachment.name+' ('+result.data.ticket.posts[x].attachment.size+'b)</a></small> \
-								</div>';
+								attachment = '<small>Attachment: <a href="'+result.data.ticket.posts[x].attachment.url+'">'+result.data.ticket.posts[x].attachment.name+' ('+result.data.ticket.posts[x].attachment.size+'b)</a></small>';
 							}
-
-							var admin = "";
-							var flag = "";
-							var visibility = "panel panel-primary";
 							{% if user.is_staff %}
-								admin = '<div class="pull-right"><label>Toggle</label> <a onclick="togglePost(\'flag\', \''+result.data.ticket.posts[x].id+'\')">Flagged</a> | <a onclick="togglePost(\'visibility\', \''+result.data.ticket.posts[x].id+'\')">Visibility</a></div>';
+								attachment = attachment + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#" class="toggle-flag"><i class="fa fa-flag"></i></a> | <a href="#" class="toggle-visibility"><i class="fa fa-eye"></i></a>';
+							{% endif %}
+							attachment = attachment + '</div>';
+
+							var flag = "";
+							var visibility = "";
+							{% if user.is_staff %}
 								if(result.data.ticket.posts[x].flagged==1) {
-									flag = '<i class="fa fa-flag"></i>';
+									flag = '<i class="fa fa-flag"></i>&nbsp;';
 								}
 								if(result.data.ticket.posts[x].visible==0) {
-									visibility = 'panel';
-								}								
+									visibility = '<i class="fa fa-eye"></i>&nbsp;';
+								}
 							{% endif %}
 
 							$("#posts-list").append(' \
-								<! -- BEGIN POST '+result.data.ticket.posts[x].id+' --> \
-								<li> \
-									<div class="'+visibility+'"> \
-										<div class="panel-heading"> \
-											'+attachment+flag+' \
+								<li data-id="'+result.data.ticket.posts[x].id+'"> \
+									<div class="panel"> \
+										<div class="panel-heading" style="border-bottom: 1px solid #ddd"> \
+											'+attachment+visibility+flag+' \
 											<h3 style="display: inline" class="panel-title"><a href="#" class="name">'+result.data.ticket.posts[x].author+'</a></h3> \
 											<small>@ '+result.data.ticket.posts[x].date+'</small> \
-										</div>'+admin+' \
-										<div class="panel-body">'+result.data.ticket.posts[x].contents+'</div> \
+										</div> \
+										<div class="panel-body" style="margin: 0 10px 0 10px; font-size: 12px">'+result.data.ticket.posts[x].contents+'</div> \
 									</div> \
-								</li> \
-								<! -- END POST '+result.data.ticket.posts[x].id+' -->'
+								</li>'
 							);
 						}
-					}					
+					}
 					else {
 						// AJAX call returned failed
 						// ********************FIX ME********************************
 					}
-				}				
+				}
 			}
 
 			// Make the AJAX call
@@ -122,8 +119,8 @@
                 type: "POST",
                 success: onSuccessCallback,
                 error: defaultErrorCallback
-            });				
-		}      
+            });
+		}
 
 		{% if user.is_staff %}
 			// Fetch Ticket via AJAX
@@ -136,13 +133,13 @@
 							$('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
 							getTicket();
 							$('#flash-message').fadeOut();
-						}					
+						}
 						else {
 							// AJAX call returned failed
 							// ********************FIX ME********************************
 						}
-					}				
-				}	
+					}
+				}
 
 				var url;
 				if(item=="visibility") {
@@ -158,15 +155,24 @@
 	                type: "POST",
 	                success: onSuccessCallback,
 	                error: defaultErrorCallback
-	            });		
-			}    
-		{% endif %}		        	
+	            });
+			}
+		{% endif %}
 	</script>
 
 {% endblock %}
 
 {% block jquery_document_ready %}
 	getTicket();
+    $('#posts-list')
+        .on('click', 'a.toggle-flag', function (e) {
+            e.preventDefault();
+            togglePost("flag", $(this).closest('li').data('id'));
+        })
+        .on('click', 'a.toggle-visibility', function (e) {
+            e.preventDefault();
+            togglePost("visibility", $(this).closest('li').data('id'));
+        });
 {% endblock %}
 
 {% block content %}
@@ -177,7 +183,7 @@
  	<!-- BEGIN CONTENT HEADER -->
     <div class="row page-head">
         <div class="col-md-12"><i class="fa fa-edit"></i>&nbsp;<h3>Ticket #{{ ticket_id }}</h3></div>
-    </div> 	
+    </div>
     <!-- END CONTENT HEADER -->
 
 	<!-- BEGIN TICKET DETAILS CONTAINER -->
@@ -187,14 +193,14 @@
     		<div class="col-md-8">
 				<h3 id="ticket-description"></h3>
 				<div class="row">
-					<label class="col-md-4" style="text-indent: 20px"><a onclick="$('#mmodal').modal('show');">+&nbsp;Contacts</a></label>	
+					<label class="col-md-4" style="text-indent: 20px"><a onclick="$('#mmodal').modal('show');">+&nbsp;Contacts</a></label>
 					<div class="col-md-6 col-offset-md-2" id="contacts-list"></div>
-				</div>					
+				</div>
 			</div>
 			<!-- END LEFT COL -->
 
 			<!-- BEGIN RIGHT COL -->
-	    	<div class="col-md-4">	    	
+	    	<div class="col-md-4">
 	    		<div class="row">
 					<label class="col-md-4 control-label">Status</label>
 					<div class="col-md-8 controls" id="ticket-status"></div>
@@ -204,47 +210,47 @@
 					<div class="col-md-8 controls" id="ticket-priority"></div>
 				</div>
 				<div class="row">
-					<label class="control-label col-md-4">Author</label>							
+					<label class="control-label col-md-4">Author</label>
 					<div class="controls col-md-8" id="ticket-author"></div>
 				</div>
 				<div class="row">
-					<label class="control-label col-md-4">Service</label> 					        	
-					<div class="controls col-md-8" id="ticket-service"></div>     
-				</div> 																		
+					<label class="control-label col-md-4">Service</label>
+					<div class="controls col-md-8" id="ticket-service"></div>
+				</div>
 			</div>
 			<!-- END RIGHT COL -->
-		</div>    
+		</div>
     </div>
     <!-- END TICKET DETAILS CONTAINER -->
 
     <!-- BEGIN POSTS CONTAINER -->
     <div class="row">
 		<!-- BEGIN POSTS LISTING -->
-		<ul id="posts-list" class="list-unstyled"></ul>
+		<ul id="posts-list" class="list-unstyled ol-offset-md-2 col-md-12"></ul>
 		<!-- END POSTS LISTING -->
 
 		<!-- BEGIN TICKET REPLY FORM -->
 		<form role="form" class="form-horizontal" id="fileupload" action="{% url 'tickets:setpost' %}" method="POST" enctype="multipart/form-data">
 			{% csrf_token %}
-			<input type="hidden" name="ticket_id" value="{{ ticket_id }}" />	
+			<input type="hidden" name="ticket_id" value="{{ ticket_id }}" />
 
 	        <div class="form-group">
-	        	<textarea class="form-control col-md-12" id="id_contents" name="contents" rows="10"></textarea>	
+	        	<textarea class="form-control col-md-12" id="id_contents" name="contents" rows="10"></textarea>
 
 				<div class="col-offset-md-2 col-md-4" style="margin-top: 16px">
-					<label class="control-label col-md-6">Attachment</label> 					        	
+					<label class="control-label col-md-6">Attachment</label>
 					<div class="controls col-md-6">
 						<div class="fileupload fileupload-new" data-provides="fileupload">
 							<input type="file" name="attachment" />
 						</div>
-					</div>     
-				</div>					
-	        </div>	
+					</div>
+				</div>
+	        </div>
 
 			<div class="row form-actions">
 				<div class="col-md-offset-2 col-md-8">
 					<button type="submit" class="btn"><i class="fa fa-check"></i> Submit</button>
-					<button type="button" class="btn" onclick="window.location='{% url 'tickets:index' %}';">Cancel</button>                              
+					<button type="button" class="btn" onclick="window.location='{% url 'tickets:index' %}';">Cancel</button>
 				</div>
 			</div>
 		</form>
@@ -271,7 +277,7 @@
                     		</div>
                     		<div class="col-md-5">
                     			<select multiple="multiple" class="multi-select col-md-12 form-control" id="id_ticket_contacts" name="contacts[]"></select>
-                    		</div>	
+                    		</div>
                     </div>
                 </div>
                 <!-- END MODAL BODY -->
@@ -284,7 +290,7 @@
             </div>
         </div>
     </div>
-    <!-- END MODAL -->	
+    <!-- END MODAL -->
 
  <!-- END TICKETS DETAIL CONTENT -->
 {% endblock %}

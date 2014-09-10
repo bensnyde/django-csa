@@ -2,6 +2,7 @@ from django.db import models
 from datetime import datetime
 from apps.services.models import Service
 from django.core.validators import RegexValidator
+from django.utils.dateformat import DateFormat
 
 
 class Company(models.Model):
@@ -18,7 +19,7 @@ class Company(models.Model):
 	phone = models.CharField(max_length=64, blank=True, null=True, validators=[RegexValidator(regex='^[a-zA-Z0-9 ()-]*$', message='Only alphanumeric characters, spaces, paraentheses, and hyphens are allowed.'),])
 	fax = models.CharField(max_length=64, blank=True, null=True, validators=[RegexValidator(regex='^[a-zA-Z0-9 ()-]*$', message='Only alphanumeric characters, spaces, paraentheses, and hyphens are allowed.'),])
 	services = models.ManyToManyField(Service, blank=True, null=True)
-	status = models.BooleanField(default=True)
+	status = models.BooleanField(default=True, null=False)
 
 	def __unicode__(self):
 		return '%s' % (self.name)
@@ -34,8 +35,8 @@ class Company(models.Model):
 		return {
 			'name': self.name,
 			'description': self.description,
-			'created': str(self.created),
-			'modified': str(self.modified),
+			'created': self.created.strftime("%Y-%m-%d @ %r"),
+			'modified': self.modified.strftime("%Y-%m-%d"),
 			'website': self.website,
 			'address1': self.address1,
 			'address2': self.address2,
@@ -44,7 +45,8 @@ class Company(models.Model):
 			'zip': self.zip,
 			'phone': self.phone,
 			'fax': self.fax,
-		}	
+			'status': ("Inactive", "Active")[self.status],
+		}
 
 def search(query):
 	return Company.objects.filter(name__icontains=query)

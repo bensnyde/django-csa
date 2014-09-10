@@ -9,14 +9,14 @@ from apps.loggers.models import ActionLogger
 # App
 from .helpers import *
 from .models import NetworkAddress, IPAddress, Vrf, Vlan
-from .forms import IPAddressForm, NetworkAddressForm, NetworkAddressAddForm, VlanForm, VrfForm
+from .forms import IPAddressForm, NetworkAddressForm, NetworkAddressAddForm, VlanForm, VrfForm, ResizeNetworkForm
 
 
 logger = logging.getLogger(__name__)
 
 
 @login_required
-def index(request, service_id, parent=None):
+def index(request, parent=None):
     """Network/IP List View
 
         Lists NetworkAddresses currently allocated to requesting user's company.
@@ -25,19 +25,16 @@ def index(request, service_id, parent=None):
         See SETTINGS for active Middleware.
     Decorators
         @login_required
-            request.user.is_authenticated() must be True
-        @validated_service
-            service_id must belong to request.user.company.services          
+            request.user.is_authenticated() must be True  
     Parameters
         request: HttpRequest
-        service_id: int service id 
         parent: str parent ipv4 network address (x.x.x.x/x)
     Returns
         HttpResponse (ip/index.html)
             service_id: int current service id 
             parent: str parent ipv4 network address (x.x.x.x/x)
     """
-    return render(request, 'ip/index.html', {'parent': parent,'service_id': service_id, 'networkaddressform': NetworkAddressAddForm()})
+    return render(request, 'ip/index.html', {'parent': parent, 'networkaddressform': NetworkAddressAddForm()})
 
 
 @login_required
@@ -79,8 +76,7 @@ def admin(request):
 
 
 @validated_request(None)
-@validated_service
-def get_networks(request, network_address_ids):
+def get_networks(request):
     """NetworkAddress Getter
 
         Retrieves list of NetworkAddresses belonging to specified Service.
@@ -91,13 +87,9 @@ def get_networks(request, network_address_ids):
         @validated_request
             request.method must be POST
             request.is_ajax() must be True
-            request.user.is_authenticated() must be True
-        @validated_service
-            service_id must belong to request.user.company.services
-            service.vars is injected into view parameter  
+            request.user.is_authenticated() must be True 
     Parameters
         request: HttpRequest
-        network_address_ids: int[] network address ids
     Returns
         HttpResponse (JSON)
             success: int response status
@@ -110,7 +102,8 @@ def get_networks(request, network_address_ids):
     """ 
     try:         
         network_list = []
-        for network in NetworkAddress.objects.filter(pk__in=network_address_ids):
+        #for network in NetworkAddress.objects.filter(owner=request.user.company):
+        for network in NetworkAddress.objects.all().order_by('parent'):
             network_list.append(network.dump_to_dict())
 
         return format_ajax_response(True, "NetworkAddress listing retrieved successfully.", {"networks": network_list})
@@ -120,8 +113,7 @@ def get_networks(request, network_address_ids):
 
 
 @validated_request(NetworkAddressForm)
-@validated_service
-def get_hosts(request, network_address_ids):
+def get_hosts(request):
     """Get IPAddress Index
 
         Retrieves list of local IPAddress records and remote CpanelDNS PTR records under specified NetworkAddress.
@@ -134,12 +126,8 @@ def get_hosts(request, network_address_ids):
             request.method must be POST
             request.is_ajax() must be True
             request.user.is_authenticated() must be True
-        @validated_service
-            service_id must belong to request.user.company.services
-            service.vars is injected into view parameter  
     Parameters
         request: HttpRequest
-        network_address_ids: int[] network address ids
     Returns
         HttpResponse (JSON)
             success: int response status
@@ -152,12 +140,9 @@ def get_hosts(request, network_address_ids):
     """
     try:   
         ip, net_size = request.form.cleaned_data["parent"].split('/')
-        parent = NetworkAddress.objects.get(address=ip, cidr=int(net_size))
+        parent = NetworkAddress.objects.get(address=ip, cidr=int(net_size), owner=request.user.company)
 
-        if parent.id not in network_address_ids:
-            raise Exception("Forbidden: specified NetworkAddress doesn't belong to specified Service.")
-
-        hosts = get_ipaddresses_and_ptrs_from_networkaddress(parent, ip)
+        hosts = get_ipaddresses_and_ptrs_from_networkaddress(parent)
         if hosts is False:
             raise Exception("No hosts or PTRs returned for specified NetworkAddress.")
 
@@ -168,8 +153,7 @@ def get_hosts(request, network_address_ids):
 
 
 @validated_request(IPAddressForm)
-@validated_service
-def get_host_details(request, network_address_ids):
+def get_host_details(request):
     """Get IPAddress Detail
 
         Retrieves local IPAddress record and remote CpanelDNS PTR record for specified IPAddress.
@@ -182,12 +166,8 @@ def get_host_details(request, network_address_ids):
             request.method must be POST
             request.is_ajax() must be True
             request.user.is_authenticated() must be True
-        @validated_service
-            service_id must belong to request.user.company.services
-            service.vars is injected into view parameter  
     Parameters
         request: HttpRequest
-        network_address_ids: int[] network address ids
     Returns
         HttpResponse (JSON)
             success: int response status
@@ -199,10 +179,7 @@ def get_host_details(request, network_address_ids):
     """
     try:
         ip, net_size = request.form.cleaned_data["network"].split('/')
-        parent = NetworkAddress.objects.get(address=ip, cidr=int(net_size))
-
-        if parent.id not in network_address_ids:
-            raise Exception("Forbidden: specified NetworkAddress doesn't belong to specified Service.")
+        parent = NetworkAddress.objects.get(address=ip, cidr=int(net_size), owner=request.user.company)
 
         if not parent.does_ip_belong_to(request.form.cleaned_data['address']):
             raise Exception("Forbidden: specified IPAddress doesn't belong to specified NetworkAddress.") 
@@ -215,8 +192,7 @@ def get_host_details(request, network_address_ids):
             description = ""         
 
         # Fetch PTR
-        zone = get_dns_reverse_zone(request.form.cleaned_data['address'])
-        ptr = get_ptr_from_zone(request.form.cleaned_data['address'], zone)
+        ptr = get_ptr_from_zone(parent.address, parent.cidr, request.form.cleaned_data['address'])
         if not ptr:
             ptr = ""
 
@@ -227,8 +203,7 @@ def get_host_details(request, network_address_ids):
 
 
 @validated_request(IPAddressForm)
-@validated_service
-def set_host_details(request, network_address_ids):
+def set_host_details(request):
     """IPAddress Setter
 
         Sets/Unsets local IPAddress record and remote CpanelDNS PTR record.
@@ -241,12 +216,8 @@ def set_host_details(request, network_address_ids):
             request.method must be POST
             request.is_ajax() must be True
             request.user.is_authenticated() must be True
-        @validated_service
-            service_id must belong to request.user.company.services
-            service.vars is injected into view parameter  
     Parameters
         request: HttpRequest
-        network_address_ids: int[] network address ids
     Returns
         HttpResponse (JSON)
             success: int response status
@@ -255,10 +226,7 @@ def set_host_details(request, network_address_ids):
     try:
         # Retrieve NetworkAddress
         ip, net_size = request.form.cleaned_data["network"].split('/')
-        parent = NetworkAddress.objects.get(address=ip, cidr=int(net_size))
-
-        if parent.id not in network_address_ids:
-            raise Exception("Forbidden: specified NetworkAddress doesn't belong to specified Service.")
+        parent = NetworkAddress.objects.get(address=ip, cidr=int(net_size), owner=request.user.company)
 
         if not parent.does_ip_belong_to(request.form.cleaned_data['address']):
             raise Exception("Forbidden: specified IPAddress doesn't belong to specified NetworkAddress.")
@@ -266,18 +234,18 @@ def set_host_details(request, network_address_ids):
         if request.form.cleaned_data['description'] == "" and request.form.cleaned_data['ptr'] == "":
             # Unset both records 
             iprecord_success = unset_ip_record(request.form.cleaned_data['address'])
-            ptrrecord_success = set_ptr_from_zone(request.form.cleaned_data['address'], None)
+            ptrrecord_success = set_ptr_from_zone(parent, request.form.cleaned_data['address'], None)
         elif request.form.cleaned_data['description'] == "":
             # Unset IPAddress, set PTR  
             iprecord_success = unset_ip_record(request.form.cleaned_data['address'])
-            ptrrecord_success = set_ptr_from_zone(request.form.cleaned_data['address'], request.form.cleaned_data['ptr'])
+            ptrrecord_success = set_ptr_from_zone(parent, request.form.cleaned_data['address'], request.form.cleaned_data['ptr'])
         elif request.form.cleaned_data['ptr'] == "":
             # Unset PTR, set IPAddress  
             iprecord_success = set_ip_record(parent, request.form.cleaned_data['address'], request.form.cleaned_data['description'])
-            ptrrecord_success = set_ptr_from_zone(request.form.cleaned_data['address'], None)
+            ptrrecord_success = set_ptr_from_zone(parent, request.form.cleaned_data['address'], None)
         else:
             # Set both records   
-            ptrrecord_success = set_ptr_from_zone(request.form.cleaned_data['address'], request.form.cleaned_data['ptr'])             
+            ptrrecord_success = set_ptr_from_zone(parent, request.form.cleaned_data['address'], request.form.cleaned_data['ptr'])             
             iprecord_success = set_ip_record(parent, request.form.cleaned_data['address'], request.form.cleaned_data['description'])
 
         # Logging and response
@@ -299,7 +267,7 @@ def set_host_details(request, network_address_ids):
 
 
 @validated_staff
-@validated_request(NetworkAddressAddForm)
+@validated_request(None)
 def set_network(request):    
     """NetworkAddress Setter
 
@@ -324,37 +292,60 @@ def set_network(request):
             message: str response message
     """
     try: 
-        if "networkaddress_id" not in request.POST or not int(request.POST["networkaddress_id"]):
-            # Create NetworkAddress
-            network = NetworkAddress.objects.create(address=request.form.cleaned_data["address"], cidr=request.form.cleaned_data["cidr"], description=request.form.cleaned_data["description"], vlan=request.form.cleaned_data["vlan"])
+        if "networkaddress_id" in request.POST and int(request.POST['networkaddress_id']):
+            network = NetworkAddress.objects.get(pk=int(request.POST['networkaddress_id']))
+            form = NetworkAddressAddForm(request.POST, instance=network)
+            if form.is_valid():
+                # Validate parent network
+                if form.cleaned_data["parent"] is not None:
+                    if not form.cleaned_data["parent"].does_ip_belong_to(form.cleaned_data["address"]):
+                        raise Exception("Specified Child NetworkAddress not within specified Parent NetworkAddress.")
+                    if int(form.cleaned_data["parent"]) == network.pk:
+                        raise Exception("NetworkAddress cannot be a parent of itself.")
 
-            # Assign NetworkAddress to Service
-            if 'service' in request.POST and int(request.POST['service']):
-                service = Service.objects.get(pk=int(request.POST['service']))
-                service_vars = request.user.get_service_vars('/services/ip/', int(request.POST['service']))
-                if service_vars:
-                    service_vars["network_address_ids"].append(network.pk)
-                    service.vars = json.dumps(service_vars)
-                    service.save()
-                else:
-                    raise Exception("user.get_service_vars('/services/ip/', %s) returned False." % int(request.POST['service']))
+                # Update NetworkAddress
+                network = NetworkAddress.objects.get(pk=int(request.POST["networkaddress_id"]))
+                network.description = form.cleaned_data["description"]
+                network.vlan = form.cleaned_data["vlan"]
+                network.vrf = form.cleaned_data["vrf"]
+                network.owner = form.cleaned_data["owner"]
+                network.parent = form.cleaned_data["parent"]
+                network.save()
 
-            ActionLogger().log(request.user, "created", "NetworkAddress %s" % network)
-            return format_ajax_response(True, "NetworkAddress created successfully.")
+                ActionLogger().log(request.user, "modified", "NetworkAddress %s" % network)
+                return format_ajax_response(True, "NetworkAddress updated successfully.")
+            else:
+                return format_ajax_response(False, "Form data failed validation.", errors=dict((k, [unicode(x) for x in v]) for k,v in form.errors.items()))
         else:
-            # Update NetworkAddress
-            network = NetworkAddress.objects.get(pk=request.POST["networkaddress_id"])
-            network.address = request.form.cleaned_data["address"]
-            network.cidr = request.form.cleaned_data["cidr"]
-            network.description = request.form.cleaned_data["description"]
-            network.vlan = request.form.cleaned_data["vlan"]
-            network.save()
+            form = NetworkAddressAddForm(request.POST)
+            if form.is_valid():
+                # If parent is specified, ensure networkaddress is within parent subnet
+                if form.cleaned_data["parent"] is not None:
+                    if not form.cleaned_data["parent"].does_ip_belong_to(form.cleaned_data["address"]):
+                        raise Exception("Specified Child NetworkAddress not within specified Parent NetworkAddress.")
 
+                # Ensure valid NetworkAddress is provided
+                if not is_valid_networkaddress(address=form.cleaned_data["address"], cidr=form.cleaned_data["cidr"]):
+                    raise Exception("Invalid NetworkAddress specified, check Address/CIDR.")
 
-            # Code for reallocation goes here
+                # Create NetworkAddress
+                network = NetworkAddress.objects.create(
+                    address=form.cleaned_data["address"], 
+                    parent=form.cleaned_data["parent"], 
+                    cidr=form.cleaned_data["cidr"], 
+                    description=form.cleaned_data["description"], 
+                    vlan=form.cleaned_data["vlan"], 
+                    owner=form.cleaned_data["owner"]
+                )
 
-            ActionLogger().log(request.user, "modified", "NetworkAddress %s" % network)
-            return format_ajax_response(True, "NetworkAddress updated successfully.")
+                # Create reverse zone for reverse ptrs here
+
+                # Assign NetworkAddress to Service
+                ActionLogger().log(request.user, "created", "NetworkAddress %s" % network)
+                return format_ajax_response(True, "NetworkAddress created successfully.")
+            else:
+                return format_ajax_response(False, "Form data failed validation.", errors=dict((k, [unicode(x) for x in v]) for k,v in form.errors.items()))
+
     except Exception as ex:
         logger.error("Failed to set_network: %s" % ex)
         return format_ajax_response(False, "There was a problem setting the NetworkAddress.")
@@ -387,6 +378,9 @@ def delete_network(request):
     try:
         network = request.POST.getlist('networkaddress_id')
         NetworkAddress.objects.filter(pk__in=network).delete()
+
+        # Delete reverse PTR zone here
+
         ActionLogger().log(request.user, "deleted", "NetworkAddress %s" % network)
         return format_ajax_response(True, "NetworkAddress record(s) deleted successfully.")
     except Exception as ex:
@@ -636,3 +630,245 @@ def delete_vrf(request):
     except Exception as ex:
         logger.error("Failed to delete_vrf: %s" % ex)
         return format_ajax_response(False, "There was a problem deleting the Vrf record(s).")
+
+
+@validated_staff
+@validated_request(ResizeNetworkForm)
+def split_network(request):    
+    """Split Network
+
+        Splits specified NetworkAddress into multiple subnets.
+
+    Middleware
+        See SETTINGS for active Middleware.
+    Decorators
+        @validated_staff
+            request.user.is_staff() must be True
+        @validated_request
+            request.POST must validate against ResizeNetworkForm          
+            request.method must be POST
+            request.is_ajax() must be True
+            request.user.is_authenticated() must be True
+    Parameters
+        request: HttpRequest
+            networkaddress_id: int NetworkAddress id
+            new_cidr: int new network prefix
+            *group_under: bool whether to group subnets under master  
+    Returns
+        HttpResponse (JSON)
+            success: int response status
+            message: str response message
+    """ 
+    try:
+        network = NetworkAddress.objects.get(pk=int(request.form.cleaned_data['networkaddress_id']))
+
+        IPAddress.objects.filter(network=network).delete()
+
+        parent = None
+        if request.form.cleaned_data['group_under']:
+            parent = network
+
+        for subnet in get_subnets(network.address, network.cidr, request.form.cleaned_data['new_cidr']):
+            NetworkAddress.objects.create(address=subnet, cidr=request.form.cleaned_data['new_cidr'], parent=parent)
+
+        ActionLogger().log(request.user, "split", "network %s" % network)
+
+        if not request.form.cleaned_data['group_under']:
+            network.delete()
+
+        return format_ajax_response(True, "NetworkAddress record split successfully.")
+    except Exception as ex:
+        logger.error("Failed to split_network: %s" % ex)
+        return format_ajax_response(False, "There was a problem splitting the NetworkAddress record.")        
+
+
+@validated_staff
+@validated_request(None)
+def get_split_network_options(request):
+    """Get Subnet Options
+
+        Calculates and returns available subnets for specified NetworkAddress.
+
+    Middleware
+        See SETTINGS for active Middleware.
+    Decorators
+        @validated_staff
+            request.user.is_staff() must be True
+        @validated_request
+            request.POST must validate against ResizeNetworkForm          
+            request.method must be POST
+            request.is_ajax() must be True
+            request.user.is_authenticated() must be True
+    Parameters
+        request: HttpRequest
+            networkaddress_id: int NetworkAddress id
+            new_cidr: int new network prefix
+            *group_under: bool whether to group subnets under master  
+    Returns
+        HttpResponse (JSON)
+            success: int response status
+            message: str response message
+            *data:
+                options:
+                    numhosts: int number of hosts
+                    numnets: int number of networks
+                    prefix: int cidr prefix
+    """
+    try:
+        network = NetworkAddress.objects.get(pk=int(request.POST['networkaddress_id']))
+        options = []
+
+        x = network.cidr + 1
+        while x <= 32:
+            options.append(describe_subnet(network.address, network.cidr, x))
+            x += 1
+
+        ActionLogger().log(request.user, "split", "network %s" % network)
+        return format_ajax_response(True, "NetworkAddress record split successfully.", {'options': options})
+    except Exception as ex:
+        logger.error("Failed to split_network: %s" % ex)
+        return format_ajax_response(False, "There was a problem splitting the NetworkAddress record.")
+
+
+@validated_staff
+@validated_request(ResizeNetworkForm)
+def resize_network(request):
+    """Resize Network
+
+        Resize NetworkAddress prefix. 
+
+    Middleware
+        See SETTINGS for active Middleware.
+    Decorators
+        @validated_staff
+            request.user.is_staff() must be True
+        @validated_request
+            request.POST must validate against ResizeNetworkForm        
+            request.method must be POST
+            request.is_ajax() must be True
+            request.user.is_authenticated() must be True
+    Parameters
+        request: HttpRequest
+            networkaddress_id: int NetworkAddress id
+            new_cidr: int new network prefix
+    Returns
+        HttpResponse (JSON)
+            success: int response status
+            message: str response message
+    """    
+    try:
+        network = NetworkAddress.objects.get(pk=int(request.POST['networkaddress_id']))
+        
+        # Validation
+        if network.cidr < int(request.POST['new_cidr']):
+            # Check to see if any Network's IPAddresses exist outside new block
+            for address in IPAddress.objects.filter(network=network):
+                if not is_ip_in_network(address, network.address, request.POST['new_cidr']):
+                    raise Exception("There are IPAddress records under Network that exist outside of the new block.")
+        elif network.cidr > int(request.POST['new_cidr']):
+            # Check to see if new_cidr is less than network's parent cidr
+            if network.parent and (network.parent.cidr < int(request.POST['new_cidr'])):
+                raise Exception("Can't resize child network to be larger than parent network.")
+
+            # Esnure new network isn't apart of existing supernet
+            for supernet in NetworkAddress.objects.filter(parent=None).exclude(pk=int(request.POST['networkaddress_id'])):
+                if is_ip_in_network(supernet.address, supernet.cidr, network.address):
+                    raise Exception("New network resides within existing Network.")
+        else:
+            raise Exception("New CIDR is the same as old CIDR.")
+
+        # Update CIDR
+        network.cidr = int(request.POST['new_cidr'])
+        network.save()
+
+        ActionLogger().log(request.user, "resized", "network %s" % network)
+        return format_ajax_response(True, "NetworkAddress record resized successfully.")
+    except Exception as ex:
+        logger.error("Failed to resize_network: %s" % ex)
+        return format_ajax_response(False, "There was a problem resizing the NetworkAddress record.")        
+
+
+@validated_staff
+@validated_request(None)
+def truncate_network(request):
+    """Truncate Network
+
+        Deletes all Host records underneath specified NetworkAddress record.
+
+    Middleware
+        See SETTINGS for active Middleware.
+    Decorators
+        @validated_staff
+            request.user.is_staff() must be True
+        @validated_request
+            request.method must be POST
+            request.is_ajax() must be True
+            request.user.is_authenticated() must be True
+    Parameters
+        request: HttpRequest
+            networkaddress_id: int NetworkAddress id
+    Returns
+        HttpResponse (JSON)
+            success: int response status
+            message: str response message
+    """
+    try:
+        networks = request.POST.getlist('networkaddress_id')
+        for network in networks:
+            # Delete associated PTR records
+            net = NetworkAddress.objects.get(pk=network)
+            delete_ptrs_from_zone(net.address, net.cidr)
+
+            # Delete associated IPAddress records
+            IPAddress.objects.filter(network__pk=network).delete()
+
+        ActionLogger().log(request.user, "truncated", "networks %s" % networks)
+        return format_ajax_response(True, "NetworkAddress records truncated successfully.")
+    except Exception as ex:
+        logger.error("Failed to truncate_network: %s" % ex)
+        return format_ajax_response(False, "There was a problem truncating the NetworkAddress record(s).")
+
+
+@validated_request(None)
+def get_network_usable_hosts(request):
+    try:
+        ip, net_size = request.POST["network"].split('/') 
+        network = NetworkAddress.objects.get(address=ip, cidr=int(net_size), owner=request.user.company)
+
+        return format_ajax_response(True, "NetworkAddress's usable hosts retrieved successfully.", {'usable_hosts': network.get_useable_hosts()})
+    except Exception as ex:
+        logger.error("Failed to get_network_usable_hosts: %s" % ex)
+        return format_ajax_response(False, "There was a problem retrieving the NetworkAddress's usable hosts.")
+
+
+@validated_staff
+@validated_request(None)
+def get_network(request):
+    """NetworkAddress Getter
+
+        Retrieves NetworkAddresses record.
+
+    Middleware
+        See SETTINGS for active Middleware.
+    Decorators
+        @validated_request
+            request.method must be POST
+            request.is_ajax() must be True
+            request.user.is_authenticated() must be True 
+    Parameters
+        request: HttpRequest
+            networkaddress_id: int networkaddress pk
+    Returns
+        HttpResponse (JSON)
+            success: int response status
+            message: str response message
+            *data:
+                network: 
+    """ 
+    try:
+        network = NetworkAddress.objects.get(pk=int(request.POST['networkaddress_id']))
+
+        return format_ajax_response(True, "NetworkAddress record retrieved successfully.", {"network": network.dump_to_dict()})
+    except Exception as ex:
+        logger.error("Failed to get_network: %s" % ex)
+        return format_ajax_response(False, "There was a problem retrieving the NetworkAddress record.")        

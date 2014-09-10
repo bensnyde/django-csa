@@ -22,7 +22,7 @@
         function getTickets() {
         	// Destroy existing
             $("#tickets-table").dataTable().fnDestroy();
-            $("#tickets-tbody").html("");    
+            $("#tickets-tbody").html("");
 
             // onSuccess callback function
             function onSuccessCallback(result) {
@@ -32,7 +32,7 @@
                         for(x in result.data.tickets) {
                             var flagged = "";
                             if(result.data.tickets[x].flagged) {
-                                flagged = '<img src="http://smc.hyson.com/images/flag.gif" />';
+                                flagged = '<span class="pull-right"><i class="fa fa-flag"></i></span>';
                             }
 
                             $("#tickets-tbody").append(' \
@@ -48,12 +48,12 @@
 
                         // Initialize Datatable object
                         $("#tickets-table").dataTable({"aoColumnDefs": [],"aaSorting": [[4, 'desc']]});
-                    }                    
+                    }
                     else {
                     	// AJAX call returned failed
-                        $("#tickets-tbody").html("<tr><td colspan=5>"+result.message+"</td></tr>");    
+                        $("#tickets-tbody").html("<tr><td colspan=5>"+result.message+"</td></tr>");
                     }
-                }            	
+                }
             }
 
             // Make the AJAX call
@@ -73,16 +73,16 @@
     // hosts event bindings
     $('#tickets-table').on('click', 'tr', function () {
         window.location = "{% url 'tickets:detail' 0 %}".replace('0', $(this).data('id'));
-    });       
+    });
 {% endblock %}
-    
+
 {% block content %}
  <!-- BEGIN TICKETS INDEX CONTENT -->
 
     <!-- BEGIN CONTENT HEAD -->
     <div class="row page-head">
         <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Trouble Tickets</h3></div>
-        <div class="col-md-6 text-right">        
+        <div class="col-md-6 text-right">
             <div class="btn-group">
                 <a href="{% url 'tickets:create_ticket' %}" role="button" id="create-ticket-button" class="badge" data-toggle="modal">Create Ticket <i class="fa fa-plus"></i></a>
             </div>

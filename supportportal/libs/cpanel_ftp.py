@@ -1,14 +1,15 @@
-from django.conf import settings
-import logging
-import base64 
+import base64
 import httplib
 import json
-import socket
+import logging
+from django.conf import settings
 
+
+logger = logging.getLogger(__name__)
 WHMURL = settings.CPANEL_EMAIL["address"]
 WHMROOT = settings.CPANEL_EMAIL["username"]
 WHMPASS = settings.CPANEL_EMAIL["password"]
-apilogger = 'api_logger'
+
 
 class Cpanel:
     def __init__(self, username):
@@ -20,6 +21,7 @@ class Cpanel:
             username: str cpanel account to run scripts as
         """
         self.user = username
+
 
     def cQuery(self, script, **kwargs):
         """Query Cpanel 
@@ -42,19 +44,15 @@ class Cpanel:
             conn = httplib.HTTPSConnection(WHMURL, 2087)
             conn.request('GET', queryStr, headers={'Authorization':'Basic ' + base64.b64encode(WHMROOT+':'+WHMPASS).decode('ascii')})
             response = conn.getresponse()
-            data = json.loads(response.read())
+            data = response.read()
             conn.close()
 
-            return data
+            return json.loads(data)
         # Log any errors
         except httplib.HTTPException as ex:
-            logging.getLogger(apilogger).critical("HTTPException from CpanelFTP API: %s" % ex)
-        except socket.error as ex:
-            logging.getLogger(apilogger).critical("Socket.error connecting to CpanelFTP API: %s" % ex)
-        except ValueError as ex:
-            logging.getLogger(apilogger).critical("ValueError decoding CpanelFTP API response string: %s" % ex)
+            logger.error("HTTPException from CpanelFTP API: %s" % ex)
         except Exception as ex:
-            logging.getLogger(apilogger).critical("Unhandled Exception while querying CpanelFTP API: %s" % ex)
+            logger.error("Unhandled Exception while querying CpanelFTP API: %s" % ex)
 
 
     def listftp(self, include_account_types="", skip_account_types=""):
@@ -78,8 +76,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["event"]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error("Failed to listftp: %s" % ex)
 
         return False
 
@@ -100,8 +98,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["event"]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error("Failed to listftpsessions: %s" % ex)
 
         return False
 
@@ -131,8 +129,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["event"]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error("Failed to listftpwithdisk: %s" % ex)
 
         return False
 
@@ -157,8 +155,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return True
-        except:
-            pass
+        except Exception as ex:
+            logger.error("Failed to passwd: %s" % ex)
 
         return False
 
@@ -187,8 +185,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return True
-        except:
-            pass
+        except Exception as ex:
+            logger.error("Failed to addftp: %s" % ex)
 
         return False
 
@@ -213,8 +211,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return True
-        except:
-            pass
+        except Exception as ex:
+            logger.error("Failed to setquota: %s" % ex)
 
         return False
 
@@ -239,7 +237,7 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return True
-        except:
-            pass
+        except Exception as ex:
+            logger.error("Failed to delftp: %s" % ex)
 
         return False

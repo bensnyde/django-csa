@@ -5,7 +5,7 @@ from django.contrib.contenttypes import generic
 from django.contrib.contenttypes.models import ContentType
 import json
 from django.dispatch import receiver
-from django.contrib.auth.signals import user_logged_in, user_logged_out 
+from django.contrib.auth.signals import user_logged_in, user_logged_out
 from django.utils.timesince import timesince
 
 def get_client_ip(request):
@@ -35,6 +35,7 @@ class ActionLogger(models.Model):
             action = "%s on %s" % (action, self.parent)
 
         return {
+            'actor_id': self.actor.pk,
             'actor': self.actor.get_full_name(),
             'timestamp': self.timesince(),
             'action': action
@@ -48,7 +49,7 @@ class ActionLogger(models.Model):
         return response
 
     def timesince(self, now=None):
-        return timesince(self.timestamp, now)              
+        return timesince(self.timestamp, now)
 
 class RequestLogger(models.Model):
     timestamp = models.DateTimeField(default=datetime.now)
@@ -56,7 +57,7 @@ class RequestLogger(models.Model):
     ip = models.IPAddressField()
     user_agent = models.CharField(max_length=256)
     request_method = models.CharField(max_length=16)
-    get = models.CharField(max_length=256) 
+    get = models.CharField(max_length=256)
     post = models.CharField(max_length=256)
     cookies = models.CharField(max_length=256)
 
@@ -68,17 +69,17 @@ class RequestLogger(models.Model):
 
     def log(self, request):
         Request.objects.create(
-            uri=request.build_absolute_uri(), 
-            ip=get_client_ip(request), 
-            user_agent=request.META['HTTP_USER_AGENT'], 
-            request_method=request.META['REQUEST_METHOD'], 
-            post=json.dumps(request.POST), 
-            get=json.dumps(request.GET), 
+            uri=request.build_absolute_uri(),
+            ip=get_client_ip(request),
+            user_agent=request.META['HTTP_USER_AGENT'],
+            request_method=request.META['REQUEST_METHOD'],
+            post=json.dumps(request.POST),
+            get=json.dumps(request.GET),
             cookies=json.dumps(request.COOKIES)
-        )        
+        )
 
     def timesince(self, now=None):
-        return timesince(self.timestamp, now)        
+        return timesince(self.timestamp, now)
 
 class AuthenticationLogger(RequestLogger):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=False, blank=False)
@@ -97,12 +98,12 @@ class AuthenticationLogger(RequestLogger):
         AuthenticationLogger.objects.create(
             user=request.user,
             category=category,
-            ip=get_client_ip(request), 
-            user_agent=request.META['HTTP_USER_AGENT'], 
-        )        
+            ip=get_client_ip(request),
+            user_agent=request.META['HTTP_USER_AGENT'],
+        )
 
     def __unicode__(self):
-        return "%s %s from %s @ %s" % (self.user, self.category, self.ip, self.timestamp)   
+        return "%s %s from %s @ %s" % (self.user, self.category, self.ip, self.timestamp)
 
 
 @receiver(user_logged_in)

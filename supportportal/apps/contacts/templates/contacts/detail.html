@@ -26,7 +26,7 @@
 						getLogs();
 						getProfile();
 						setTimeout("$('.modal.in').modal('hide')",2000);
-					}					
+					}
 					else {
 						// AJAX call returned failed
 						$('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
@@ -35,7 +35,7 @@
                             $("#"+k+"-help").html(v);
 						});
 					}
-				}				
+				}
 			}
 
 			// Make the AJAX call
@@ -45,7 +45,7 @@
                 type: "POST",
                 success: onSuccessCallback,
                 error: defaultErrorCallback
-            });				
+            });
 		}
 
 		function changePassword() {
@@ -53,12 +53,12 @@
 				sendPost('{% url 'contacts:chpw' %}', $('#chpw-form').serializeArray());
 			}
 			else {
-				// Password's don't match 
+				// Password's don't match
 				$('#flash-message').fadeIn();
 				$('#flash-message').html('<div class="alert alert-danger">Passwords do not match.</div>');
 			}
 			return false;
-		}		
+		}
 
 		// Fetch User profile via AJAX
 		function getProfile() {
@@ -74,6 +74,21 @@
 						$("#user-profile-office-phone").html(result.data.contact.office_phone);
 						$("#user-profile-fax").html(result.data.contact.fax);
 						$("#user-profile-role").html(result.data.contact.role);
+						$("#user-profile-status").html(result.data.contact.is_active);
+
+						if(result.data.contact.is_active) {
+							$("#user-profile-status").html("Active");
+						}
+						else {
+							$("#user-profile-status").html("Inactive");
+						}
+
+						if(result.data.contact.notifications) {
+							$("#user-profile-notifications").html("Yes");
+						}
+						else {
+							$("#user-profile-notifications").html("No");
+						}
 
 						$("#id_email").val(result.data.contact.email);
 						$("#id_first_name").val(result.data.contact.first_name);
@@ -83,13 +98,13 @@
 						$("#id_office_phone").val(result.data.contact.office_phone);
 						$("#id_fax").val(result.data.contact.fax);
 						$("#id_role").val(result.data.contact.role);
-					}					
+					}
 					else {
 						// AJAX call returned failed
 						$('#flash-message').fadeIn();
-						$('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');						
+						$('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
 					}
-				}				
+				}
 			}
 
 			// Make the AJAX call
@@ -98,8 +113,8 @@
                 type: "POST",
                 success: onSuccessCallback,
                 error: defaultErrorCallback
-            });		
-		}	
+            });
+		}
 
 		// Fetch User logs via AJAX
 		function getLogs() {
@@ -112,61 +127,36 @@
 				if(!jQuery.isEmptyObject(result)) {
 					if(result.success == 1) {
 						// AJAX call returned successful
-						for(x in result.data.authentication) {
-							$("#auth-feed").append(' \
-								<li> \
-									<div class="col1"> \
-										<div class="cont"> \
-											<div class="cont-col1"> \
-												<div class="label">  \
-													<i class="fa fa-bullhorn"></i> \
-												</div> \
-											</div> \
-											<div class="cont-col2"> \
-												<div class="desc"> \
-													'+result.data.authentication[x].user+' '+result.data.authentication[x].category+' from '+result.data.authentication[x].ip+' \
-												</div> \
-											</div> \
-										</div> \
-									</div> \
-									<div class="col2"> \
-										<div class="date"> \
-											'+result.data.authentication[x].timestamp+' \
-										</div> \
-									</div> \
-								</li>'
-							);
+						if(result.data.authentication.length == 0) {
+							$("#auth-feed").html("<li style='font-style: italic'>Contact has yet to login.</li>");
+						}
+						else {
+							for(x in result.data.authentication) {
+								$("#auth-feed").append(' \
+									<li> \
+										<div style="float: right">'+result.data.authentication[x].timestamp+'</div> \
+										<div>'+result.data.authentication[x].user+' '+result.data.authentication[x].category+' from '+result.data.authentication[x].ip+'</div> \
+									</li>'
+								);
+							}
 						}
 
-						for(x in result.data.action) {
-							$("#action-feed").append(' \
-								<li> \
-									<div class="col1"> \
-										<div class="cont"> \
-											<div class="cont-col1"> \
-												<div class="label">  \
-													<i class="fa fa-bullhorn"></i> \
-												</div> \
-											</div> \
-											<div class="cont-col2"> \
-												<div class="desc"> \
-													'+result.data.action[x].actor + ' ' + result.data.action[x].action+' \
-												</div> \
-											</div> \
-										</div> \
-									</div> \
-									<div class="col2"> \
-										<div class="date"> \
-											'+result.data.action[x].timestamp+' \
-										</div> \
-									</div> \
-								</li>'
-							);
+						if(result.data.action.length == 0) {
+							$("#action-feed").html("<li style='font-style: italic'>No actions to report.</li>");
 						}
-					}					
+						else {
+							for(x in result.data.action) {
+								$("#action-feed").append(' \
+									<li> \
+										<div style="float: right">'+result.data.action[x].timestamp+'</div> \
+										<div>'+result.data.action[x].actor + ' ' + result.data.action[x].action+'</div> \
+									</li>'
+								);
+							}
+						}
+					}
 					else {
 						// AJAX call returned failed
-						// ********************* FIX ME ***************************
 					}
 				}
 			}
@@ -177,8 +167,8 @@
                 type: "POST",
                 success: onSuccessCallback,
                 error: defaultErrorCallback
-            });		
-		}					
+            });
+		}
 	</script>
 {% endblock %}
 
@@ -195,12 +185,12 @@
 	    <div class="row page-head">
 	        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Profile</h3></div>
 		        {% if user.id == user_details.id or user.is_admin %}
-			        <div class="col-md-6 text-right">        
+			        <div class="col-md-6 text-right">
 			            <div class="btn-group">
 			                <a onclick="$('#flash-message').html('');$('#mmodal').modal('show')" role="button" class="badge" data-toggle="modal">Edit Profile <i class="fa fa-plus"></i></a>
 			            </div>
 			        </div>
-		        {% endif %}        
+		        {% endif %}
 	    </div>
 	    <!-- END CONTAINER HEAD -->
 
@@ -211,36 +201,35 @@
 	    <div class="row">
 			<div class="col-md-8">
 				<!-- BEGIN CONTACT PROFILE -->
-				
 				<div style="padding-left: 40px; margin-bottom: 20px">
 					<div class="row">
-						<label class="control-label col-md-6">Title</label> <span class="col-md-6" id="user-profile-title"></span>								
-					</div>						
+						<label class="control-label col-md-6">Title</label> <span class="col-md-6" id="user-profile-title"></span>
+					</div>
 					<div class="row">
 						<label class="control-label col-md-6">Email Address</label> <span class="col-md-6" id="user-profile-email"></span>
-					</div>					
+					</div>
 					<div class="row">
 						<label class="control-label col-md-6">Personal Phone Number</label> <span class="col-md-6" id="user-profile-personal-phone"></span>
 					</div>
 					<div class="row">
 						<label class="control-label col-md-6">Office Phone Number</label> <span class="col-md-6" id="user-profile-office-phone"></span>
-					</div>		
+					</div>
 					<div class="row">
-						<label class="control-label col-md-6">Fax Number</label> <span class="col-md-6" id="user-profile-fax"></span>				
-					</div>										
-				</div>						
+						<label class="control-label col-md-6">Fax Number</label> <span class="col-md-6" id="user-profile-fax"></span>
+					</div>
+				</div>
 				<!-- END CONTACT PROFILE -->
 			</div>
 			<div class="col-md-4">
 				<div class="row">
-					<label class="control-label col-md-6">Status:</label> <span class="col-md-6">Active</span>
+					<label class="control-label col-md-6">Status:</label> <span class="col-md-6" id="user-profile-status"></span>
 				</div>
 				<div class="row">
-					<label class="control-label col-md-6">Access</label> <span class="col-md-6">Technical</span>
-				</div>					
+					<label class="control-label col-md-6">Access</label> <span class="col-md-6" id="user-profile-role"></span>
+				</div>
 				<div class="row">
-					<label class="control-label col-md-6">Notifications:</label> <span class="col-md-6">On</span>
-				</div>													
+					<label class="control-label col-md-6">Notifications:</label> <span class="col-md-6" id="user-profile-notifications"></span>
+				</div>
 			</div>
 	    </div>
 	    <!-- END CONTAINER BODY -->
@@ -260,25 +249,21 @@
 					<li class="active"><a href="#activites-tab" data-toggle="tab">Authentication</a></li>
 					<li><a href="#recent-users-tab" data-toggle="tab">Activities</a></li>
 				</ul>
-				<div class="tab-content">
+				<div class="tab-content" style="height: 250px; overflow: auto; border-left: 1px solid #ddd; border-right: 1px solid #ddd; border-bottom: 1px solid #ddd; padding: 10px 20px 0 20px">
 					<!-- BEGIN ACTIVITIES TAB -->
 					<div class="tab-pane active" id="activites-tab">
-						<div data-rail-visible="1" data-always-visible="1" data-height="200px" class="scroller">
-							<ul class="feeds list-unstyled" id="auth-feed"></ul>
-						</div>
+						<ul class="feeds list-unstyled" id="auth-feed"></ul>
 					</div>
 					<!-- END ACTIVITIES TAB -->
 					<!-- BEGIN RECENT USERS TAB -->
 					<div class="tab-pane" id="recent-users-tab">
-						<div data-rail-visible="1" data-always-visible="1" data-height="200px" class="scroller">
-							<ul class="feeds list-unstyled" id="action-feed"></ul>
-						</div>
+						<ul class="feeds list-unstyled" id="action-feed"></ul>
 					</div>
 					<!-- END RECENT USERS TAB -->
 				</div>
 			</div>
 	    </div>
-	    <!-- END CONTAINER BODY -->  
+	    <!-- END CONTAINER BODY -->
     <!-- END CONTACT HISTORY CONTAINER -->
 
 	<!-- BEGIN MODAL -->
@@ -302,7 +287,7 @@
 						        <label class="control-label col-md-3">Email Address</label>
 						        <div class="controls col-md-9">
 						            <input class="form-control" id="id_email" maxlength="255" name="email" type="email" />
-						            <span id="email-help" class="help-block"></span>						            
+						            <span id="email-help" class="help-block"></span>
 						        </div>
 						    </div>
 
@@ -390,7 +375,7 @@
 									<span id="confirm_password-help" class="help-block"></span>
 								</div>
 							</div>
-						</form>						
+						</form>
 
 					</div>
 					<!-- END MODAL BODY -->
@@ -402,7 +387,7 @@
 			</div>
 		</div>
 	</div>
-	<!-- END MODAL -->   
-		
+	<!-- END MODAL -->
+
  <!-- END CONTACT CONTENT -->
 {% endblock %}

@@ -48,11 +48,11 @@ def detail(request, ticket_id):
             request.user.is_authenticated() must be True
     Paremeters
         request: HttpRequest
-        ticket_id: int ticket id 
+        ticket_id: int ticket id
     Returns
         HttpResponse (tickets/index.html)
             ticket_id: int ticket id
-    """ 
+    """
     return render(request, 'tickets/detail.html', {'ticket_id': ticket_id})
 
 
@@ -68,7 +68,7 @@ def get_tickets(request):
         @validated_request
             request.method must be POST
             request.is_ajax() must be True
-            request.user.is_authenticated() must be True          
+            request.user.is_authenticated() must be True
     Paremeters
         request: HttpRequest
     Returns
@@ -76,13 +76,13 @@ def get_tickets(request):
             success: int status result of API call
             message: str response message from API call
             *data:
-                tickets: 
-    """    
+                tickets:
+    """
     try:
         if request.user.is_staff:
             if "flagged" in request.POST and request.POST["flagged"]==1:
                 qset =  Ticket.objects.filter(status="Open").filter(flagged=True).order_by("-priority")
-            else: 
+            else:
                 qset = Ticket.objects.filter(status="Open").order_by("-priority")
         else:
             qset = Ticket.objects.filter(owner_id__company_id=request.user.company_id).filter(status="Open").order_by('-priority')
@@ -109,27 +109,27 @@ def get_ticket(request, ticket_id):
         @validated_request
             request.method must be POST
             request.is_ajax() must be True
-            request.user.is_authenticated() must be True          
+            request.user.is_authenticated() must be True
     Paremeters
         request: HttpRequest
-        ticket_id: int ticket id 
+        ticket_id: int ticket id
     Returns
         HttpResponse (JSON)
             success: int status result of API call
             message: str response message from API call
             *data:
-                ticket: 
+                ticket:
     """
     try:
         ticket = Ticket.objects.get(pk=ticket_id)
 
         if ticket.author.company_id != request.user.company_id:
-            raise Exception("Requesting user does not have permission to access specified ticket.")     
+            raise Exception("Requesting user does not have permission to access specified ticket.")
 
         return format_ajax_response(True, "Ticket posts listing retrieved successfully.", {"ticket": ticket.dump_to_dict(full=True, admin=request.user.is_staff)})
     except Exception as ex:
-        logger.error("Failed to get_ticket: %s" % ex)          
-        return format_ajax_response(False, "There was an error retrieving ticket posts.")       
+        logger.error("Failed to get_ticket: %s" % ex)
+        return format_ajax_response(False, "There was an error retrieving ticket posts.")
 
 
 @validated_request(None)
@@ -144,20 +144,20 @@ def get_summary(request):
         @validated_request
             request.method must be POST
             request.is_ajax() must be True
-            request.user.is_authenticated() must be True   
+            request.user.is_authenticated() must be True
     Paremeters
         request: HttpRequest
     Returns
         HttpResponse (JSON)
-            success: int status result of call 
+            success: int status result of call
             message: str status result of call
             *data:
-                summary:        
-                    user: 
-                        open: int number of open tickets authored by requesting user 
-                        total: int total number of tickets authored by requesting user 
-                    company: 
-                        open: int number of open tickets authored by requesting user's Company 
+                summary:
+                    user:
+                        open: int number of open tickets authored by requesting user
+                        total: int total number of tickets authored by requesting user
+                    company:
+                        open: int number of open tickets authored by requesting user's Company
                         total: int total number of tickets authored by requesting user's Company
     """
     try:
@@ -180,14 +180,14 @@ def set_contacts(request):
         @validated_request
             request.method must be POST
             request.is_ajax() must be True
-            request.user.is_authenticated() must be True  
+            request.user.is_authenticated() must be True
     Paremeters
         request: HttpRequest
-            ticket: str ticket id 
+            ticket: str ticket id
             contacts: int[] contacts ids
     Returns
         HttpResponse (JSON)
-            success: int status result of call 
+            success: int status result of call
             message: str status result of call
     """
     try:
@@ -217,12 +217,12 @@ def set_post(request):
         @validated_request
             request.method must be POST
             request.is_ajax() must be False
-            request.user.is_authenticated() must be True  
+            request.user.is_authenticated() must be True
     Paremeters
         request: HttpRequest
-            ticket_id: int ticket id 
+            ticket_id: int ticket id
             attachment: file attachment
-            contents: str reply contents 
+            contents: str reply contents
     Returns
         HttpResponseRedirect
     """
@@ -230,10 +230,10 @@ def set_post(request):
 
     if ticket.owner.company_id != request.user.company_id:
         logger.error("Forbidden: requesting user doesn't have permission to specified Company's resources.")
-        return HttpResponseForbidden()    
+        return HttpResponseForbidden()
 
     post_form = PostForm(request.POST, request.FILES)
-    if post_form.is_valid():    
+    if post_form.is_valid():
         # Create new post object under specified ticket object
         post = post_form.save(commit=False)
         post.author_id = request.user.id
@@ -262,20 +262,20 @@ def create_ticket(request, service_id=0):
         @validated_request
             request.method must be POST
             request.is_ajax() must be False
-            request.user.is_authenticated() must be True  
+            request.user.is_authenticated() must be True
     Paremeters
         request: HttpRequest
             contacts: int[] ticket Contact id's
             priority: int ticket priority (0==Low, 1==Normal, 2==Urgent)
             description: str synopsis of ticket
             contents: str reply body contents
-            attachment: *file attachment        
+            attachment: *file attachment
     Returns
         HttpResponse (JSON)
             success: int status response of request
             message: str status response of request
             *data:
-                ticket_id: int new ticket id 
+                ticket_id: int new ticket id
     """
     if request.method == "POST":
         new_ticket_form = TicketForm(request.POST)
@@ -316,7 +316,7 @@ def create_ticket(request, service_id=0):
             if request.is_ajax():
                 return format_ajax_response(False, "Form data failed validation.", errors=dict((k, [unicode(x) for x in v]) for k,v in new_ticket_form.errors.items()))
             else:
-                form_errors = new_ticket_form.errors                
+                form_errors = new_ticket_form.errors
 
     response = {'fellow_contacts': get_companies_active_contacts(request.user.company_id, request.user.id), 'service_id': int(service_id)}
     try:
@@ -324,7 +324,7 @@ def create_ticket(request, service_id=0):
     except:
         pass
 
-    return render(request, 'tickets/new.html', response)    
+    return render(request, 'tickets/new.html', response)
 
 
 @validated_staff
@@ -340,28 +340,21 @@ def toggle_visibility(request):
         @validated_request
             request.method must be POST
             request.is_ajax() must be False
-            request.user.is_authenticated() must be True  
+            request.user.is_authenticated() must be True
     Paremeters
         request: HttpRequest
-            ticket_id: int ticket id 
+            ticket_id: int ticket id
             attachment: file attachment
-            contents: str reply contents 
+            contents: str reply contents
     Returns
         HttpResponseRedirect
-    """ 
+    """
     try:
         post = Post.objects.get(pk=request.form.cleaned_data['post_id'])
-
-        if post.visible is True:
-            post.visible = False
-            message = "Post made private."
-        else:
-            post.visible = True
-            message = "Post made public."            
+        post.visible = not post.visible
         post.save()
 
-        Post.objects.create(ticket=post.ticket, author=request.user, contents=message)
-        return format_ajax_response(True, "Post visibility toggled successfully.")  
+        return format_ajax_response(True, "Post visibility toggled successfully.")
     except Exception as ex:
         logger.error("Failed to toggle_visibility: %s" % ex)
         return format_ajax_response(False, "There was an error toggling the post's visibility.")
@@ -380,28 +373,21 @@ def toggle_flag(request):
         @validated_request
             request.method must be POST
             request.is_ajax() must be False
-            request.user.is_authenticated() must be True  
+            request.user.is_authenticated() must be True
     Paremeters
         request: HttpRequest
-            ticket_id: int ticket id 
+            ticket_id: int ticket id
             attachment: file attachment
-            contents: str reply contents 
+            contents: str reply contents
     Returns
         HttpResponseRedirect
-    """ 
+    """
     try:
         post = Post.objects.get(pk=request.form.cleaned_data['post_id'])
-
-        if post.flagged is True:
-            post.flagged = False
-            message = "Post unflagged."
-        else:
-            post.flagged = True
-            message = "Post flagged."            
+        post.flagged = not post.flagged
         post.save()
 
-        Post.objects.create(ticket=post.ticket, author=request.user, contents=message)
-        return format_ajax_response(True, "Post's flag toggled successfully.")  
+        return format_ajax_response(True, "Post's flag toggled successfully.")
     except Exception as ex:
         logger.error("Failed to toggle_flag: %s" % ex)
         return format_ajax_response(False, "There was an error toggling post's flag.")

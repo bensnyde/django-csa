@@ -7,6 +7,7 @@ class NetworkAddressAddForm(ModelForm):
     class Meta:
         model = NetworkAddress
 
+
 class IPAddressForm(ModelForm):
 	ptr = forms.CharField(required=False) # ADD VALIDATION
 	network = forms.CharField()
@@ -24,4 +25,9 @@ class VlanForm(ModelForm):
 
 class VrfForm(ModelForm):
     class Meta:
-        model = Vrf            
+        model = Vrf
+
+class ResizeNetworkForm(forms.Form):
+    networkaddress_id = forms.IntegerField(min_value=0, max_value=32)
+    new_cidr = forms.IntegerField(min_value=0, max_value=32)
+    group_under = forms.BooleanField(required=False)

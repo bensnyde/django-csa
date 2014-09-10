@@ -1,14 +1,15 @@
-from django.conf import settings
-import logging
-import base64 
+import base64
 import httplib
 import json
-import socket
+import logging
+from django.conf import settings
 
+
+logger = logging.getLogger(__name__)
 WHMURL = settings.CPANEL_DNS["address"]
 WHMROOT = settings.CPANEL_DNS["username"]
 WHMPASS = settings.CPANEL_DNS["password"]
-apilogger = 'api_logger'
+
 
 class Cpanel:
     def cQuery(self, query):
@@ -30,13 +31,9 @@ class Cpanel:
 
             return json.loads(data)
         except httplib.HTTPException as ex:
-            print "HTTPException from CpanelDNS API: %s" % ex
-        except socket.error as ex:
-            print "Socket.error connecting to CpanelDNS API: %s" % ex
-        except ValueError as ex:
-            print "ValueError decoding CpanelDNS API response string: %s" % ex
+            logger.error("HTTPException from CpanelDNS API: %s" % ex)
         except Exception as ex:
-            print "Unhandled Exception while querying CpanelDNS API: %s" % ex
+            logger.error("Failed to query CpanelDNS API: %s" % ex)
 
 
     def addZone(self, domain, ip, trueowner=None):
@@ -52,14 +49,14 @@ class Cpanel:
         Returns
             result: bool api result status
         """
-        result = self.cQuery('adddns?domain=%s&ip=%s&trueowner=%s' % (domain, ip, trueowner))
+        querystr = 'adddns?domain=%s&ip=%s&trueowner=%s' % (domain, ip, trueowner)
+        result = self.cQuery(querystr)
 
         try:
             if result["result"][0]["status"] == 1:
                 return True
-        except:
-            # Log me
-            pass
+        except Exception as ex:
+            logger.error('%s threw exception: %s' % (querystr, ex))
 
         return False
 
@@ -98,8 +95,7 @@ class Cpanel:
             if result["result"][0]["status"] == 1:
                 return True
         except Exception as ex:
-            # Log me
-            pass
+            logger.error('%s threw exception: %s' % (querystr, ex))
 
         return False
 
@@ -142,8 +138,8 @@ class Cpanel:
         try:
             if result["result"][0]["status"] == 1:
                 return True
-        except:
-            pass
+        except Exception as ex:
+            logger.error('%s threw exception: %s' % (querystr, ex))
 
         return False
 
@@ -160,14 +156,15 @@ class Cpanel:
             ptrdname:str - The name of the domain to which the IP address will resolve (e.g. example.com).
         Returns
             result: bool api result status
-        """            
-        result = self.cQuery('addzonerecord?zone=%s&name=%s&ptrdname=%s&type=PTR' % (zone, name, ptrdname)) 
+        """
+        querystr = 'addzonerecord?zone=%s&name=%s&ptrdname=%s&type=PTR' % (zone, name, ptrdname)
+        result = self.cQuery(querystr) 
 
         try:
             if result["result"][0]["status"] == 1:
                 return True
         except:
-            pass
+            logger.error('%s threw exception: %s' % (querystr, ex))
 
         return False
 
@@ -189,14 +186,15 @@ class Cpanel:
                 raw:str - Raw line data.
                 ttl:int - The record's time to live.
                 type:str - The DNS record type. Example: NS, SOA, A, etc.
-        """                
-        result = self.cQuery('getzonerecord?domain=%s&line=%s' % (domain, lineline))
+        """              
+        querystr = 'getzonerecord?domain=%s&line=%s' % (domain, lineline)
+        result = self.cQuery(querystr)
 
         try:
             if result["result"][0]["status"] == 1:
                 return result["result"][0]["record"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('%s threw exception: %s' % (querystr, ex))
 
         return False
 
@@ -210,15 +208,15 @@ class Cpanel:
             domain:str - Domain name for the zone to be deleted.
         Returns
             result: bool api result status
-        """        
-        result = self.cQuery('killdns?domain=%s' % domain)
+        """
+        querystr = 'killdns?domain=%s' % domain
+        result = self.cQuery(querystr)
 
         try:
             if result["result"][0]["status"] == 1:
                 return True
-        except:
-            # Log me
-            pass
+        except Exception as ex:
+            logger.error('%s threw exception: %s' % (querystr, ex))
 
         return False
 
@@ -236,18 +234,17 @@ class Cpanel:
                 zonefile:str - Zone file name. Example: example.com.db
         """            
         if cpanel_user:
-            query_string = 'cpanel?cpanel_jsonapi_module=DomainLookup&cpanel_jsonapi_func=getbasedomains&cpanel_xmlapi_version=2&cpanel_jsonapi_user=%s' % cpanel_user
+            querystr = 'cpanel?cpanel_jsonapi_module=DomainLookup&cpanel_jsonapi_func=getbasedomains&cpanel_xmlapi_version=2&cpanel_jsonapi_user=%s' % cpanel_user
         else:
-            query_string = 'listzones'
+            querystr = 'listzones'
             
-        result = self.cQuery(query_string)
+        result = self.cQuery(querystr)
 
         try:
             if result["cpanelresult"]["event"]["result"] == 1:
                 return result["cpanelresult"]["data"]
         except Exception as ex:
-            # Log exception
-            pass
+            logger.error('%s threw exception: %s' % (querystr, ex))
 
         return False  
 
@@ -281,15 +278,15 @@ class Cpanel:
                 ttl:int - The record's time to live.
                 type:str - The DNS record type. Example: NS, SOA, A, etc.
                 txtdata:str - Text record data.
-        """                    
-        result = self.cQuery('dumpzone?domain=%s' % domain)
+        """
+        querystr = 'dumpzone?domain=%s' % domain
+        result = self.cQuery(querystr)
 
         try:
             if result["result"][0]["status"] == 1:
                 return result["result"][0]["record"]
         except Exception as ex:
-            # Log exception
-            pass
+            logger.error('%s threw exception: %s' % (querystr, ex))
 
         return False
 
@@ -303,14 +300,15 @@ class Cpanel:
             nameserver:str - Hostname of the nameserver whose IP address you want to obtain. Example: ns1.example.com
         Returns
             ip: str ip address
-        """                    
-        result = self.cQuery('lookupnsip?nameserver=%s' % nameserver)
+        """
+        querystr = 'lookupnsip?nameserver=%s' % nameserver
+        result = self.cQuery(querystr)
 
         try:
             if result["result"][0]["status"] == 1:
                 return result[0]["ip"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('%s threw exception: %s' % (querystr, ex))
 
         return False
 
@@ -325,14 +323,17 @@ class Cpanel:
             line:str - The line number of the zone record you wish to remove.
         Returns
             result: bool api result status
-        """            
-        result = self.cQuery('removezonerecord?zone=%s&line=%s' % (zone, line))
+        """
+        querystr = 'removezonerecord?zone=%s&line=%s' % (zone, line)
+        result = self.cQuery(querystr)
 
         try:
             if result["result"][0]["status"] == 1:
                 return True
+            else:
+                logger.error(result)
         except Exception as ex:
-            pass
+            logger.error('%s threw exception: %s' % (querystr, ex))
 
         return False     
 
@@ -354,21 +355,23 @@ class Cpanel:
         if not domain and not zone:
             return False
 
-        query = 'resetzone?'
+        querystr = 'resetzone?'
         if domain:
-            query = query + 'domain=' + domain + '&'
+            querystr = querystr + 'domain=' + domain + '&'
         if zone:
-            query = query + 'zone=' + zone + '&'
+            querystr = querystr + 'zone=' + zone + '&'
         if user:
-            query = query + 'user=' + user
+            querystr = querystr + 'user=' + user
 
-        result = self.cQuery(query)
+        result = self.cQuery(querystr)
 
         try:
             if result["result"][0]["status"] == 1:
                 return True
-        except:
-            pass
+            else:
+                logger.error(result)
+        except Exception as ex:
+            logger.error('%s threw exception: %s' % (querystr, ex))
 
         return False
 
@@ -389,14 +392,15 @@ class Cpanel:
                 preference:int - The MX record's preference value.
                 type:str - The type of record you are viewing.
                 name:str - The name of the record.
-        """        
-        result = self.cQuery('listmxs?api.version=1&domain=%s' % domain)
+        """
+        querystr = 'listmxs?api.version=1&domain=%s' % domain
+        result = self.cQuery(querystr)
 
         try:
             if result["result"][0]["status"] == 1:
                 return result["result"][0]["record"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('%s threw exception: %s' % (querystr, ex))
 
         return False    
 
@@ -417,13 +421,14 @@ class Cpanel:
 
         Returns
             result: bool api result status
-        """                
-        result = self.Cquery('savemxs?api.version=1&domain=%s&name=%s&exchange=%s&preference%s' % (domain, name, exchange, preference))
+        """
+        querystr = 'savemxs?api.version=1&domain=%s&name=%s&exchange=%s&preference%s' % (domain, name, exchange, preference)
+        result = self.Cquery(querystr)
 
         try:
             if result["result"][0]["metadata"]["result"] == 1:
                 return True
-        except:
-            pass
+        except Exception as ex:
+            logger.error('%s threw exception: %s' % (querystr, ex))
 
         return False

@@ -2,16 +2,16 @@
 
 {% block start_html %}
  <!DOCTYPE html>
- <html lang="en"> 
+ <html lang="en">
 {% endblock start_html %}
 
 {% block head %}
   <head>
     {% block meta %}
-     <title>Cybercon | Support Portal {% block sitetitle %}{% endblock %}</title>
+     <title>Company Name | Support Portal {% block sitetitle %}{% endblock %}</title>
      <meta charset="utf-8" />
      <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-     <meta content="Cybercon Support Portal" name="description" />
+     <meta content="Support Portal" name="description" />
      <meta content="Benton Snyder" name="author" />
     {% endblock meta %}
 
@@ -20,9 +20,9 @@
      <!-- BEGIN STYLES -->
       <link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css" rel="stylesheet">
       <link href="//netdna.bootstrapcdn.com/bootswatch/3.1.1/cosmo/bootstrap.min.css" rel="stylesheet">
-     <!-- END STYLES -->   
+     <!-- END STYLES -->
     {% endblock base_css %}
-   
+
     {% block css %}{% endblock %}
 
      <style>
@@ -31,12 +31,10 @@
      </style>
 
 
-    
-    
     {% block base_top_js %}
      <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
      <script type="text/javascript">
-        jQuery(document).ready(function() {    
+        jQuery(document).ready(function() {
           {% block jquery_document_ready %}{% endblock %}
         });
 
@@ -47,18 +45,18 @@
                 case 403:  // forbidden
                     $("#flash-message").html('<div class="alert alert-danger">Illegal request: '+xhr.responseText+'</div>');
                 default:
-                  $("#flash-message").html('<div class="alert alert-danger">Server returned error.</div>');                          
+                  $("#flash-message").html('<div class="alert alert-danger">Server returned error.</div>');
             }
-        }    
+        }
 
         // Customizes modal title, body and onclick response
         function buildModal(label, body, saveaction) {
           $('#flash-message').hide();
           $('#mlabel').html(label);
-          $('#mbody').html(body); 
+          $('#mbody').html(body);
           $('#msave').attr('onclick', saveaction);
-          $("#mmodal").modal('show');   
-        }            
+          $("#mmodal").modal('show');
+        }
 
         // Django CSRF protection
         function sameOrigin(url) {
@@ -73,7 +71,7 @@
             (url == sr_origin || url.slice(0, sr_origin.length + 1) == sr_origin + '/') ||
             // or any other URL that isn't scheme relative or absolute i.e relative.
             !(/^(\/\/|http:|https:).*/.test(url));
-        }    
+        }
 
         // Django CSRF protection
         function csrfSafeMethod(method) {
@@ -109,13 +107,13 @@
               xhr.setRequestHeader("X-CSRFToken", csrftoken);
             }
           }
-        });        
+        });
 
         // Handle AJAX autocomplete Search results
         function lookup(inputString) {
           if(inputString.length == 0) {
             $('#suggestions').fadeOut(); // Hide the suggestions box
-          } 
+          }
           else {
             function onSuccessCallback(result) {
               if(!jQuery.isEmptyObject(result)) {
@@ -136,7 +134,7 @@
               else {
                 // No results
                 $('#suggestions').fadeOut(); // Hide the suggestions box
-              }              
+              }
             }
 
             // Make the AJAX call
@@ -148,10 +146,10 @@
                 error: defaultErrorCallback
             });
           }
-        }        
+        }
      </script>
     {% endblock base_top_js %}
-    {% block js %}{% endblock %} 
+    {% block js %}{% endblock %}
   </head>
 {% endblock head %}
 
@@ -166,11 +164,11 @@
         <div class="container">
             <!-- BEGIN LOGO -->
             <div style="padding-top: 10px; float: left">
-              <a href="{% url 'apps.dashboard.views.index' %}" style="font-size: 24px; color: #ffffff">Cybercon</a>
+              <a href="{% url 'apps.dashboard.views.index' %}" style="font-size: 24px; color: #ffffff">Company Name</a>
             </div>
             <!-- END LOGO -->
 
-            <!-- BEGIN TOP NAVIGATION MENU -->              
+            <!-- BEGIN TOP NAVIGATION MENU -->
             <ul class="nav navbar-nav pull-right">
               <!-- BEGIN USER LOGIN DROPDOWN -->
               <li class="dropdown">
@@ -184,7 +182,7 @@
               </li>
               <!-- END USER LOGIN DROPDOWN -->
             </ul>
-            <!-- END TOP NAVIGATION MENU --> 
+            <!-- END TOP NAVIGATION MENU -->
           </div>
         </div>
       </div>
@@ -204,7 +202,7 @@
           <ul class="page-breadcrumb breadcrumb">
             <li>
               <i class="fa fa-home"></i>
-              <a href="{% url 'apps.dashboard.views.index' %}">Home</a> 
+              <a href="{% url 'apps.dashboard.views.index' %}">Home</a>
             </li>
             {% block breadcrumbs %}
               <li>Dashboard</li>
@@ -221,7 +219,7 @@
           <!-- BEGIN SIDEBAR -->
           {% block sidebar_nav %}
             <div class="navbar">
-              <!-- BEGIN SIDEBAR MENU -->        
+              <!-- BEGIN SIDEBAR MENU -->
               <ul class="list-unstyled">
                 <li>
                   <!-- BEGIN RESPONSIVE QUICK SEARCH FORM -->
@@ -238,13 +236,13 @@
                 </li>
                 <li>
                   <a href="{% url 'apps.dashboard.views.index' %}">
-                    <i class="fa fa-home"></i> 
+                    <i class="fa fa-home"></i>
                     <span class="title">Dashboard</span>
                   </a>
                 </li>
                 <li>
                   <a>
-                    <i class="fa fa-user"></i> 
+                    <i class="fa fa-user"></i>
                     <span class="title">Accounts</span>
                   </a>
                   <ul class="sub-menu">
@@ -254,10 +252,11 @@
                 </li>
                 <li>
                   <a>
-                    <i class="fa fa-cogs"></i> 
+                    <i class="fa fa-cogs"></i>
                     <span class="title">Services</span>
                   </a>
                   <ul id="services-list" class="sub-menu">
+                    <li><a href="{% url 'ip:index' %}">IP Hosting</a></li>
                     {% for service in user.get_services %}
                       <li><a href="{{ service.uri }}{{ service.id }}">{{ service.name }}</a></li>
                     {% endfor %}
@@ -265,20 +264,20 @@
                 </li>
                 <li>
                   <a>
-                    <i class="fa fa-wrench"></i> 
+                    <i class="fa fa-wrench"></i>
                     <span class="title">Support</span>
                   </a>
                   <ul class="sub-menu">
                     <li><a href="{% url 'tickets:index' %}">Trouble Tickets</a></li>
                     <li><a href="{% url 'knowledgebase:index' %}">Knowledgebase</a></li>
                     <li><a href="{% url 'contact:index' %}">Contact Us</a></li>
-                  </ul>          
+                  </ul>
                 </li>
               </ul>
               <!-- END SIDEBAR MENU -->
             </div>
           {% endblock %}
-          <!-- END SIDEBAR -->            
+          <!-- END SIDEBAR -->
         </div>
         <div class="col-md-9">
           <!-- BEGIN PAGE CONTENT -->
@@ -288,14 +287,14 @@
       </div>
       <!-- END BODY CONTENT -->
     </div>
-    <!-- END BODY CONTAINER --> 
+    <!-- END BODY CONTAINER -->
 
     <!-- BEGIN FOOTER -->
     {% block footer_nav %}
      <div class="navbar navbar-fixed-bottom" style="background-color: #f5f5f5">
       <div class="container">
         <div class="col-md-8">
-          &copy; 2013 <a href="http://cybercon.com" alt="Cybercon">Cybercon</a> All rights reserved.
+          &copy; 2014 <a href="http://www.example.com" alt="Company Name">Company Name</a> All rights reserved.
         </div>
         <div class="col-md-4">
           <span style="background-color: lightgray; float: right; display: block; text-decoration: none; cursor: pointer; margin-top: 6px; font-size: 16px; padding: 0 6px 0 6px"><i class="fa fa-angle-up"></i></span>
@@ -307,10 +306,10 @@
 
     <!-- BEGIN JAVASCRIPTS -->
     {% block base_bottom_js %}
-     <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>     
+     <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>
      <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
-    {% endblock base_bottom_js %} 
-    <!-- END JAVASCRIPTS --> 
+    {% endblock base_bottom_js %}
+    <!-- END JAVASCRIPTS -->
   </body>
 {% endblock body %}
 

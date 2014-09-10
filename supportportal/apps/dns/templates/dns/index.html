@@ -28,20 +28,20 @@
                     $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
                     getZones();
                     setTimeout("$('.modal.in').modal('hide')",2000);
-                }                    
+                }
                 else {
                     // AJAX call returned failed
                     $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
-                    if(result.hasOwnProperty('errors')) { 
+                    if(result.hasOwnProperty('errors')) {
                         // iterate through and display form validation errors
                         $.each(result.errors, function(k,v) {
                             $("#id_"+k).parents('div').addClass("has-error");
                             $("#"+k+"-help").html(v);
                         });
-                    }                        
+                    }
                 }
                 setTimeout("$('#flash-message').fadeOut()",2000);
-            }            
+            }
         }
 
         // Makes AJAX call to supplied resource with supplied data
@@ -52,14 +52,14 @@
                 type: "POST",
                 success: onsuccess,
                 error: onerror
-            });            
-        }      
+            });
+        }
 
         // Retrieve listing of DNS zones belonging to account
         function getZones() {
             // Destroy existing
             $("#dns-zones-table").dataTable().fnDestroy();
-            $("#zones-tbody").html(""); 
+            $("#zones-tbody").html("");
 
             // Successfull AJAX callback function
             function successCallback(result) {
@@ -75,31 +75,31 @@
                                         <a class="btn del-domain" role="button" data-toggle="modal"><i class="fa fa-trash-o"></i> Delete</a> \
                                     </td> \
                                 </tr>'
-                            );                          
+                            );
                         }
 
                         // Initialize datatables
                         $("#dns-zones-table").dataTable({"aoColumnDefs": [], "aaSorting": [[0, 'asc']]});
-                    }                    
+                    }
                     else {
                         // AJAX call returned failed
-                        $("#zones-tbody").html("<tr><td colspan=2>There was an error retrieving DNS zones.</td></tr>");    
+                        $("#zones-tbody").html("<tr><td colspan=2>There was an error retrieving DNS zones.</td></tr>");
                     }
                 }
-            }    
+            }
 
             // Make the AJAX call
-            sendPost("{%url 'dns:getzones' service_id %}", null, successCallback, defaultErrorCallback);           
+            sendPost("{%url 'dns:getzones' service_id %}", null, successCallback, defaultErrorCallback);
         }
 
         // Customizes modal with specifications
         function buildModal(label, body, saveaction) {
             $('#flash-message').hide();
             $('#mlabel').html(label);
-            $('#mbody').html(body);    
-            $('#msave').attr('onclick', saveaction);        
+            $('#mbody').html(body);
+            $('#msave').attr('onclick', saveaction);
             $("#mmodal").modal('show');
-        }          
+        }
 
         // Build and display Add Zone modal
         function build_add_zone_modal() {
@@ -128,10 +128,10 @@
                         </tr> \
                     </table> \
                 </form>';
-            
 
-            buildModal(modal_title, modal_body, modal_onclick_action);            
-        }            
+
+            buildModal(modal_title, modal_body, modal_onclick_action);
+        }
 
         // Build and display Delete Zone modal
         function build_delete_zone_modal(zone) {
@@ -139,9 +139,9 @@
             var modal_body = "Are you sure you want to delete zone " + zone + "?";
             var modal_onclick_action = 'sendPost("{% url 'dns:deletezone' service_id %}", {zone: "'+zone+'"}, defaultSuccessCallback, defaultErrorCallback)';
 
-            buildModal(modal_title, modal_body, modal_onclick_action);            
+            buildModal(modal_title, modal_body, modal_onclick_action);
         }
-    </script>    
+    </script>
 {% endblock %}
 
 {% block jquery_document_ready %}
@@ -156,7 +156,7 @@
         .on('click', 'a.edit-domain', function (e) {
             e.preventDefault();
             window.location = "{%url 'dns:index' service_id %}detail/"+$(this).closest('tr').data('domain');
-        })      
+        })
 {% endblock %}
 
 {% block content %}
@@ -165,7 +165,7 @@
     <!-- BEGIN CONTENT HEADER -->
     <div class="row page-head">
         <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Domains</h3></div>
-        <div class="col-md-6 text-right">        
+        <div class="col-md-6 text-right">
             <div class="btn-group">
                 <a onclick="build_add_zone_modal()" role="button" class="badge" data-toggle="modal">Add Domain <i class="fa fa-plus"></i></a>
             </div>
@@ -180,7 +180,7 @@
             <thead>
                 <tr>
                     <th>Domain</th>
-                    <th></th>
+                    <th width=220 align=center></th>
                 </tr>
             </thead>
             <tbody id="zones-tbody"></tbody>

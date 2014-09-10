@@ -29,7 +29,7 @@
                     getAccounts();
                     getForwards();
                     setTimeout("$('.modal.in').modal('hide')",2000);
-                }                    
+                }
                 else {
                     // AJAX call returned failed
                     $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
@@ -39,10 +39,10 @@
                             $("#id_"+k).parents('tr').addClass("has-error");
                             $("#"+k+"-help").html(v);
                         });
-                    }                                
+                    }
                 }
             }
-        }        
+        }
 
         // Makes AJAX call to supplied resource with supplied data
         function sendPost(url, data) {
@@ -52,17 +52,17 @@
                 type: "POST",
                 success: defaultSuccessCallback,
                 error: defaultErrorCallback
-            });     
+            });
         }
 
         // Customizes modal with specifications
         function buildModal(label, body, saveaction) {
             $('#flash-message').hide();
             $('#mlabel').html(label);
-            $('#mbody').html(body); 
+            $('#mbody').html(body);
             $('#msave').attr('onclick', saveaction);
             $("#mmodal").modal('show');
-        }    
+        }
 
         // Handles Create Forward modal's type selection
         function processForwardSelectChange(fwdopt) {
@@ -104,7 +104,7 @@
                     );
                     break;
             }
-        }    
+        }
 
         // Function to build and display Create Email Forward modal
         function build_add_forward_modal() {
@@ -161,10 +161,10 @@
                             <td><input type="text" id="id_quota" name="quota" class="form-control" value="0" /><span id="quota-help" class="help-block"></span></td> \
                         </tr> \
                     </table> \
-                </form>';            
+                </form>';
 
             buildModal(modal_title, modal_body, modal_onclick_action);
-        }    
+        }
 
         // Function to build and display Email CHPW modal
         function build_chpw_modal(email) {
@@ -184,7 +184,7 @@
                         </tr> \
                     </table> \
                 </form>';
-            
+
             buildModal(modal_title, modal_body, modal_onclick_action);
         }
 
@@ -204,7 +204,7 @@
                 </form>';
 
             buildModal(modal_title, modal_body, modal_onclick_action);
-        }    
+        }
 
         // Function to build and display Delete Email Account modal
         function build_delete_account_modal(email) {
@@ -212,8 +212,8 @@
             var modal_body = "Are you sure you want to delete this email account?";
             var modal_onclick_action = 'sendPost("{% url 'email:delacct' service_id %}", {email: "'+email+'"})';
 
-            buildModal(modal_title, modal_body, modal_onclick_action);            
-        }    
+            buildModal(modal_title, modal_body, modal_onclick_action);
+        }
 
         // Retrieves listing of Email Accounts via AJAX
         function getAccounts() {
@@ -232,7 +232,7 @@
                                     <td>'+result.data.accounts[x].email+'</td> \
                                     <td>'+result.data.accounts[x].login+'</td> \
                                     <td>';
-                            
+
                             // Provide controls to email subaccounts only
                             if(result.data.accounts[x].login != "Main Account") {
                                 output += ' \
@@ -247,15 +247,15 @@
                         }
 
                         // Initialize Datatable
-                        $("#email-accounts-table").dataTable({"aoColumnDefs": [], "aaSorting": [[0, 'asc']]});          
+                        $("#email-accounts-table").dataTable({"aoColumnDefs": [], "aaSorting": [[0, 'asc']]});
                     }
-                    else { 
+                    else {
                         // AJAX call returned failed
                         $("#email-accounts-tbody").html('<tr><td colspan=3>'+result.message+'</td></tr>');
-                    }                        
-                }                
+                    }
+                }
             }
-            
+
             // Make AJAX call to retrieve accounts
             $.ajax({
                 url: "{%url 'email:getaccounts' service_id %}",
@@ -269,7 +269,7 @@
         function getForwards() {
             // Destroy existing
             $("#email-forwards-table").dataTable().fnDestroy();
-            $("#email-forwards-tbody").html("");  
+            $("#email-forwards-tbody").html("");
 
             // onSuccess callback function
             function onSuccessCallback(result) {
@@ -286,9 +286,9 @@
                     else {
                         // AJAX call returned failed
                         $("#email-forwards-tbody").html('<tr><td colspan=2>'+result.message+'</td></tr>');
-                    }                    
-                }                
-            }          
+                    }
+                }
+            }
 
             // Make AJAX call to retrieve forwards
             $.ajax({
@@ -296,8 +296,8 @@
                 type: "POST",
                 success: onSuccessCallback,
                 error: defaultErrorCallback
-            });            
-        }                
+            });
+        }
     </script>
 {% endblock %}
 
@@ -318,7 +318,7 @@
         .on('click', 'a.delacct-modal', function (e) {
             e.preventDefault();
             build_delete_account_modal($(this).closest('tr').data('email'));
-        });          
+        });
 {% endblock %}
 
 {% block content %}
@@ -327,7 +327,7 @@
     <!-- BEGIN EMAIL ACCOUNTS CONTENT HEADERR -->
     <div class="row page-head">
         <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Email Accounts</h3></div>
-        <div class="col-md-6 text-right">        
+        <div class="col-md-6 text-right">
             <div class="btn-group">
                 <a onclick="build_add_account_modal();" role="button" class="badge" data-toggle="modal">Add Account <i class="fa fa-plus"></i></a>
             </div>
@@ -343,19 +343,19 @@
                 <tr>
                     <th>Email</th>
                     <th>Login</th>
-                    <th></th>
+                    <th align=center width=345></th>
                 </tr>
             </thead>
             <tbody id="email-accounts-tbody"></tbody>
         </table>
-        <!-- END EMAIL ACCOUNTS TABLE -->    
+        <!-- END EMAIL ACCOUNTS TABLE -->
     </div>
     <!-- END EMAIL ACCOUNTS CONTAINER -->
 
     <!-- BEGIN EMAIL FORWARDS CONTENT HEADER -->
     <div class="row page-head">
         <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Email Forwards</h3></div>
-        <div class="col-md-6 text-right">        
+        <div class="col-md-6 text-right">
             <div class="btn-group">
                 <a onclick="build_add_forward_modal();" role="button" class="badge" data-toggle="modal">Add Forward <i class="fa fa-plus"></i></a>
             </div>

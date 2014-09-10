@@ -21,12 +21,12 @@
 					if(result.success == 1) {
 						// AJAX call returned successful
 						$('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
-					}					
+					}
 					else {
 						// AJAX call returned failed
 						$('#flash-message').html('<div class="alert alert-error">'+result.message+'</div>');
 					}
-				}				
+				}
 			}
 
 			// Make the AJAX call
@@ -36,8 +36,8 @@
                 type: "POST",
                 success: onSuccessCallback,
                 error: defaultErrorCallback
-            });		
-		}	
+            });
+		}
 	</script>
 {% endblock %}
 
@@ -56,42 +56,42 @@
 				<div class="row">
 					<!-- BEGIN LEFT COLUMN -->
 					<div class="col-md-6">
-						<h4>Cybercon Incorporated</h4>
+						<h4>Company Name Incorporated</h4>
 						<div style="padding-left: 20px">
-							<h5 style="font-weight: bold">Address</h5>	
-							<div style="padding-left: 20px">				
+							<h5 style="font-weight: bold">Address</h5>
+							<div style="padding-left: 20px">
 								<address>
-									210 N. Tucker Blvd Suite 700<br />
-									Saint Louis, MO 63101<br />
+									555 Address Blvd<br />
+									City, ST 55555<br />
 								</address>
 							</div>
 
-							<h5 style="font-weight: bold">Phone</h5>	
-							<div style="padding-left: 20px">				
-								<abbr title="Phone">P:</abbr> (314) 621-9991<br />
-								<abbr title="Fax">F:</abbr> (314) 241-1777<br />
+							<h5 style="font-weight: bold">Phone</h5>
+							<div style="padding-left: 20px">
+								<abbr title="Phone">P:</abbr> (555) 555-5555<br />
+								<abbr title="Fax">F:</abbr> (555) 555-5556<br />
 							</div>
 
-							<h5 style="font-weight: bold">Email</h5>	
-							<div style="padding-left: 20px">	
-								<abbr title="Email">E:</abbr> <a href="mailto:support@cybercon.com">support@cybercon.com</a><br />					
-							</div>			
+							<h5 style="font-weight: bold">Email</h5>
+							<div style="padding-left: 20px">
+								<abbr title="Email">E:</abbr> <a href="mailto:support@example.com">support@example.com</a><br />
+							</div>
 
-							<h5 style="font-weight: bold">Website</h5>	
-							<div style="padding-left: 20px">	
-								<abbr title="Website">W:</abbr> <a href="http://www.cybercon.com" alt="Cybercon" target="_blank">http://www.cybercon.com</a><br />		
-							</div>	
+							<h5 style="font-weight: bold">Website</h5>
+							<div style="padding-left: 20px">
+								<abbr title="Website">W:</abbr> <a href="http://www.example.com" alt="Company Name" target="_blank">http://www.example.com</a><br />
+							</div>
 						</div>
 					</div>
 					<!-- END LEFT COLUMN -->
 					<!-- BEGIN RIGHT COLUMN -->
 					<div class="col-md-6">
 						<div class="thumbnail">
-							<img src="http://www.cybercon.com/images/map210tucker.jpg" alt="Cybercon" style="margin-top: 20px" />
-							<div class="caption" style="text-align: center">Corner of Tucker Boulevard and Pine Street</div>
+							<img src="http://www.cybercon.com/images/map210tucker.jpg" alt="Company Name" style="margin-top: 20px" />
+							<div class="caption" style="text-align: center">Map caption example</div>
 						</div>
-					</div>					
-					<!-- END RIGHT COLUMN -->				
+					</div>
+					<!-- END RIGHT COLUMN -->
 				</div>
 			</div>
 			<!-- END ADDRESS CONTAINER -->
@@ -117,11 +117,11 @@
 						</div>
 					</div>
 
-				</form> 
+				</form>
 			</div>
 			<!-- END CONTACT FORM CONTAINER -->
-	    <!-- END CONTAINER BODY -->  
-    <!-- END CONTACTUS CONTAINER --> 
+	    <!-- END CONTAINER BODY -->
+    <!-- END CONTACTUS CONTAINER -->
 
  <!-- END CONTACTUS CONTENT -->
 {% endblock %}

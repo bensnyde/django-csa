@@ -1,15 +1,15 @@
-# coding: utf-8
-from django.conf import settings
-import logging
-import base64 
+import base64
 import httplib
 import json
-import socket
+import logging
+from django.conf import settings
+
 
 WHMURL = settings.CPANEL_DNS["address"]
 WHMROOT = settings.CPANEL_DNS["username"]
 WHMPASS = settings.CPANEL_DNS["password"]
-apilogger = 'api_logger'
+logger = logging.getLogger(__name__)
+
 
 class Cpanel:
     def __init__(self, scriptuser):
@@ -38,13 +38,9 @@ class Cpanel:
 
                 return json.loads(data)
             except httplib.HTTPException as ex:
-                print "HTTPException from CpanelDNS API: %s" % ex
-            except socket.error as ex:
-                print "Socket.error connecting to CpanelDNS API: %s" % ex
-            except ValueError as ex:
-                print "ValueError decoding CpanelDNS API response string: %s" % ex
+                logger.error("HTTPException from CpanelDNS API: %s" % ex)
             except Exception as ex:
-                print "Unhandled Exception while querying CpanelDNS API: %s" % ex        
+                logger.error("Unhandled Exception while querying CpanelDNS API: %s" % ex)
 
 
     def addpop(self, domain, email, password, quota):
@@ -67,8 +63,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return True
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to addpop: %s' % ex)
 
         return False
 
@@ -89,8 +85,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return True
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to delpop: %s' % ex)
 
         return False
 
@@ -111,13 +107,13 @@ class Cpanel:
         })
 
         try:
-            return result
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return True
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to editquota: %s' % ex)
 
         return False              
+
 
     def passwdpop(self, domain, email, password):
         """Changes an email account's password.
@@ -137,8 +133,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return True
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to passwdpop: %s' % ex)
 
         return False   
 
@@ -151,11 +147,12 @@ class Cpanel:
         :returns: bool api call result 
         """
         result = self.cQuery('clearpopcache', **{'username': username} )
+
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return True
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to clearpopcache: %s' % ex)
 
         return False   
 
@@ -176,8 +173,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["event"]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to listpops: %s' % ex)
 
         return False                   
 
@@ -198,8 +195,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to listpopssingles: %s' % ex)
 
         return False                   
 
@@ -225,11 +222,12 @@ class Cpanel:
             data['regex'] = regex
 
         result = self.cQuery('listpopswithdisk', **data)
+
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to listpopswithdisk: %s' % ex)
 
         return False                   
 
@@ -250,8 +248,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to accountname: %s' % ex)
 
         return False   
 
@@ -272,8 +270,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to getdiskusage: %s' % ex)
 
         return False
 
@@ -286,11 +284,12 @@ class Cpanel:
         :returns: json formatted string        
         """
         result = self.cQuery('listmaildomains', **{'skipmain': skipmain})
+
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to listmaildomains: %s' % ex)
 
         return False                   
 
@@ -315,7 +314,7 @@ class Cpanel:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
         except:
-            pass
+            logger.error('Failed to listlists: %s' % ex)
 
         return False   
 
@@ -348,8 +347,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return True
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to setdefaultaddress: %s' % ex)
 
         return False  
 
@@ -365,8 +364,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to checkmaindiscard: %s' % ex)
 
         return False   
 
@@ -383,8 +382,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to listdefaultaddresses: %s' % ex)
 
         return False   
 
@@ -400,10 +399,11 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to listaliasbackups: %s' % ex)
 
         return False   
+
 
     def addforward(self, domain, email, fwdopt, fwdemail=None, fwdsystem=None, failmsgs=None, pipefwd=None):
         """Creates an email forwarder for the specified address.
@@ -437,8 +437,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return True
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to addforward: %s' % ex)
 
         return False   
 
@@ -462,10 +462,11 @@ class Cpanel:
         try:
             if result["cpanelresult"]["event"]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to listforwards: %s' % ex)
 
         return False   
+
 
     def listdomainforwards(self, domain):
         """Retrieves the destination to which a domain forwarder forwards email.
@@ -475,11 +476,12 @@ class Cpanel:
         :returns: json formatted string                
         """
         result = self.cQuery('listdomainforwards', **{'domain': domain})
+
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to listdomainforwards: %s' % ex)
 
         return False   
 
@@ -519,8 +521,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to storefilter: %s' % ex)
 
         return False   
 
@@ -542,8 +544,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return True
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to deletefilter: %s' % ex)
 
         return False   
 
@@ -565,8 +567,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to tracefilter: %s' % ex)
 
         return False   
 
@@ -587,8 +589,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to filterlist: %s' % ex)
 
         return False 
 
@@ -610,8 +612,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to loadfilter: %s' % ex)
 
         return False 
 
@@ -635,8 +637,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to filtername: %s' % ex)
 
         return False   
 
@@ -652,8 +654,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to listfilterbackups: %s' % ex)
 
         return False      
 
@@ -669,8 +671,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to listfilters: %s' % ex)
 
         return False
 
@@ -694,8 +696,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to listautoresponders: %s' % ex)
 
         return False   
 
@@ -712,8 +714,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["event"]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to fetchautoresponder: %s' % ex)
 
         return False   
 
@@ -734,8 +736,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to set_archiving_configuration: %s' % ex)
 
         return False   
 
@@ -752,8 +754,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to set_archiving_default_configuration: %s' % ex)
 
         return False   
 
@@ -777,8 +779,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to get_archiving_configuration: %s' % ex)
 
         return False   
 
@@ -795,8 +797,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to get_archiving_default_configuration: %s' % ex)
 
         return False
 
@@ -812,8 +814,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to get_archiving_types: %s' % ex)
 
         return False  
 
@@ -834,8 +836,8 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to getabsbrowserdir: %s' % ex)
 
         return False              
 
@@ -861,7 +863,7 @@ class Cpanel:
         try:
             if result["cpanelresult"]["data"][0]["result"] == 1:
                 return result["cpanelresult"]["data"]
-        except:
-            pass
+        except Exception as ex:
+            logger.error('Failed to browseboxes: %s' % ex)
 
         return False

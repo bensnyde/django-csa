@@ -2,6 +2,9 @@ from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
 from libs.ipaddr import ip_network
 from apps.companies.models import Company
+import logging
+
+logger = logging.getLogger(__name__)
 
 class NetworkAddress(models.Model):
     address = models.IPAddressField()
@@ -15,10 +18,13 @@ class NetworkAddress(models.Model):
     def __unicode__(self):
         return "%s/%d" % (self.address, self.cidr)
 
+    class Meta:
+        unique_together = ['address', 'cidr']        
+
     def get_netmask(self):
         return str(ip_network(self).netmask)
 
-    def get_numhosts(self):
+    def get_useable_hosts(self):
         hosts = []
         for x in ip_network(self).iterhosts():
             hosts.append(str(x))
@@ -31,13 +37,41 @@ class NetworkAddress(models.Model):
             return False
 
     def dump_to_dict(self):
+        parent = 0
+        if self.parent:
+            parent = self.parent.pk
+
+        owner_pk = 0
+        owner_name = ""
+        if self.owner:
+            owner_pk = self.owner.pk
+            owner_name = self.owner.name
+
+        vlan_name = ""
+        vlan_pk = 0
+        if self.vlan:
+            vlan_name = str(self.vlan)
+            vlan_pk = self.vlan.pk
+
+        vrf_name = ""
+        vrf_pk = 0
+        if self.vrf:
+            vrf_name = str(self.vrf)
+            vrf_pk = self.vrf.pk            
+
         return {
+            'id': self.pk,
             'cidr': self.cidr,
-            'vlan': self.vlan,
+            'owner': owner_name,
+            'owner_pk': owner_pk,
+            'parent': parent,
+            'vlan': vlan_name,
+            'vlan_pk': vlan_pk,
+            'vrf': vrf_name,
+            'vrf_pk': vrf_pk,
             'description': self.description,
             'address': self.address,
             'subnet': self.get_netmask(),
-            'usable_hosts': self.get_numhosts()
         }
 
 

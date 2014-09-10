@@ -23,33 +23,37 @@
 		function getServers() {
 			// Destroy existing
 			$("#servers-table").dataTable().fnDestroy();
-			$("#servers-tbody").html("");	
-			
+			$("#servers-tbody").html("");
+
 			// onSuccess callback function
 			function onSuccessCallback(result) {
 				if(!jQuery.isEmptyObject(result)) {
 					if(result.success == 1) {
 						// AJAX call returned success
 						for(x in result.data.servers) {
+							var ip = "";
+							if(result.data.servers[x].ip) {
+								ip = '<a href="{% url 'ip:index' %}'+result.data.servers[x].ip.address+'/'+result.data.servers[x].ip.cidr+'/">'+result.data.servers[x].ip.address+'/'+result.data.servers[x].ip.cidr+'</a>';
+							}
 							$("#servers-tbody").append(' \
 						        <tr data-servid="'+result.data.servers[x].id+'"> \
 						        	<td><a href="{% url 'servers:index' service_id %}'+result.data.servers[x].id+'/">'+result.data.servers[x].id+'</a></td> \
 						        	<td>'+result.data.servers[x].name+'</td> \
 						        	<td>'+result.data.servers[x].type+'</td> \
 						        	<td>'+result.data.servers[x].os+'</td> \
-						        	<td>'+result.data.servers[x].ip+'</td> \
+						        	<td>'+ip+'</td> \
 								</tr>'
 							);
 						}
 
 						// Initialize datatable
-						$("#servers-table").dataTable({"aoColumnDefs": [], "aaSorting": [[0, 'asc']]});	
-					}					
+						$("#servers-table").dataTable({"aoColumnDefs": [], "aaSorting": [[0, 'asc']]});
+					}
 					else {
 						// AJAX call returned failed
-						$("#zones-tbody").html("<tr><td colspan=5>"+result.message+"</td></tr>");	
+						$("#zones-tbody").html("<tr><td colspan=5>"+result.message+"</td></tr>");
 					}
-				}				
+				}
 			}
 
 			// Make AJAX call to retrieve servers
@@ -63,7 +67,7 @@
 
 		// Fetch Servers listing via AJAX
 		function setServer() {
-			// Destroy existing 
+			// Destroy existing
 			$('#flash-message').html("");
 
 			// onSuccess callback function
@@ -74,20 +78,20 @@
 	                    $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
 	                    getServers();
 	                    setTimeout("$('.modal.in').modal('hide')",2000);
-					}					
+					}
 					else {
 						// AJAX call returned failed
-						$('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');	
-	                    if(result.hasOwnProperty('errors')) { 
+						$('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+	                    if(result.hasOwnProperty('errors')) {
 	                        // iterate through and display form validation errors
 	                        $.each(result.errors, function(k,v) {
 	                        	console.log($("#id_"+k).closest('tr'));
 	                            $("#id_"+k).closest('tr').addClass("has-error");
 	                            $("#"+k+"-help").html(v);
 	                        });
-	                    }   						
+	                    }
 					}
-				}				
+				}
 			}
 
 			// Make AJAX call to retrieve servers
@@ -113,11 +117,11 @@
     <!-- BEGIN SERVERS CONTENT HEADER -->
     <div class="row page-head">
         <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Servers</h3></div>
-        <div class="col-md-6 text-right">        
+        <div class="col-md-6 text-right">
             <div class="btn-group">
                 <a onclick="$('#mmodal').modal('show');" role="button" class="badge" data-toggle="modal">Add Server <i class="fa fa-plus"></i></a>
             </div>
-        </div>        
+        </div>
     </div>
     <!-- END SERVERS CONTENT HEADER -->
 
@@ -161,11 +165,11 @@
 											<div class="controls">
 												{{ field|addcss:"form-control" }}
 												<span id="{{ field.html_name }}-help" class="help-inline"></span>
-											</div>            
+											</div>
 							        	</td>
 							        </tr>
 							    {% endfor %}
-							</table>						
+							</table>
 						</form>
 					</div>
 					<!-- END MODAL BODY -->
@@ -177,7 +181,7 @@
 			</div>
 		</div>
 	</div>
-	<!-- END MODAL -->	
+	<!-- END MODAL -->
 
  <!-- END SERVERS INDEX CONTENT -->
 {% endblock %}

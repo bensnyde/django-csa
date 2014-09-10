@@ -16,9 +16,6 @@
 	<script type="text/javascript">
         // Fetch Server details via AJAX
 		function getServer() {
-			// Destroy existing
-			$("#server-details-table").html("")
-
 			// onSuccess callback function
 			function onSuccessCallback(result) {
 				if(!jQuery.isEmptyObject(result)) {
@@ -26,15 +23,28 @@
 						// AJAX call returned success
 						$("#server-name-breadcrumb").html(result.data.server.name);
 						$("#server-title").html(result.data.server.name);
-						$.each(result.data.server, function(index,value) {
-							$("#server-details-table").append('<tr><td>'+index+'</td><td>'+value+'</td></tr>');
-						});
-					}					
+						$("#server-name").html(result.data.server.name);
+						$("#server-os").html(result.data.server.os);
+						$("#server-ip").html(result.data.server.ip.address);
+						$("#server-username").html(result.data.server.username);
+						$("#server-password").html(result.data.server.password);
+						$("#server-notes").html(result.data.server.notes);
+						{% if user.is_staff %}
+							$("#server-location").html(result.data.server.location);
+							$("#server-uplink").html(result.data.server.uplink);
+							$("#server-type").html(result.data.server.type);
+							$("#server-sid").html(result.data.server.sid);
+						{% endif %}
+
+						if(result.data.server.ip.address) {
+							$("#server-ip").html('<a href="{% url 'ip:index' %}'+result.data.server.ip.address+'/'+result.data.server.ip.cidr+'/">'+result.data.server.ip.address+'/'+result.data.server.ip.cidr+'</a>');
+						}
+					}
 					else {
 						// AJAX call returned failed
-						$("#zones-tbody").html("<tr><td colspan=5>"+result.message+"</td></tr>");	
+						$("#zones-tbody").html("<tr><td colspan=5>"+result.message+"</td></tr>");
 					}
-				}				
+				}
 			}
 
             // Make AJAX call to retrieve accounts
@@ -56,19 +66,19 @@
 	                    $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
 	                    getServer();
 	                    setTimeout("$('.modal.in').modal('hide');$('#flash-message').html('')",2000);
-					}					
+					}
 					else {
 						// AJAX call returned failed
-						$('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');	
-	                    if(result.hasOwnProperty('errors')) { 
+						$('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+	                    if(result.hasOwnProperty('errors')) {
 	                        // iterate through and display form validation errors
 	                        $.each(result.errors, function(k,v) {
 	                            $("#id_"+k).closest('tr').addClass("has-error");
 	                            $("#"+k+"-help").html(v);
 	                        });
-	                    }  
+	                    }
 					}
-				}				
+				}
 			}
 
             // Make AJAX call to retrieve accounts
@@ -79,7 +89,7 @@
                 success: onSuccessCallback,
                 error: defaultErrorCallback
             });
-		}		
+		}
 	</script>
 {% endblock %}
 
@@ -93,30 +103,47 @@
     <!-- BEGIN SERVER DETAILS CONTENT HEADER -->
     <div class="row page-head">
         <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3 id="server-title"></h3></div>
-        <div class="col-md-6 text-right">        
+        <div class="col-md-6 text-right">
             <div class="btn-group">
                 <a href="{% url 'tickets:create_ticket' service_id %}" role="button" class="badge">Open Support Request <i class="fa fa-plus"></i></a>
                 <a onclick="$('#mmodal').modal('show');" role="button" class="badge" data-toggle="modal">Edit Server <i class="fa fa-plus"></i></a>
             </div>
-        </div>        
+        </div>
     </div>
     <!-- END SERVER DETAILS CONTENT HEADER -->
 
     <!-- BEGIN SERVER DETAILS CONTAINER -->
     <div class="row">
 		<!-- BEGIN SERVER STATS TABLE -->
-		<table class=" table table-striped table-bordered table-hover" id="server-details-table"></table>
-		<!-- END SERVER STATS TABLE -->    	
+		<table class=" table table-striped table-bordered table-hover" id="server-details-table">
+			<tr><td>Name</td><td id="server-name"></td></tr>
+			<tr><td>Operating System</td><td id="server-os"></td></tr>
+			<tr><td>IP Address</td><td id="server-ip"></td></tr>
+			<tr><td>Username</td><td id="server-username"></td></tr>
+			<tr><td>Password</td><td id="server-password"></td></tr>
+			{% if user.is_staff %}
+				<tr><td>Location</td><td id="server-location"></td></tr>
+				<tr><td>Uplink</td><td id="server-uplink"></td></tr>
+				<tr><td>Type</td><td id="server-type"></td></tr>
+				<tr><td>SID</td><td id="server-sid"></td></tr>
+			{% endif %}
+			<tr><td>Notes</td><td id="server-notes"></td></tr>
+		</table>
+		<!-- END SERVER STATS TABLE -->
 
 		<!-- BEGIN SERVER PLUGINS -->
    		{% if server.type == "KVM" or server.type == "XEN" %}
-			{% include "solusvm/index.html" %}
-		{% elif server.type == "VMWARE" %}
+   			{% if server.sid %}
+				{% include "solusvm/index.html" %}
+   			{% endif %}
+		{% elif server.type == "VMWARE" and server.sid %}
 			{% include "vmware/index.html" %}
 		{% elif server.type == "FARM" or server.type == "COLO" %}
-			{% include "zenoss/index.html" %}
-		{% endif %}	 
-		<!-- END SERVER PLUGINS -->    	
+			{% if server.uplink %}
+				{% include "zenoss/index.html" %}
+			{% endif %}
+		{% endif %}
+		<!-- END SERVER PLUGINS -->
     </div>
     <!-- END SERVER DETAILS CONTAINER -->
 
@@ -142,11 +169,11 @@
 											<div class="controls">
 												{{ field|addcss:"form-control" }}
 												<span id="{{ field.html_name }}-help" class="help-inline"></span>
-											</div>            
+											</div>
 							        	</td>
 							        </tr>
 							    {% endfor %}
-							</table>						
+							</table>
 						</form>
 					</div>
 					<!-- END MODAL BODY -->
@@ -158,7 +185,7 @@
 			</div>
 		</div>
 	</div>
-	<!-- END MODAL -->	    
+	<!-- END MODAL -->
 
  <!-- END SERVERS INDEX CONTENT -->
 {% endblock %}

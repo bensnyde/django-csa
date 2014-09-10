@@ -66,11 +66,12 @@ class Contact(AbstractBaseUser):
     company = models.ForeignKey(Company, blank=False, null=False)
     role = models.CharField(max_length=32, choices=ROLE_CHOICES, default="Tech")
     created = models.DateTimeField(default=datetime.now)
+    notifications = models.BooleanField(default=True)
 
     objects = ContactManager()
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['first_name', 'last_name', 'company']
+    REQUIRED_FIELDS = ['first_name', 'last_name', 'company', 'password']
 
     def dump_to_dict(self, full=False):
         response = {
@@ -78,9 +79,9 @@ class Contact(AbstractBaseUser):
             'email': self.email,
             'first_name': self.first_name,
             'last_name': self.last_name,
-            'role': self.role,            
+            'role': self.role,
         }
-        
+
         if full:
             response.update({
                 'title': self.title,
@@ -92,17 +93,25 @@ class Contact(AbstractBaseUser):
                 'company': self.company.name,
                 'created': str(self.created)
             })
-        
+
         return response
+
+    def recent_to_dict(self):
+        return {
+            'id': self.pk,
+            'name': self.get_full_name(),
+            'email': self.email,
+            'timesince': self.timesince_created()
+        }
 
     def get_services(self):
         response = []
         for service in self.company.services.all():
             response.append({
                 "id": service.id,
-                "name": service.name, 
-                "uri": service.coupler.uri, 
-                "vars": service.vars, 
+                "name": service.name,
+                "uri": service.coupler.uri,
+                "vars": service.vars,
             })
 
         return response
@@ -126,19 +135,16 @@ class Contact(AbstractBaseUser):
     def timesince_created(self, now=None):
             return timesince(self.created, now)
 
-    # On Python 3: def __str__(self):
     def __unicode__(self):
         return self.email
 
+
     def has_perm(self, perm, obj=None):
-        "Does the user have a specific permission?"
-        # Simplest possible answer: Yes, always
-        return True
+        return self.is_admin
 
     def has_module_perms(self, app_label):
-        "Does the user have permissions to view the app `app_label`?"
-        # Simplest possible answer: Yes, always
-        return True
+        return self.is_admin
+
 
     @property
     def is_staff(self):

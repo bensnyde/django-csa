@@ -9,12 +9,12 @@
 {% block breadcrumbs %}
     <li><a>Services</a></i></li>
     <li>
-        <a href="{% url 'ip:index' service_id %}">IP Space</a>
+        <a href="{% url 'ip:index' %}">IP Space</a>
     </li>
     {% if parent %}
         <li>
         {% if network %}
-            <a href="{% url 'ip:index' service_id parent %}">{{ parent }}</a>
+            <a href="{% url 'ip:index' parent %}">{{ parent }}</a>
         {% else %}
             {{ parent }}
         {% endif %}
@@ -61,7 +61,6 @@
             $('#ip_description').html("");
             $('#ip_ptr').val("");
 
-
             // onSuccess callback function
             function onSuccessCallback(result) {
                 if(!jQuery.isEmptyObject(result)) {
@@ -75,7 +74,7 @@
 
             // Make AJAX call to retrieve Host details
             $.ajax({
-                url: "{% url 'ip:gethost' service_id %}",
+                url: "{% url 'ip:gethost' %}",
                 data: {"network": "{{ parent }}", "address": ipaddr},
                 type: "POST",
                 success: onSuccessCallback,
@@ -86,7 +85,7 @@
         // Set Host details via AJAX
         function setHostDetails() {
             $.ajax({
-                url: "{% url 'ip:sethost' service_id %}",
+                url: "{% url 'ip:sethost' %}",
                 data: $("#set-host-form").serialize(),
                 type: "POST",
                 success: defaultSuccessCallback,
@@ -94,7 +93,6 @@
             }); 
         }
 
-        var numhosts = 0;
         // Fetch Networks
         function getNetworks() {
             // Destroy existing
@@ -136,7 +134,7 @@
 
             // Make AJAX call to retrieve Networks
             $.ajax({
-                url: "{% url 'ip:getnetworks' service_id %}",
+                url: "{% url 'ip:getnetworks' %}",
                 type: "POST",
                 success: onSuccessCallback,
                 error: defaultErrorCallback
@@ -176,7 +174,7 @@
 
             // Make AJAX call to retrieve Hosts
             $.ajax({
-                url: "{% url 'ip:gethosts' service_id %}",
+                url: "{% url 'ip:gethosts' %}",
                 data: {"parent": "{{ parent }}"},
                 type: "POST",
                 success: onSuccessCallback,
@@ -184,9 +182,33 @@
             });     
         }
    
+        function getNetworkUsable() {
+            // Destroy existing
+            $("#ip_address").html("");
+
+            // onSuccess callback function
+            function onSuccessCallback(result) {
+                if(!jQuery.isEmptyObject(result)) {
+                    if(result.success == 1) {
+                        for(x in result.data.usable_hosts) {
+                            $("#ip_address").append('<OPTION>'+result.data.usable_hosts[x]+'</OPTION>');                       
+                        }
+                    } 
+                }
+            }
+
+            // Make AJAX call to retrieve Networks
+            $.ajax({
+                url: "{% url 'ip:getnetworkusable' %}",
+                type: "POST",
+                data: {'network': '{{ parent }}'},
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });        
+        }
+
 
         function buildHostModal() {
-
             $('#mmodal').modal('show');
         }        
 
@@ -194,15 +216,17 @@
 {% endblock %}
 
 {% block jquery_document_ready %}
-    {% if parent %} getHosts(); {% endif %}
-
+    {% if parent %} 
+        getHosts(); 
+        getNetworkUsable(); 
+    {% endif %}
 
     getNetworks();     
 
     // networks event bindings
     $('#networks-list-table').on('click', 'tr', function () {
         // Grab the address and cidr or the selected row and build a URL string (BE CAREFUL)
-        window.location = "{% url 'ip:index' service_id %}" + encodeURIComponent($(this).find("td").eq(0).html() + $(this).find("td").eq(1).html()); 
+        window.location = "{% url 'ip:index' %}" + encodeURIComponent($(this).find("td").eq(0).html() + $(this).find("td").eq(1).html()); 
     });
 
     // hosts event bindings

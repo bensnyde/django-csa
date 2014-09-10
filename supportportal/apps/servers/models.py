@@ -32,21 +32,30 @@ class Server(models.Model):
             if not self.id:
                 self.created = datetime.today()
             self.modified = datetime.today()
-            super(Server, self).save(*args, **kwargs)    
+            super(Server, self).save(*args, **kwargs)
 
     def dump_to_dict(self, full=False):
         response = {
             'id': self.pk,
             'name': self.name,
-            'ip': str(self.ip),
             'os': self.os,
             'type': self.type,
         }
 
+        if self.ip:
+            response.update({
+                'ip': {
+                    'address': str(self.ip.address),
+                    'cidr': self.ip.cidr
+                }
+            })
+        else:
+            response.update({'ip': ""})
+
         if full is True:
             response.update({
                 'username': self.username,
-                'password': self.password, 
+                'password': self.password,
                 'location': self.location,
                 'uplink': self.uplink,
                 'notes': self.notes

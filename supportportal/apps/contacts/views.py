@@ -9,7 +9,7 @@ from common.helpers import format_ajax_response
 from apps.companies.models import Company
 from apps.loggers.models import ActionLogger, AuthenticationLogger
 # App
-from .forms import ContactForm, ContactPasswordForm
+from .forms import ContactForm, ContactPasswordForm, ContactCreationForm
 from .models import Contact
 
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 def detail(request, user_id):
     """Contact Detail View
 
-        Retrieve Contact details as specified by contact.pk. 
+        Retrieve Contact details as specified by contact.pk.
 
     Middleware
         See SETTINGS for active Middleware.
@@ -29,7 +29,7 @@ def detail(request, user_id):
             request.user.is_authenticated() must be True
     Parameters
         request: HttpRequest
-        user_id: int Contact id 
+        user_id: int Contact id
     Returns
         HttpResponse (contacts/detail.html)
             user_details: queryset contact
@@ -43,17 +43,107 @@ def detail(request, user_id):
     return render(request, 'contacts/detail.html', {'user_details': user})
 
 
-@validated_request(ContactForm)
-def create(request): 
+@validated_request(None)
+def get(request, user_id):
+    """Get Contact
+
+        Retrieves Contact details as specified by contact.pk.
+
+    Middleware
+        See SETTINGS for active Middleware.
+    Decorators
+        @validated_request
+            request.method must be POST
+            request.is_ajax() must be True
+            request.user.is_authenticated() must be True
+    Parameters
+        request: HttpRequest
+        user_id: int Contact id
+    Returns
+        HttpResponse (JSON)
+            success: int status result
+            message: str response message
+            *data:
+                contact:
+    """
+    try:
+        contact = Contact.objects.get(pk=user_id)
+
+        if not contact.company == request.user.company:
+            raise Exception("Forbidden: requesting user doesn't have permission to specified Company's Contacts.")
+
+        return format_ajax_response(True, "Contact retrieved successfully.", {'contact': contact.dump_to_dict(full=True)})
+    except Exception as ex:
+        logger.error("Failed to get: %s" % ex)
+        return format_ajax_response(False, "There was an error retrieving contact.")
+
+
+@validated_request(None)
+def set(request):
+    """Set Contact
+
+        Updates Contact as specified by contact.pk.
+
+    Middleware
+        See SETTINGS for active Middleware.
+    Decorators
+        @validated_request
+            request.method must be POST
+            request.is_ajax() must be True
+            request.user.is_authenticated() must be True
+    Parameters
+        request: HttpRequest
+            user_id: int contact id
+            email:
+            first_name:
+            last_name:
+            title:
+            personal_phone:
+            office_phone:
+            fax:
+            is_active:
+            role:
+    Returns
+        HttpResponse (JSON)
+            success: int status result
+            message: str response message
+    """
+    try:
+        user = Contact.objects.get(pk=int(request.POST['user_id']))
+
+        if not (request.user.company_id == user.company_id or request.user.is_staff == True):
+            raise Exception("Forbidden: requesting user doesn't have permission to access specified Company's Contacts.")
+
+        form = ContactForm(request.POST, instance=user)
+        if form.is_valid():
+            user = form.save()
+
+            if form.cleaned_data["role"] == "Admin" and request.user.is_admin is True:
+                user.is_admin = True
+            else:
+                user.is_admin = False
+
+            user.save()
+            ActionLogger().log(request.user, "modified",  "Contact %s" % user)
+            return format_ajax_response(True, "Contact set successfully.")
+        else:
+            return format_ajax_response(False, "Form data failed validation.", errors=dict((k, [unicode(x) for x in v]) for k,v in form.errors.items()))
+    except Exception as ex:
+        logger.error("Failed to set: %s" % ex)
+        return format_ajax_response(False, "There was an error updating specified contact.")
+
+
+@validated_request(ContactCreationForm)
+def create(request):
     """Create Contact
-    
+
         Creates new company contact.
 
     Middleware
         See SETTINGS for active Middleware.
     Decorators
         @validated_request
-            request.POST must validate against ContactForm        
+            request.POST must validate against ContactForm
             request.method must be POST
             request.is_ajax() must be True
             request.user.is_authenticated() must be True
@@ -62,7 +152,7 @@ def create(request):
             email: str email address
             first_name: str first name
             last_name: str last name
-            password: str password 
+            password: str password
             company: int company id
     Returns
         HttpResponse (JSON)
@@ -73,7 +163,7 @@ def create(request):
         company = Company.objects.get(pk=int(request.POST["company"]))
 
         if not (request.user.company_id == company.pk or request.user.is_admin == True):
-            raise Exception("Forbidden: requesting user doesn't have permission to specified Company's Contacts.")        
+            raise Exception("Forbidden: requesting user doesn't have permission to specified Company's Contacts.")
 
         contact = Contact.objects.create_user(
             email=request.form.cleaned_data["email"],
@@ -99,112 +189,22 @@ def create(request):
         return format_ajax_response(False, "There was an error creating contact.")
 
 
-@validated_request(None)
-def get(request, user_id):
-    """Get Contact
-
-        Retrieves Contact details as specified by contact.pk.
-
-    Middleware
-        See SETTINGS for active Middleware.
-    Decorators
-        @validated_request
-            request.method must be POST
-            request.is_ajax() must be True
-            request.user.is_authenticated() must be True         
-    Parameters
-        request: HttpRequest
-        user_id: int Contact id 
-    Returns
-        HttpResponse (JSON)
-            success: int status result
-            message: str response message
-            *data:
-                contact:
-    """   
-    try: 
-        contact = Contact.objects.get(pk=user_id)
-
-        if not contact.company == request.user.company:
-            raise Exception("Forbidden: requesting user doesn't have permission to specified Company's Contacts.")
-
-        return format_ajax_response(True, "Contact retrieved successfully.", {'contact': contact.dump_to_dict(full=True)})
-    except Exception as ex:
-        logger.error("Failed to get: %s" % ex)
-        return format_ajax_response(False, "There was an error retrieving contact.")
-
-
-@validated_request(None)
-def set(request):
-    """Set Contact
-
-        Updates Contact as specified by contact.pk. 
-
-    Middleware
-        See SETTINGS for active Middleware.
-    Decorators
-        @validated_request
-            request.method must be POST
-            request.is_ajax() must be True
-            request.user.is_authenticated() must be True 
-    Parameters
-        request: HttpRequest
-            user_id: int contact id
-            email:
-            first_name:
-            last_name:
-            title:
-            personal_phone:
-            office_phone:
-            fax:
-            is_active:
-            role:
-    Returns
-        HttpResponse (JSON)
-            success: int status result 
-            message: str response message 
-    """
-    try:
-        user = Contact.objects.get(pk=int(request.POST['user_id']))  
-        
-        if not (request.user.company_id == user.company_id or request.user.is_admin == True):
-            raise Exception("Forbidden: requesting user doesn't have permission to access specified Company's Contacts.")
-
-        form = ContactForm(request.POST, instance=user)
-        if form.is_valid():
-            user = form.save()
-
-            if form.cleaned_data["role"] == "Admin":
-                user.is_admin = True
-            else:
-                user.is_admin = False
-
-            user.save()
-            ActionLogger().log(request.user, "modified",  "Contact %s" % user)
-            return format_ajax_response(True, "Contact set successfully.")
-        else:
-            return format_ajax_response(False, "Form data failed validation.", errors=dict((k, [unicode(x) for x in v]) for k,v in form.errors.items()))
-    except Exception as ex:
-        logger.error("Failed to set: %s" % ex)
-        return format_ajax_response(False, "There was an error updating specified contact.")
-
-
 @validated_request(ContactPasswordForm)
 def chpw(request):
     """Set Contact password
 
-        Updates password for Contact as specified by contact.pk. 
+        Updates password for Contact as specified by contact.pk.
 
     Middleware
         See SETTINGS for active Middleware.
     Decorators
         @validated_request
-            request.POST must validate against ContactPasswordForm        
+            request.POST must validate against ContactPasswordForm
             request.method must be POST
             request.is_ajax() must be True
-            request.user.is_authenticated() must be True 
+            request.user.is_authenticated() must be True
     Parameters
-        request: HttpRequest 
+        request: HttpRequest
             user_id: int contact id
             old_password: str old password
             new_password1: str new password
@@ -214,9 +214,9 @@ def chpw(request):
             message: str response message
     """
     try:
-        user = Contact.objects.get(pk=int(request.POST['user_id']))  
-        
-        if not (request.user.company_id == user.company_id or request.user.is_admin == True):
+        user = Contact.objects.get(pk=int(request.POST['user_id']))
+
+        if not (request.user.company_id == user.company_id or request.user.is_staff == True):
             raise Exception("Forbidden: requesting user doesn't have permission to access specified Company's Contacts.")
 
         if user.check_password(request.form.cleaned_data['old_password']):
@@ -244,10 +244,10 @@ def get_logs(request, user_id):
         @validated_request
             request.method must be POST
             request.is_ajax() must be True
-            request.user.is_authenticated() must be True         
+            request.user.is_authenticated() must be True
     Parameters
         request: HttpRequest
-        user_id: int Contact id 
+        user_id: int Contact id
     Returns
         HttpResponse (JSON)
             success: int status result
@@ -263,10 +263,10 @@ def get_logs(request, user_id):
                     action:
                     timestamp:
                     actor:
-    """    
+    """
     try:
-        user = Contact.objects.get(pk=user_id)  
-        
+        user = Contact.objects.get(pk=user_id)
+
         if not (request.user.company_id == user.company_id or request.user.is_admin == True):
             raise Exception("Forbidden: requesting user doesn't have permission to access specified Company's Contacts.")
 
@@ -276,7 +276,7 @@ def get_logs(request, user_id):
 
         actionloggers = []
         for action in ActionLogger.objects.filter(actor=user_id).order_by("-timestamp")[:10]:
-            actionloggers.append(action.dump_to_dict())  
+            actionloggers.append(action.dump_to_dict())
 
         return format_ajax_response(True, "Logs retrieved successfully.", {'authentication': authloggers, 'action': actionloggers})
     except Exception as ex:
