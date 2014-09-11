@@ -40,6 +40,7 @@ class Server(models.Model):
             'name': self.name,
             'os': self.os,
             'type': self.type,
+            'sid': self.sid
         }
 
         if self.ip:

@@ -10,7 +10,7 @@ from common.decorators import validated_request, validated_service
 from common.helpers import format_ajax_response
 # App
 from .models import Server
-from .forms import ServerForm
+from .forms import ServerAdminForm, ServerClientForm
 
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,12 @@ def index(request, service_id):
             service_id: int service id
             serverform: form ServerForm
     """
-    return render(request, 'servers/index.html', {'service_id': service_id, 'serverform': ServerForm()})
+    if request.user.is_staff:
+        serverform = ServerAdminForm()
+    else:
+        serverform = ServerClientForm()
+
+    return render(request, 'servers/index.html', {'service_id': service_id, 'serverform': serverform})
 
 
 @login_required
@@ -59,7 +64,12 @@ def detail(request, service_id, server_id):
             serverform: form ServerForm
     """
     server = get_object_or_404(Server, pk=server_id)
-    serverform = ServerForm(instance=server)
+
+    if request.user.is_staff:
+        serverform = ServerAdminForm(instance=server)
+    else:
+        serverform = ServerClientForm(instance=server)
+
     return render(request, 'servers/detail.html', {'service_id': service_id, 'server': server, 'serverform': serverform})
 
 
@@ -184,7 +194,13 @@ def set_server(request, service_id):
         if "server_id" in request.POST and request.POST['server_id']:
             # Esnure Server belongs to specified Service
             if int(request.POST["server_id"]) in service_vars["server_ids"]:
-                form = ServerForm(request.POST, instance=get_object_or_404(Server, pk=int(request.POST["server_id"])))
+                s = get_object_or_404(Server, pk=int(request.POST["server_id"]))
+
+                if request.user.is_staff:
+                    form = ServerAdminForm(request.POST, instance=s)
+                else:
+                    form = ServerClientForm(request.POST, instance=s)
+
                 if form.is_valid():
                     server = form.save()
                     ActionLogger().log(request.user, "modified", "Server %s" % server)
@@ -195,7 +211,11 @@ def set_server(request, service_id):
                 # Deny attempt to modify Server that is not in Service's Server_ID's
                 raise Exception("Forbidden: specified Server does not belong to specified Service.")
         else:
-            form = ServerForm(request.POST)
+            if request.user.is_staff:
+                    form = ServerAdminForm(request.POST)
+            else:
+                form = ServerClientForm(request.POST)
+
             if form.is_valid():
                 server = form.save()
 

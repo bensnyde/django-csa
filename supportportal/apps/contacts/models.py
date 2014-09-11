@@ -73,6 +73,11 @@ class Contact(AbstractBaseUser):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name', 'company', 'password']
 
+
+    def email_user(self, subject, message, from_email=None):
+        send_mail(subject, message, from_email, [self.email])
+
+
     def dump_to_dict(self, full=False):
         response = {
             'id': self.pk,
@@ -125,12 +130,7 @@ class Contact(AbstractBaseUser):
             return False
 
     def get_full_name(self):
-        # The user is identified by their email address
         return self.first_name + ' ' + self.last_name
-
-    def get_short_name(self):
-        # The user is identified by their email address
-        return self.email
 
     def timesince_created(self, now=None):
             return timesince(self.created, now)
@@ -148,9 +148,10 @@ class Contact(AbstractBaseUser):
 
     @property
     def is_staff(self):
-        "Is the user a member of staff?"
-        # Simplest possible answer: All admins are staff
-        return self.is_admin
+        if not self.company:
+            return True
+        else:
+            return False
 
 # move me
 def search(query, company_id):
