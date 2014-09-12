@@ -62,8 +62,7 @@ class Contact(AbstractBaseUser):
     office_phone = models.CharField(verbose_name="Office Phone Number", max_length=64, blank=True, null=True, validators=[RegexValidator(regex='^[a-zA-Z0-9 ()-]*$', message='Only alphanumeric characters, spaces, paraentheses, and hyphens are allowed.'),])
     fax = models.CharField(verbose_name="Fax Number", max_length=64, blank=True, null=True, validators=[RegexValidator(regex='^[a-zA-Z0-9 ()-]*$', message='Only alphanumeric characters, spaces, paraentheses, and hyphens are allowed.'),])
     is_active = models.BooleanField(default=True)
-    is_admin = models.BooleanField(default=False)
-    company = models.ForeignKey(Company, blank=False, null=False)
+    company = models.ForeignKey(Company, blank=True, null=True)
     role = models.CharField(max_length=32, choices=ROLE_CHOICES, default="Tech")
     created = models.DateTimeField(default=datetime.now)
     notifications = models.BooleanField(default=True)
@@ -95,9 +94,13 @@ class Contact(AbstractBaseUser):
                 'fax': self.fax,
                 'is_active': self.is_active,
                 'is_admin': self.is_admin,
-                'company': self.company.name,
                 'created': str(self.created)
             })
+
+            try:
+                response.update({'company': self.company.name})
+            except Company.DoesNotExist:
+                pass
 
         return response
 
@@ -147,11 +150,21 @@ class Contact(AbstractBaseUser):
 
 
     @property
-    def is_staff(self):
-        if not self.company:
+    def is_admin(self):
+        if self.role == "Admin":
             return True
         else:
             return False
+
+    @property
+    def is_staff(self):
+        try:
+            if self.company:
+                return False
+        except:
+            pass
+
+        return True
 
 # move me
 def search(query, company_id):

@@ -71,7 +71,7 @@
     getTickets();
 
     // hosts event bindings
-    $('#tickets-table').on('click', 'tr', function () {
+    $('#tickets-tbody').on('click', 'tr', function () {
         window.location = "{% url 'tickets:detail' 0 %}".replace('0', $(this).data('id'));
     });
 {% endblock %}

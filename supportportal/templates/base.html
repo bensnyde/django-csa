@@ -160,16 +160,74 @@
     <!-- BEGIN HEADER -->
     {% block header_nav %}
       <!-- BEGIN TOP NAVIGATION BAR -->
-      <div class="navbar navbar-default navbar-fixed-top">
-        <div class="container">
+      <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+        <div class="container-fluid">
+          <div class="navbar-header">
             <!-- BEGIN LOGO -->
-            <div style="padding-top: 10px; float: left">
               <a href="{% url 'apps.dashboard.views.index' %}" style="font-size: 24px; color: #ffffff">Company Name</a>
-            </div>
             <!-- END LOGO -->
+          </div>
+          <div class="collapse navbar-collapse">
+            <!-- BEGIN LEFT NAVBAR -->
+            <ul class="nav navbar-nav">
+              <li class="active"><a href="{% url 'apps.dashboard.views.index' %}">Dashboard</a></li>
 
-            <!-- BEGIN TOP NAVIGATION MENU -->
-            <ul class="nav navbar-nav pull-right">
+              <!-- BEGIN ACCOUNTS DROPDOWN -->
+              <li class="dropdown">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Accounts <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  {% if user.is_staff %}
+                    <li><a href="{% url 'companies:index' %}"><i class="fa fa-user"></i> Companies Index</a></li>
+                    <li><a href="{% url 'contacts:index' %}"><i class="fa fa-user"></i> Contacts Index</a></li>
+                  {% else %}
+                    <li><a href="{% url 'companies:detail' user.company_id %}">Company</a></li>
+                    <li><a href="{% url 'contacts:detail' user.id %}">Contact</a></li>
+                  {% endif %}
+                </ul>
+              </li>
+              <!-- END ACCOUNTS DROPDOWN -->
+
+              <!-- BEGIN SERVICES DROPDOWN -->
+              <li class="dropdown">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Services <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                  <li><a href="{% url 'ip:index' %}">IP Management</a></li>
+                  {% if user.is_staff %}
+                    <li><a href="#">Service Management</a></li>
+                  {% else %}
+                    {% for service in user.get_services %}
+                      <li><a href="{{ service.uri }}{{ service.id }}">{{ service.name }}</a></li>
+                    {% endfor %}
+                  {% endif %}
+                </ul>
+              </li>
+              <!-- END SERVICES DROPDOWN -->
+
+              <!-- BEGIN SUPPORT DROPDOWN -->
+              <li class="dropdown">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Support <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                    <li><a href="{% url 'tickets:index' %}"><i class="fa fa-user"></i> Tickets Index</a></li>
+                    <li><a href="{% url 'knowledgebase:index'%}"><i class="fa fa-user"></i> Knowledgebase</a></li>
+                    <li><a href="{% url 'contact:index' %}"><i class="fa fa-user"></i> Contact Us</a></li>
+                </ul>
+              </li>
+              <!-- END SUPPORT DROPDOWN -->
+            </ul>
+            <!-- END LEFT NAVBAR -->
+
+            <!-- BEGIN RIGHT NAVBAR -->
+            <ul class="nav navbar-nav navbar-right">
+              <!-- BEGIN SEARCH -->
+              <li>
+                <form class="navbar-form navbar-left" role="form" id="searchform" action="{% url 'search:results' %}" method="POST">{% csrf_token %}
+                  <div class="form-group">
+                    <input type="text" class="form-control" placeholder="Search..." name="querystr" onkeyup="lookup(this.value);">
+                  </div>
+                </form>
+              </li>
+              <!-- END SEARCH -->
+
               <!-- BEGIN USER LOGIN DROPDOWN -->
               <li class="dropdown">
                 <a href="#" class="dropdown-toggle" data-toggle="dropdown"><span>{{ user.get_full_name }}&nbsp;</span><i class="fa fa-angle-down"></i></a>
@@ -182,7 +240,7 @@
               </li>
               <!-- END USER LOGIN DROPDOWN -->
             </ul>
-            <!-- END TOP NAVIGATION MENU -->
+            <!-- END RIGHT NAVBAR -->
           </div>
         </div>
       </div>
@@ -215,71 +273,7 @@
 
       <!-- BEGIN BODY CONTENT -->
       <div class="row">
-        <div class="col-md-3">
-          <!-- BEGIN SIDEBAR -->
-          {% block sidebar_nav %}
-            <div class="navbar">
-              <!-- BEGIN SIDEBAR MENU -->
-              <ul class="list-unstyled">
-                <li>
-                  <!-- BEGIN RESPONSIVE QUICK SEARCH FORM -->
-                  <div id="searchcontainer">
-                  <form class="form" role="form" id="searchform" action="{% url 'search:results' %}" method="POST">{% csrf_token %}
-                    <div class="form-group">
-                      <div class="input-group">
-                        <input type="text" class="form-control" placeholder="Search..." name="querystr" onkeyup="lookup(this.value);">
-                      </div>
-                    </div>
-                  </form>
-                 </div>
-                  <!-- END RESPONSIVE QUICK SEARCH FORM -->
-                </li>
-                <li>
-                  <a href="{% url 'apps.dashboard.views.index' %}">
-                    <i class="fa fa-home"></i>
-                    <span class="title">Dashboard</span>
-                  </a>
-                </li>
-                <li>
-                  <a>
-                    <i class="fa fa-user"></i>
-                    <span class="title">Accounts</span>
-                  </a>
-                  <ul class="sub-menu">
-                    <li><a href="{% url 'companies:detail' user.company_id %}">Company</a></li>
-                    <li><a href="{% url 'contacts:detail' user.id %}">User</a></li>
-                  </ul>
-                </li>
-                <li>
-                  <a>
-                    <i class="fa fa-cogs"></i>
-                    <span class="title">Services</span>
-                  </a>
-                  <ul id="services-list" class="sub-menu">
-                    <li><a href="{% url 'ip:index' %}">IP Hosting</a></li>
-                    {% for service in user.get_services %}
-                      <li><a href="{{ service.uri }}{{ service.id }}">{{ service.name }}</a></li>
-                    {% endfor %}
-                  </ul>
-                </li>
-                <li>
-                  <a>
-                    <i class="fa fa-wrench"></i>
-                    <span class="title">Support</span>
-                  </a>
-                  <ul class="sub-menu">
-                    <li><a href="{% url 'tickets:index' %}">Trouble Tickets</a></li>
-                    <li><a href="{% url 'knowledgebase:index' %}">Knowledgebase</a></li>
-                    <li><a href="{% url 'contact:index' %}">Contact Us</a></li>
-                  </ul>
-                </li>
-              </ul>
-              <!-- END SIDEBAR MENU -->
-            </div>
-          {% endblock %}
-          <!-- END SIDEBAR -->
-        </div>
-        <div class="col-md-9">
+        <div class="col-md-12">
           <!-- BEGIN PAGE CONTENT -->
           {% block content %}{% endblock %}
           <!-- END PAGE CONTENT -->

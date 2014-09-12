@@ -1,160 +1,22 @@
+{% extends "base.html" %}
+
 {% load staticfiles %}
 {% load common_tags %}
 
-{% block start_html %}
- <!DOCTYPE html>
- <html lang="en"> 
-{% endblock start_html %}
+{% block sitetitle %}| Dashboard{% endblock %}
+{% block heading %}Admin Portal <small>Dashboard</small>{% endblock %}
 
-{% block head %}
-  <head>
-    {% block meta %}
-     <title>Cybercon | Support Portal {% block sitetitle %}{% endblock %}</title>
-     <meta charset="utf-8" />
-     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-     <meta content="Cybercon Support Portal" name="description" />
-     <meta content="Benton Snyder" name="author" />
-    {% endblock meta %}
+{% block breadcrumbs %}{% endblock %}
 
-    {% block base_css %}
-     <link rel="shortcut icon" href="{% static '/assets/favicon.ico' %}" />
-     <!-- BEGIN STYLES -->
-      <link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css" rel="stylesheet">
-      <link href="//netdna.bootstrapcdn.com/bootswatch/3.1.1/cosmo/bootstrap.min.css" rel="stylesheet">
-     <!-- END STYLES -->   
-    {% endblock base_css %}
-   
-    {% block css %}{% endblock %}
+{% block css %}
+  <link rel="stylesheet" href="{% static '/assets/plugins/data-tables/DT_bootstrap.css' %}" />
+{% endblock %}
 
-     <style>
-      .page-head { border-bottom: 1px solid black; margin-bottom: 20px; }
-      .page-head h3 { padding: 0; margin: 0; display: inline; }
+{% block js %}
+  <script type="text/javascript" src="{% static '/assets/plugins/data-tables/jquery.dataTables.js' %}"></script>
+  <script type="text/javascript" src="{% static '/assets/plugins/data-tables/DT_bootstrap.js' %}"></script>
 
-      .preview-module { text-align: center; font-size: 8px; height: 100px;}
-     </style>
-
-
-    
-    
-    {% block base_top_js %}
-     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
-     <script type="text/javascript">
-        jQuery(document).ready(function() {    
-          getNews();
-          getTickets();
-          {% block jquery_document_ready %}{% endblock %}
-        });
-
-        // Default Error Callback function for AJAX calls
-        function defaultErrorCallback(xhr, ajaxOptions, thrownError) {
-            $("#flash-message").fadeIn();
-            switch (xhr.status) {
-                case 403:  // forbidden
-                    $("#flash-message").html('<div class="alert alert-danger">Illegal request: '+xhr.responseText+'</div>');
-                default:
-                  $("#flash-message").html('<div class="alert alert-danger">Server returned error.</div>');                          
-            }
-        }            
-
-        // Django CSRF protection
-        function sameOrigin(url) {
-          // test that a given url is a same-origin URL
-          // url could be relative or scheme relative or absolute
-          var host = document.location.host; // host + port
-          var protocol = document.location.protocol;
-          var sr_origin = '//' + host;
-          var origin = protocol + sr_origin;
-          // Allow absolute or scheme relative URLs to same origin
-          return (url == origin || url.slice(0, origin.length + 1) == origin + '/') ||
-            (url == sr_origin || url.slice(0, sr_origin.length + 1) == sr_origin + '/') ||
-            // or any other URL that isn't scheme relative or absolute i.e relative.
-            !(/^(\/\/|http:|https:).*/.test(url));
-        }    
-
-        // Django CSRF protection
-        function csrfSafeMethod(method) {
-          // these HTTP methods do not require CSRF protection
-          return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
-        }
-
-        // Django CSRF protection
-        function getCookie(name) {
-          var cookieValue = null;
-          if (document.cookie && document.cookie != '') {
-            var cookies = document.cookie.split(';');
-            for (var i = 0; i < cookies.length; i++) {
-              var cookie = jQuery.trim(cookies[i]);
-              // Does this cookie string begin with the name we want?
-              if (cookie.substring(0, name.length + 1) == (name + '=')) {
-                  cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                  break;
-              }
-            }
-          }
-          return cookieValue;
-        }
-
-        // Django CSRF protection
-        var csrftoken = getCookie('csrftoken');
-        $.ajaxSetup({
-          beforeSend: function(xhr, settings) {
-            if (!csrfSafeMethod(settings.type) && sameOrigin(settings.url)) {
-              // Send the token to same-origin, relative URLs only.
-              // Send the token only if the method warrants CSRF protection
-              // Using the CSRFToken value acquired earlier
-              xhr.setRequestHeader("X-CSRFToken", csrftoken);
-            }
-          }
-        });        
-
-        // Handle AJAX autocomplete Search results
-        function lookup(inputString) {
-          if(inputString.length == 0) {
-            $('#suggestions').fadeOut(); // Hide the suggestions box
-          } 
-          else {
-            function onSuccessCallback(result) {
-              if(!jQuery.isEmptyObject(result)) {
-                var out = '<div id="searchresults" class="list-group">';
-                for(category in result) {
-                  out = out + '<h4 class="category">'+category+'</h4>';
-                  for(record in result[category]) {
-                    out = out + '<div class="list-group-item"><div class="list-group-item-heading"><a href="'+result[category][record]['link']+'"><strong>'+result[category][record]['title']+'</strong></a></div>';
-                    if(result[category][record].hasOwnProperty('preview'))
-                      out = out + '<div class="list-group-item-text">'+result[category][record]['preview']+'</div>';
-                    out = out + '</div></div>'
-                  }
-                }
-
-                $('#suggestions').fadeIn(); // Show the suggestions box
-                $('#suggestions').html(out); // Fill the suggestions box
-              }
-              else {
-                // No results
-                $('#suggestions').fadeOut(); // Hide the suggestions box
-              }              
-            }
-
-            // Make the AJAX call
-            $.ajax({
-                url: "{% url 'search:results' %}",
-                type: "POST",
-                data: {querystr: inputString},
-                success: onSuccessCallback,
-                error: defaultErrorCallback
-            });
-          }
-        }  
-
-        // Customizes modal with specifications
-        function buildModal(label, body, saveaction) {
-            $('#flash-message').hide();
-            $('#mlabel').html(label);
-            $('#mbody').html(body);    
-            $('#msave').attr('onclick', saveaction);        
-            $("#mmodal").modal('show');
-        } 
-
+  <script type="text/javascript">
       function build_announcements_modal() {
         var modal_title = "Announcements Posting";
         var modal_onclick_action = "addNewsPosting()";
@@ -183,7 +45,7 @@
               </div> \
             </form>';
 
-        buildModal(modal_title, modal_body, modal_onclick_action); 
+        buildModal(modal_title, modal_body, modal_onclick_action);
       }
 
       function addNewsPosting() {
@@ -194,21 +56,21 @@
                       // AJAX call returned successful
                       $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
                       getNews();
-                      $('.modal.in').modal('hide');                         
-                  }                    
+                      $('.modal.in').modal('hide');
+                  }
                   else {
                       // AJAX call returned failed
                       $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
-                      if(result.hasOwnProperty('errors')) { 
+                      if(result.hasOwnProperty('errors')) {
                           // iterate through and display form validation errors
                           $.each(result.errors, function(k,v) {
                               $("#"+k+"-help").closest('div').addClass("has-error");
                               $("#"+k+"-help").html(v);
                           });
-                      }                        
+                      }
                   }
                   setTimeout("$('#flash-message').fadeOut()",2000);
-              }            
+              }
           }
 
           // Make the AJAX call
@@ -221,7 +83,7 @@
               },
               success: onSuccessCallback,
               error: defaultErrorCallback
-          });          
+          });
       }
 
       function delNewsPosting() {
@@ -231,20 +93,20 @@
                   if(result.success == 1) {
                       // AJAX call returned successful
                       $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
-                  }                    
+                  }
                   else {
                       // AJAX call returned failed
                       $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
-                      if(result.hasOwnProperty('errors')) { 
+                      if(result.hasOwnProperty('errors')) {
                           // iterate through and display form validation errors
                           $.each(result.errors, function(k,v) {
                               $("#id_"+k).closest('div').addClass("has-error");
                               $("#"+k+"-help").html(v);
                           });
-                      }                        
+                      }
                   }
                   setTimeout("$('#flash-message').fadeOut()",2000);
-              }            
+              }
           }
 
           // Make the AJAX call
@@ -254,12 +116,12 @@
               data: {news_id: 3},
               success: onSuccessCallback,
               error: defaultErrorCallback
-          });          
-      }      
+          });
+      }
 
         // Fetch Support Tickets summary via AJAX
         function getNews() {
-          // Destroy existing 
+          // Destroy existing
           $("#news-postings").html("");
 
             // onSuccess callback function
@@ -301,13 +163,13 @@
                 type: "POST",
                 success: onSuccessCallback,
                 error: defaultErrorCallback
-            });        
+            });
         }
-  
+
         // Fetch Tickets listing via AJAX
         function getTickets() {
           // Destroy existing
-            $("#tickets-tbody").html("");    
+            $("#tickets-tbody").html("");
 
             // onSuccess callback function
             function onSuccessCallback(result) {
@@ -333,12 +195,12 @@
                                 </tr>'
                             );
                         }
-                    }                    
+                    }
                     else {
                       // AJAX call returned failed
-                        $("#tickets-tbody").html("<tr><td colspan=5>"+result.message+"</td></tr>");    
+                        $("#tickets-tbody").html("<tr><td colspan=5>"+result.message+"</td></tr>");
                     }
-                }             
+                }
             }
 
             // Make the AJAX call
@@ -350,97 +212,24 @@
                 error: defaultErrorCallback
             });
         }
-     </script>
-    {% endblock base_top_js %}
-    {% block js %}{% endblock %} 
-  </head>
-{% endblock head %}
+  </script>
+{% endblock %}
 
-{% block extension_only_content %}{% endblock %}
+{% block jquery_document_ready %}
+  getNews();
+  getTickets();
 
-{% block body %}
-  <body style="padding-top: 70px; padding-bottom: 70px">
-    <!-- BEGIN HEADER -->
-    {% block header_nav %}
-      <!-- BEGIN TOP NAVIGATION BAR -->
-      <div class="navbar navbar-default navbar-fixed-top">
-        <div class="container">
+  $("#tickets-tbody").on('click', 'tr', function () {
+    window.location = "{% url 'tickets:detail' 0 %}".replace('0', $(this).data('id'));
+  });
+{% endblock %}
 
-    <div class="navbar-header">
-      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
-        <span class="sr-only">Toggle navigation</span>
-        <span class="icon-bar"></span>
-        <span class="icon-bar"></span>
-        <span class="icon-bar"></span>
-      </button>
-      <a class="navbar-brand" href="{% url 'apps.dashboard.views.index' %}" style="font-size: 24px; color: #ffffff">Cybercon</a>
-    </div>
-
-
-          <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-      <ul class="nav navbar-nav">
-        <li class="active"><a href="#">Admin Dashboard</a></li>
-        <li><a href="{% url 'companies:index' %}">Companies</a></li>
-        <li><a href="{% url 'services:index' %}">Services</a></li>
-      </ul>
+{% block content %}
+           <div id="flash-message"></div>
 
 
 
-            <!-- BEGIN TOP NAVIGATION MENU -->              
-            <ul class="nav navbar-nav pull-right">
-              <!-- BEGIN USER LOGIN DROPDOWN -->
-              <li class="dropdown">
-                <a href="#" class="dropdown-toggle" data-toggle="dropdown"><span>{{ user.get_full_name }}&nbsp;</span><i class="fa fa-angle-down"></i></a>
-                <ul class="dropdown-menu">
-                  <li><a href="{% url 'contacts:detail' user.id %}"><i class="fa fa-user"></i> My Profile</a></li>
-                  <li class="divider"></li>
-                  <li><a href="/logout/"><i class="fa fa-key"></i> Log Out</a></li>
-                </ul>
-              </li>
-              <!-- END USER LOGIN DROPDOWN -->
-            </ul>
-          </div>
 
-
-
-            <!-- END TOP NAVIGATION MENU --> 
-          </div>
-        </div>
-      </div>
-      <!-- END TOP NAVIGATION BAR -->
-    {% endblock %}
-    <!-- END HEADER -->
-
-    <!-- BEGIN BODY CONTAINER -->
-    <div class="container">
-      <!-- BEGIN HEADER -->
-      {% block page_header %}
-      <div class="row">
-        <div class="col-md-12">
-          <h3 class="page-title">{% block heading %}Admin Portal <small>Dashboard</small>{% endblock %}</h3>
-          <ul class="page-breadcrumb breadcrumb">
-            <li>
-              <i class="fa fa-home"></i>
-              <a href="{% url 'apps.dashboard.views.index' %}">Home</a> 
-            </li>
-            {% block breadcrumbs %}
-              <li>Dashboard</li>
-            {% endblock %}
-          </ul>
-        </div>
-      </div>
-      {% endblock %}
-      <!-- END HEADER -->
-
-      <!-- BEGIN BODY CONTENT -->
-      <div class="row">
-        <div class="col-md-12">
-          <input type="text" class="form-control" /><br />
-          <div id="flash-message"></div>
-
-
-
-            
             <div class="row">
               <!-- BEGIN NEWS CONTAINER -->
               <div class="col-md-6">
@@ -453,7 +242,7 @@
                     <div class="panel-body">
                       <!-- BEGIN NEWS POSTINGS -->
                       <div id="news-postings" class="list-group"></div>
-                      <!-- END NEWS POSTINGS -->                       
+                      <!-- END NEWS POSTINGS -->
                     </div>
                   </div>
               </div>
@@ -461,7 +250,8 @@
               <!-- BEGIN TICKETS CONTAINER -->
               <div class="col-md-6">
                   <div class="panel panel-default">
-                    <div class="panel-heading" style="font-weight: bold">Flagged Tickets</div>
+                    <div class="panel-heading" style="font-weight: bold">Flagged Tickets
+                      <span class="pull-right"><a href="{% url 'tickets:create_ticket' %}"><i class="fa fa-plus"></i></a></span></div>
                     <div class="panel-body">
                       <!-- BEGIN FLAGGED TICKETS -->
                       <div id="flagged-tickets" class="list-group">
@@ -477,34 +267,14 @@
                           <tbody id="tickets-tbody"></tbody>
                         </table>
                       </div>
-                      <!-- END FLAGGED TICKETS -->                       
+                      <!-- END FLAGGED TICKETS -->
                     </div>
                   </div>
               </div>
-              <!-- END TICKETS CONTAINER -->                
+              <!-- END TICKETS CONTAINER -->
             </div>
-            
 
         </div>
-      </div>
-      <!-- END BODY CONTENT -->
-    </div>
-    <!-- END BODY CONTAINER --> 
-
-    <!-- BEGIN FOOTER -->
-    {% block footer_nav %}
-     <div class="navbar navbar-fixed-bottom" style="background-color: #f5f5f5">
-      <div class="container">
-        <div class="col-md-8">
-          &copy; 2013 <a href="http://cybercon.com" alt="Cybercon">Cybercon</a> All rights reserved.
-        </div>
-        <div class="col-md-4">
-          <span style="background-color: lightgray; float: right; display: block; text-decoration: none; cursor: pointer; margin-top: 6px; font-size: 16px; padding: 0 6px 0 6px"><i class="fa fa-angle-up"></i></span>
-        </div>
-      </div>
-     </div>
-    {% endblock footer_nav %}
-    <!-- END FOOTER -->
 
     <!-- BEGIN MODAL -->
     <div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
@@ -531,17 +301,5 @@
             </div>
         </div>
     </div>
-    <!-- END MODAL -->    
-
-    <!-- BEGIN JAVASCRIPTS -->
-    {% block base_bottom_js %}
-     <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>     
-     <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
-    {% endblock base_bottom_js %} 
-    <!-- END JAVASCRIPTS --> 
-  </body>
-{% endblock body %}
-
-{% block end_html %}
- </html>
-{% endblock end_html %}
+    <!-- END MODAL -->
+{% endblock %}

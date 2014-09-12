@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
 # Proejct
-from common.decorators import validated_request
+from common.decorators import validated_request, validated_staff
 from common.helpers import format_ajax_response
 from apps.companies.models import Company
 from apps.loggers.models import ActionLogger, AuthenticationLogger
@@ -14,6 +14,12 @@ from .models import Contact
 
 
 logger = logging.getLogger(__name__)
+
+
+@validated_staff
+def index(request):
+    contacts = Contact.objects.filter(is_active=True)
+    return render(request, 'contacts/index.html', {'contacts': contacts})
 
 
 @login_required
@@ -36,9 +42,14 @@ def detail(request, user_id):
     """
     user = get_object_or_404(Contact, pk=user_id)
 
-    if not user.company == request.user.company:
-        logger.error("Forbidden: requesting user doesn't have permission to specified Company's Contacts.")
-        return HttpResponseForbidden()
+    try:
+        if user.company is not request.user.company:
+            logger.error("Forbidden: requesting user doesn't have permission to specified Company's Contacts.")
+            return HttpResponseForbidden()
+    except Company.DoesNotExist:
+        if not request.user.is_staff:
+            logger.error("Forbidden: customer attempted access to staff profile.")
+            return HttpResponseForbidden()
 
     return render(request, 'contacts/detail.html', {'user_details': user})
 
@@ -69,8 +80,12 @@ def get(request, user_id):
     try:
         contact = Contact.objects.get(pk=user_id)
 
-        if not contact.company == request.user.company:
-            raise Exception("Forbidden: requesting user doesn't have permission to specified Company's Contacts.")
+        try:
+            if contact.company is not request.user.company:
+                raise Exception("Forbidden: requesting user doesn't have permission to specified Company's Contacts.")
+        except Company.DoesNotExist:
+            if not request.user.is_staff:
+                raise Exception("Forbidden: customer attempted access to staff profile.")
 
         return format_ajax_response(True, "Contact retrieved successfully.", {'contact': contact.dump_to_dict(full=True)})
     except Exception as ex:

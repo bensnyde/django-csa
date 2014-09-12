@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 
 
@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 def index(request):
     """Dashboard View
 
-        Renders base Dashboard. 
+        Renders base Dashboard.
 
     Middleware
         See SETTINGS for active Middleware.
@@ -17,5 +17,8 @@ def index(request):
         request: Httprequest
     Returns
         HttpResponse (dashboard/index.html)
-    """    
-    return render(request, 'dashboard/index.html')
+    """
+    if request.user.is_staff:
+        return redirect('backend:index')
+    else:
+        return render(request, 'dashboard/index.html')
