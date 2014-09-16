@@ -31,22 +31,29 @@ class Company(models.Model):
 		self.modified = datetime.today()
 		super(Company, self).save(*args, **kwargs)
 
-	def dump_to_dict(self):
-		return {
+	def dump_to_dict(self, full=False):
+		response = {
+			'id': self.pk,
 			'name': self.name,
-			'description': self.description,
-			'created': self.created.strftime("%Y-%m-%d @ %r"),
+			'created': self.created.strftime("%Y-%m-%d"),
 			'modified': self.modified.strftime("%Y-%m-%d"),
-			'website': self.website,
-			'address1': self.address1,
-			'address2': self.address2,
-			'city': self.city,
-			'state': self.state,
-			'zip': self.zip,
-			'phone': self.phone,
-			'fax': self.fax,
 			'status': ("Inactive", "Active")[self.status],
 		}
+
+		if full:
+			response.update({
+				'website': self.website,
+				'address1': self.address1,
+				'address2': self.address2,
+				'city': self.city,
+				'state': self.state,
+				'zip': self.zip,
+				'phone': self.phone,
+				'fax': self.fax,
+				'description': self.description
+			})
+
+		return response
 
 def search(query):
 	return Company.objects.filter(name__icontains=query)

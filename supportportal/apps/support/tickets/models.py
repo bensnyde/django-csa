@@ -6,95 +6,146 @@ from apps.contacts.models import Contact
 from django.template import defaultfilters
 from django.utils.timesince import timesince
 
-class Ticket(models.Model):
-    # Ticket Status choices
-    STATUS_CHOICES = (
-        ('Closed', 'Closed'),
-        ('Open', 'Open'),
+
+class Queue(models.Model):
+    EMAIL_TYPE_CHOICES = (
+        ('pop3', 'POP3'),
+        ('imap', 'IMAP4')
     )
 
-    # Ticket Priority choices
-    PRIORITY_CHOICES = (
-        ('Low', 'Low'),
-        ('Normal', 'Normal'),
-        ('Urgent', 'Urgent'),
-    )
-
-    contacts = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="ticket_contacts", blank=True, null=True)
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="ticket_author", blank=False, null=False)
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="ticket_owner")
-    priority = models.CharField(max_length=6, choices=PRIORITY_CHOICES, default='Normal')
-    status = models.CharField(max_length=6, choices=STATUS_CHOICES, default='Open')
-    flagged = models.BooleanField(default=True)
-    description = models.CharField(max_length=128, null=False, blank=False)
-    date = models.DateTimeField(default=datetime.now)
-    service = models.ForeignKey(Service)
+    title = models.CharField(max_length=128, null=False, blank=False, unique=True)
+    allow_email_submission = models.BooleanField(default=False, blank=True)
+    email_address = models.EmailField(blank=True, null=True)
+    email_type = models.CharField(max_length=5, blank=True, null=True, choices=EMAIL_TYPE_CHOICES)
+    email_host = models.CharField(max_length=128, blank=True, null=True)
+    email_port = models.IntegerField(blank=True, null=True)
+    email_ssl = models.BooleanField(blank=True, default=False)
+    email_username = models.CharField(max_length=128, blank=True, null=True)
+    email_password = models.CharField(max_length=256, blank=True, null=True)
+    email_fetch_interval = models.IntegerField(default=5, blank=True, null=True)
+    email_last_checked = models.DateTimeField(blank=True, null=True, editable=False)
 
     def __unicode__(self):
-        return self.description  
+        return "%s" % self.title
+
+    def dump_to_dict(self, full=False):
+        response = {
+            'id': self.pk,
+            'title': self.title,
+            'allow_email_submission': self.allow_email_submission,
+            'email_address': (self.email_address, "")[self.email_address is None]
+        }
+
+        if full:
+            response.update({
+                'email_address': self.email_address,
+                'email_type': self.email_type,
+                'email_host': self.email_host,
+                'email_port': self.email_port,
+                'email_ssl': self.email_ssl,
+                'email_username': self.email_username,
+                'email_fetch_interval': self.email_fetch_interval,
+                'email_last_checked': defaultfilters.date(self.email_last_checked, "SHORT_DATETIME_FORMAT")
+            })
+
+        return response
+
+
+class Ticket(models.Model):
+    STATUS_OPEN = 1
+    STATUS_CLOSED = 0
+
+    STATUS_CHOICES = (
+        (STATUS_CLOSED, 'Closed'),
+        (STATUS_OPEN, 'Open'),
+    )
+
+    PRIORITY_LOW = 1
+    PRIORITY_NORMAL = 2
+    PRIORITY_URGENT = 3
+
+    PRIORITY_CHOICES = (
+        (PRIORITY_LOW, 'Low'),
+        (PRIORITY_NORMAL, 'Normal'),
+        (PRIORITY_URGENT, 'Urgent'),
+    )
+
+    contacts = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, null=True)
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="author", blank=False, null=False)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="owner", blank=True, null=True)
+    priority = models.IntegerField(choices=PRIORITY_CHOICES, default=PRIORITY_NORMAL, blank=True)
+    status = models.IntegerField(choices=STATUS_CHOICES, default=STATUS_OPEN, blank=True)
+    flagged = models.BooleanField(default=True, blank=True)
+    description = models.CharField(max_length=256, null=False, blank=False)
+    date = models.DateTimeField(default=datetime.now, blank=True)
+    service = models.ForeignKey(Service, blank=True, null=True)
+    queue = models.ForeignKey(Queue, null=False, blank=False)
+    due_date = models.DateTimeField(default=datetime.now, blank=True)
+
+    def __unicode__(self):
+        return "%s" % self.description
 
     def dump_to_dict(self, full=False, admin=False):
+        response = {
+            'id': self.pk,
+            'description': self.description,
+            'author': self.author.get_full_name(),
+            'owner': self.owner.get_full_name(),
+            'flagged': self.flagged,
+            'queue': self.queue.title,
+            'status': self.status,
+            'priority': self.priority,
+            'date': defaultfilters.date(self.date, "SHORT_DATETIME_FORMAT"),
+            'due_date': defaultfilters.date(self.due_date, "SHORT_DATETIME_FORMAT"),
+            'lastupdate': timesince(self.date),
+        }
+
         if full:
             posts = []
             for post in Post.objects.filter(ticket=self.id):
                 if admin is True or post.visible is True:
-                    posts.append(post.dump_to_dict())   
-                         
-            response = {
-                        'author': self.author.get_full_name(),
-                        "description": self.description,
-                        'status': self.status,
-                        'priority': self.priority,
-                        'cc_list': get_ticket_contacts_list(self.id, self.author.company_id),
-                        'posts': posts
-                    }
+                    posts.append(post.dump_to_dict())
 
-            if self.service:
-                response.update({'service': self.service.name})
-            else:
-                response.update({'service': "Other"})  
-        else:
-            response = {
-                "id": self.pk, 
-                "description": self.description, 
-                "author": self.author.get_full_name(), 
-                "date": defaultfilters.date(self.date, "SHORT_DATETIME_FORMAT"), 
-                "priority": self.priority,
-                "flagged": self.flagged,
-                "owner": self.owner.get_full_name(),
-                "lastupdate": timesince(self.date)
-            }                  
+            response.update({
+                'cc_list': get_ticket_contacts_list(self.id, self.author.company_id),
+                'posts': posts,
+                'service': ("Other", self.service.name)[self.service]
+            })
 
-        return response        
+        return response
+
 
 class Post(models.Model):
-    ticket = models.ForeignKey(Ticket, blank=False)
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="post_author", blank=False)
-    contents = models.TextField(blank=True)
+    ticket = models.ForeignKey(Ticket, blank=False, null=False)
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, blank=False, null=False)
+    contents = models.TextField(blank=False, null=False)
     date = models.DateTimeField(auto_now_add=True, blank=True)
-    flagged = models.BooleanField(default=False)
-    visible = models.BooleanField(default=True)
-    attachment = models.FileField(upload_to="attachments/%Y/%m/%d",blank=True)
+    flagged = models.BooleanField(default=False, blank=True)
+    visible = models.BooleanField(default=True, blank=True)
+    attachment = models.FileField(upload_to="attachments/%Y/%m/%d", blank=True, null=True)
 
     def __unicode__(self):
-        return self.contents
+        return "%s" % self.contents
 
     def dump_to_dict(self):
-        attachment = 0
-        if self.attachment:
-            attachment = {"url": self.attachment.url, "size": self.attachment.size, "name": self.attachment.name}
-
-        response = {
-            "id": self.pk, 
-            "author": self.author.get_full_name(), 
-            "contents": self.contents, 
-            "date": defaultfilters.date(self.date, "SHORT_DATETIME_FORMAT"), 
-            "attachment": attachment,
+        return {
+            "id": self.pk,
+            "author": self.author.get_full_name(),
+            "contents": self.contents,
+            "date": defaultfilters.date(self.date, "SHORT_DATETIME_FORMAT"),
+            "attachment": (0, {"url": self.attachment.url, "size": self.attachment.size, "name": self.attachment.name})[self.attachment],
             'flagged': self.flagged,
             'visible': self.visible
-        }       
+        }
 
-        return response   
+
+class Post_Macro(models.Model):
+    queues = models.ManyToManyField(Queue, blank=True, null=True)
+    name = models.CharField(max_length=128, blank=False, null=False)
+    body = models.TextField(blank=False, null=False)
+
+    def __unicode__(self):
+        return "%s" % self.name
 
 
 def get_tickets_summary(user_id, company_id):
@@ -106,7 +157,7 @@ def get_tickets_summary(user_id, company_id):
         user_id: int user id
         company_id: int company id
     Returns
-        result: 
+        result:
             user:
                 open: int number of open tickets for specified user
                 total: int number of total tickets for specified user
@@ -126,8 +177,8 @@ def get_tickets_summary(user_id, company_id):
         }
     except:
         result = False
-    
-    return result   
+
+    return result
 
 
 def get_ticket_contacts_list(ticket_id, company_id):
@@ -139,7 +190,7 @@ def get_ticket_contacts_list(ticket_id, company_id):
         ticket_id: int ticket id
         company_id: int company id
     Returns
-        result: 
+        result:
             current_contacts: queryset of Contact objects currently assigned to specified Ticket object
             potential_contacts: queryset of Contact objects able to still be assigned to specified Ticket object
     """
@@ -155,7 +206,7 @@ def get_ticket_contacts_list(ticket_id, company_id):
             potential_list.append({"id": contact.pk, "name": contact.get_full_name(), "email": contact.email})
 
         result = {
-            "current_contacts": current_list, 
+            "current_contacts": current_list,
             "potential_contacts": potential_list
         }
     except:
@@ -172,7 +223,7 @@ def set_ticket_contacts_list(ticket_id, contacts):
         ticket_id: int ticket id
         contacts: list of int contact id's
     Returns
-        result: 
+        result:
             current_contacts: queryset of Contact objects currently assigned to specified Ticket object
             potential_contacts: queryset of Contact objects able to still be assigned to specified Ticket object
     """
@@ -183,13 +234,13 @@ def set_ticket_contacts_list(ticket_id, contacts):
         if all(x.isdigit() for x in contacts):
             for contact in Contact.objects.filter(pk__in=contacts):
                 if ticket.author.company_id == contact.company_id:
-                    ticket.contacts.add(contact)      
-    
+                    ticket.contacts.add(contact)
+
         result = True
     except:
         result = False
 
-    return result    
+    return result
 
 def get_companies_active_contacts(company_id, exclude_contact_id=None):
     """Get list of Company contacts
@@ -234,4 +285,4 @@ def search(query_str):
             ticket_ids.append(post.ticket.id)
             response.append({"title": post.ticket.description, "link": reverse('tickets:detail', kwargs={"ticket_id": post.ticket.id}), "preview": post.contents[:128]})
 
-    return response # Change me! 
+    return response # Change me!

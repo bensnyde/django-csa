@@ -3,12 +3,11 @@
 {% load staticfiles %}
 {% load common_tags %}
 
-{% block sitetitle %}| Support{% endblock %}
-{% block heading %}Support <small>Trouble Tickets</small>{% endblock %}
+{% block sitetitle %}| Administration{% endblock %}
+{% block heading %}Admin Portal <small>Companies</small>{% endblock %}
 
 {% block breadcrumbs %}
-    <li><a>Support</a></i></li>
-    <li>Tickets</a></li>
+    <li>Companies</a></li>
 {% endblock %}
 
 {% block css %}
@@ -19,13 +18,10 @@
     <script type="text/javascript" src="{% static '/assets/plugins/data-tables/jquery.dataTables.js' %}"></script>
     <script type="text/javascript" src="{% static '/assets/plugins/data-tables/DT_bootstrap.js' %}"></script>
     <script type="text/javascript">
-    	// Fetch Tickets listing via AJAX
         function getCompanies() {
-        	// Destroy existing
             $("#companies-index-table").dataTable().fnDestroy();
             $("#companies-index-tbody").html("");
 
-            // onSuccess callback function
             function onSuccessCallback(result) {
                 if(!jQuery.isEmptyObject(result)) {
                     if(result.success == 1) {
@@ -33,23 +29,24 @@
                         for(x in result.data.companies) {
                             $("#companies-index-tbody").append(' \
                                 <tr data-id="'+result.data.companies[x].id+'"> \
+                                    <td>'+result.data.companies[x].id+'</td> \
                                     <td>'+result.data.companies[x].name+'</td> \
                                     <td>'+result.data.companies[x].status+'</td> \
+                                    <td>'+result.data.companies[x].created+'</td> \
+                                    <td>'+result.data.companies[x].modified+'</td> \
                                 </tr>'
                             );
                         }
 
-                        // Initialize Datatable object
-                        $("#companies-index-table").dataTable({"aoColumnDefs": [],"aaSorting": [[0, 'desc']]});
+                        $("#companies-index-table").dataTable({"aoColumnDefs": [],"aaSorting": [[0, 'asc']]});
                     }
                     else {
                     	// AJAX call returned failed
-                        $("#companies-index-tbody").html("<tr><td colspan=2>"+result.message+"</td></tr>");
+                        $("#companies-index-tbody").html("<tr><td colspan=4>"+result.message+"</td></tr>");
                     }
                 }
             }
 
-            // Make the AJAX call
             $.ajax({
                 url: "{%url 'companies:getcompanies' %}",
                 type: "POST",
@@ -83,7 +80,6 @@
               }
           }
 
-          // Make the AJAX call
           $.ajax({
               url: "{% url 'companies:set' 0 %}",
               type: "POST",
@@ -100,12 +96,14 @@
 
     // companies event bindings
     $('#companies-index-table').on('click', 'tr', function () {
-        window.location = "{% url 'companies:detail' 0 %}".replace('0', $(this).data('id'));
+        if($(this).data('id')) {
+            window.location = "{% url 'companies:detail' 0 %}".replace('0', $(this).data('id'));
+	}
     });
 {% endblock %}
 
 {% block content %}
- <!-- BEGIN TICKETS INDEX CONTENT -->
+ <!-- BEGIN COMPANIES INDEX CONTENT -->
 
     <!-- BEGIN CONTENT HEAD -->
     <div class="row page-head">
@@ -120,17 +118,20 @@
 
     <!-- BEGIN CONTENT BODY -->
     <div class="row">
-        <!-- BEING TICKETS TABLE -->
+        <!-- BEING COMPANIES TABLE -->
         <table class="table table-striped table-bordered table-hover col-md-12" id="companies-index-table">
             <thead>
                 <tr>
+                    <th>ID</th>
                     <th>Name</th>
                     <th>Status</th>
+                    <th>Created</th>
+                    <th>Last Update</th>
                 </tr>
             </thead>
             <tbody id="companies-index-tbody"></tbody>
         </table>
-        <!-- END TICKETS TABLE -->
+        <!-- END COMPANIES TABLE -->
     </div>
     <!-- END CONTENT BODY -->
 
@@ -176,5 +177,5 @@
     </div>
     <!-- END MODAL -->
 
- <!-- END TICKETS INDEX CONTENT -->
+ <!-- END COMPANIES INDEX CONTENT -->
 {% endblock %}

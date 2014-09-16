@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
-{% block sitetitle %}| Support{% endblock %}
-{% block heading %}Support <small>Knowledgebase</small>{% endblock %}
+{% block sitetitle %}| Administration{% endblock %}
+{% block heading %}Admin Portal <small>Knowledgebase</small>{% endblock %}
 
 {% block breadcrumbs %}
 	<li><a>Support</a></li>
@@ -10,14 +10,14 @@
 	 <li><a href="{% url 'knowledgebase:index' %}" id="breadcrumb-category-title"></a></li>
    <li><a href="{% url 'knowledgebase:index' %}" id="breadcrumb-article-title"></a></li>
   {% endif %}
-  <li>Management</li>
-	
+  <li>Administration</li>
+
 {% endblock %}
 
 {% block js %}
 	<script type="text/javascript">
-    function getArticle() { 
-      // Destroy existing 
+    function getArticle() {
+      // Destroy existing
       $("#article-stats").html("");
 
       // onSuccess callback function
@@ -28,19 +28,19 @@
             $("#title").val(result.data.article.title);
             $("#contents").val(result.data.article.contents);
             $("#categories-listing").val(result.data.article.category_id);
-            $("#breadcrumb-category-title").html(result.data.article.category);            
+            $("#breadcrumb-category-title").html(result.data.article.category);
             $("#breadcrumb-article-title").html(result.data.article.title);
 
             for(x in result.data.article.tags) {
               $("#tags-listing option[value="+result.data.article.tags[x].id+"]").prop("selected", true);
             }
 
-          }         
+          }
           else {
             // AJAX call returned failed
             $("#article-content").html(result.message);
           }
-        }       
+        }
       }
 
       $.ajax({
@@ -48,19 +48,19 @@
           type: "POST",
           success: onSuccessCallback,
           error: defaultErrorCallback
-      });     
+      });
     }
 
-    function deleteKnowledgebaseArticle() { 
+    function deleteKnowledgebaseArticle() {
       // onSuccess callback function
       function onSuccessCallback(result) {
         if(!jQuery.isEmptyObject(result)) {
-          $('#flash-message').fadeIn();          
+          $('#flash-message').fadeIn();
           if(result.success == 1) {
             // AJAX call returned success
             $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
             window.location = "{% url 'knowledgebase:index' %}";
-          }         
+          }
           else {
             // AJAX call returned failed
             $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
@@ -75,7 +75,7 @@
           data: {"article_id": {{ article_id }}},
           success: onSuccessCallback,
           error: defaultErrorCallback
-      });     
+      });
     }
 
       // Build and display Add Zone modal
@@ -84,8 +84,8 @@
         var modal_body = "Are you sure you want to delete the selected Knowledgebase Article?";
         var modal_onclick_action = "deleteKnowledgebaseArticle()";
 
-        buildModal(modal_title, modal_body, modal_onclick_action);            
-      }     
+        buildModal(modal_title, modal_body, modal_onclick_action);
+      }
 
     function setKnowledgebaseTag() {
       function onSuccessCallback(result) {
@@ -97,20 +97,20 @@
             $("#kb-tag-title").val("");
             getKnowledgebaseTags();
             $('.modal.in').modal('hide');
-          }                    
+          }
           else {
             // AJAX call returned failed
             $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
-            if(result.hasOwnProperty('errors')) { 
+            if(result.hasOwnProperty('errors')) {
               // iterate through and display form validation errors
               $.each(result.errors, function(k,v) {
                 $("#"+k+"-help").closest('div').addClass("has-error");
                 $("#"+k+"-help").html(v);
               });
-            }                        
+            }
           }
           setTimeout("$('#flash-message').fadeOut()",2000);
-        }            
+        }
       }
 
       // Make the AJAX call
@@ -120,7 +120,7 @@
           data: $("#kb-tag-form").serialize(),
           success: onSuccessCallback,
           error: defaultErrorCallback
-      });          
+      });
     }
 
       function getKnowledgebaseTags() {
@@ -142,14 +142,14 @@
                     <td>'+result.data.tags[x].title+'</td> \
                     <td><a href="#" class="btn btn-primary edit-tag">Edit</a><a href="#" class="btn btn-warning del-tag">Delete</a></td> \
                   </tr>'
-                );                
+                );
               }
-            }                    
+            }
             else {
               // AJAX call returned failed
-              $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');                   
+              $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
             }
-          }            
+          }
         }
 
         // Make the AJAX call
@@ -158,7 +158,7 @@
             type: "POST",
             success: onSuccessCallback,
             error: defaultErrorCallback
-        });         
+        });
       }
 
       function getKnowledgebaseCategories() {
@@ -182,12 +182,12 @@
                   </tr>'
                 );
               }
-            }                    
+            }
             else {
               // AJAX call returned failed
-              $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');                   
+              $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
             }
-          }            
+          }
         }
 
         $.ajax({
@@ -195,8 +195,8 @@
             type: "POST",
             success: onSuccessCallback,
             error: defaultErrorCallback
-        });         
-      }    
+        });
+      }
 
       function setKnowledgebaseCategory() {
         function onSuccessCallback(result) {
@@ -208,20 +208,20 @@
               $("#kb-category-title").val("");
               getKnowledgebaseCategories();
               $('.modal.in').modal('hide');
-            }                    
+            }
             else {
               // AJAX call returned failed
               $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
-              if(result.hasOwnProperty('errors')) { 
+              if(result.hasOwnProperty('errors')) {
                 // iterate through and display form validation errors
                 $.each(result.errors, function(k,v) {
                   $("#"+k+"-help").closest('div').addClass("has-error");
                   $("#"+k+"-help").html(v);
                 });
-              }                        
+              }
             }
             setTimeout("$('#flash-message').fadeOut()",2000);
-          }            
+          }
         }
 
         // Make the AJAX call
@@ -231,7 +231,7 @@
             data: $('#kb-category-form').serialize(),
             success: onSuccessCallback,
             error: defaultErrorCallback
-        });          
+        });
       }
 
       function setKnowledgebaseArticle() {
@@ -242,20 +242,20 @@
               // AJAX call returned successful
               $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
               window.location = "/support/kb/"+result.data.article_id;
-            }                    
+            }
             else {
               // AJAX call returned failed
               $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
-              if(result.hasOwnProperty('errors')) { 
+              if(result.hasOwnProperty('errors')) {
                 // iterate through and display form validation errors
                 $.each(result.errors, function(k,v) {
                   $("#"+k+"-help").closest('div').addClass("has-error");
                   $("#"+k+"-help").html(v);
                 });
-              }                        
+              }
             }
             setTimeout("$('#flash-message').fadeOut()",2000);
-          }            
+          }
         }
 
         // Make the AJAX call
@@ -265,7 +265,7 @@
             data: $("#kb-article-form").serialize(),
             success: onSuccessCallback,
             error: defaultErrorCallback
-        });          
+        });
       }
 
 
@@ -277,14 +277,14 @@
               // AJAX call returned successful
               $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
               getKnowledgebaseCategories();
-              $('.modal.in').modal('hide');                   
-            }                    
+              $('.modal.in').modal('hide');
+            }
             else {
               // AJAX call returned failed
-              $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');                     
+              $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
             }
             setTimeout("$('#flash-message').fadeOut()",2000);
-          }            
+          }
         }
 
         // Make the AJAX call
@@ -294,7 +294,7 @@
             data: $("#kb-category-form").serialize(),
             success: onSuccessCallback,
             error: defaultErrorCallback
-        });          
+        });
       }
 
       function deleteKnowledgebaseTag() {
@@ -305,14 +305,14 @@
               // AJAX call returned successful
               $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
               getKnowledgebaseTags();
-              $('.modal.in').modal('hide');                   
-            }                    
+              $('.modal.in').modal('hide');
+            }
             else {
               // AJAX call returned failed
-              $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');                     
+              $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
             }
             setTimeout("$('#flash-message').fadeOut()",2000);
-          }            
+          }
         }
 
         $.ajax({
@@ -321,8 +321,8 @@
             data: $("#kb-tag-form").serialize(),
             success: onSuccessCallback,
             error: defaultErrorCallback
-        });          
-      }      
+        });
+      }
 
       // Customizes modal with specifications
       function buildModal(label, body, saveaction) {
@@ -331,7 +331,7 @@
         $('#mbody').html(body);
         $('#msave').attr('onclick', saveaction);
         $("#mmodal").modal('show');
-      }          
+      }
 
       // Build and display Add Zone modal
       function build_kb_category_modal(category_id=0, action="create", title="") {
@@ -360,8 +360,8 @@
             break;
         }
 
-        buildModal(modal_title, modal_body, modal_onclick_action);            
-      }     
+        buildModal(modal_title, modal_body, modal_onclick_action);
+      }
 
       // Build and display Add Zone modal
       function build_kb_tag_modal(tag_id=0, action="create", title="") {
@@ -372,7 +372,7 @@
             var modal_body = "Are you sure you want to delete the selected Knowledgebase Tag(s)?<form id='kb-tag-form'><input type='hidden' name='tag_id' value='"+tag_id+"'/></form>";
             var modal_onclick_action = "deleteKnowledgebaseTag()";
             break;
-          case 'edit':        
+          case 'edit':
           case 'create':
           default:
             var modal_onclick_action = "setKnowledgebaseTag()";
@@ -386,12 +386,12 @@
                     </div> \
                 </div> \
                 <input type="hidden" name="tag_id" value="'+tag_id+'"/> \
-              </form>';            
+              </form>';
             break;
         }
 
-        buildModal(modal_title, modal_body, modal_onclick_action);            
-      }  
+        buildModal(modal_title, modal_body, modal_onclick_action);
+      }
 	</script>
 {% endblock %}
 
@@ -407,21 +407,21 @@
       .on('click', 'a.del-category', function (e) {
           e.preventDefault();
           build_kb_category_modal($(this).closest('tr').data('id'), "delete");
-      })    
+      })
       .on('click', 'a.edit-category', function (e) {
           e.preventDefault();
           build_kb_category_modal($(this).closest('tr').data('id'), "edit", $(this).closest('tr').find("td").eq(1).html());
-      })  
+      })
 
   $('#tags-table-tbody')
       .on('click', 'a.del-tag', function (e) {
           e.preventDefault();
           build_kb_tag_modal($(this).closest('tr').data('id'), "delete");
-      })    
+      })
       .on('click', 'a.edit-tag', function (e) {
           e.preventDefault();
           build_kb_tag_modal($(this).closest('tr').data('id'), "edit", $(this).closest('tr').find("td").eq(1).html());
-      })          
+      })
 {% endblock %}
 
 {% block content %}
@@ -446,7 +446,7 @@
         <div class="form-group">
           <label class="control-label col-md-3">Tag(s)</label>
           <div class="controls col-md-9 input-group">
-            <select multiple="multiple" id="tags-listing" class="form-control" name="tags" autocomplete="off"></select>                  
+            <select multiple="multiple" id="tags-listing" class="form-control" name="tags" autocomplete="off"></select>
           </div>
         </div>
 
@@ -468,25 +468,25 @@
 
         <div class="form-actions">
           <div class="col-md-offset-3 col-md-9">
-            <a class="btn btn-primary" onclick="setKnowledgebaseArticle()"><i class="fa fa-plus"></i> Submit</a> 
+            <a class="btn btn-primary" onclick="setKnowledgebaseArticle()"><i class="fa fa-plus"></i> Submit</a>
             {% if article_id > 0 %}
-                <a class="btn btn-danger" onclick="build_kb_delete_article_modal()"><i class="fa fa-minus"></i> Delete</a>  
-            {% endif %}                                       
+                <a class="btn btn-danger" onclick="build_kb_delete_article_modal()"><i class="fa fa-minus"></i> Delete</a>
+            {% endif %}
           </div>
-        </div> 
-      </form>        
+        </div>
+      </form>
       <!-- END KNOWLEDGEBASE FORM -->
 		</div>
-    <!-- END CONTAINER BODY -->  
+    <!-- END CONTAINER BODY -->
 
     <!-- BEGIN VLAN CONTAINER HEAD -->
     <div class="row page-head">
         <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3 id="article-title">Categories</h3></div>
-        <div class="col-md-6 text-right">        
+        <div class="col-md-6 text-right">
             <div class="btn-group">
-                <a role="button" class="badge" onclick="build_kb_category_modal()">Create <i class="fa fa-plus"></i></a>                
+                <a role="button" class="badge" onclick="build_kb_category_modal()">Create <i class="fa fa-plus"></i></a>
             </div>
-        </div>           
+        </div>
     </div>
     <!-- END VLAN CONTAINER HEAD -->
     <!-- BEGIN VLAN CONTAINER BODY -->
@@ -510,11 +510,11 @@
     <!-- BEGIN VLAN CONTAINER HEAD -->
     <div class="row page-head">
         <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3 id="article-title">Tags</h3></div>
-        <div class="col-md-6 text-right">        
+        <div class="col-md-6 text-right">
             <div class="btn-group">
-                <a role="button" class="badge" onclick="build_kb_tag_modal()">Create <i class="fa fa-plus"></i></a>                
+                <a role="button" class="badge" onclick="build_kb_tag_modal()">Create <i class="fa fa-plus"></i></a>
             </div>
-        </div>           
+        </div>
     </div>
     <!-- END VLAN CONTAINER HEAD -->
     <!-- BEGIN VLAN CONTAINER BODY -->
@@ -533,7 +533,7 @@
         </table>
         <!-- END VLAN TABLE -->
     </div>
-    <!-- END VLAN CONTAINER BODY -->    
+    <!-- END VLAN CONTAINER BODY -->
 
   <!-- END KNOWLEDGEBASE ADMINISTRATION CONTENT -->
 
@@ -562,5 +562,5 @@
       </div>
     </div>
   </div>
-  <!-- END MODAL -->   
+  <!-- END MODAL -->
 {% endblock %}

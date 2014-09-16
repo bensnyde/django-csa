@@ -11,6 +11,81 @@
     <li>Create Ticket</li>
 {% endblock %}
 
+{% block js %}
+    <script type="text/javascript">
+        function getCompanies() {
+            function onSuccessCallback(result) {
+                if(!jQuery.isEmptyObject(result)) {
+                    if(result.success == 1) {
+                        for(x in result.data.companies) {
+                            $("#id_company").append('<OPTION value="'+result.data.companies[x].id+'">'+result.data.companies[x].name+'</OPTION>');
+                        }
+                    }
+                }
+            }
+
+            $.ajax({
+                url: "{% url 'companies:getcompanies' %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });
+        }
+
+        function getCompanyContacts(company_id) {
+            $("#id_author").html("");
+
+            function onSuccessCallback(result) {
+                if(!jQuery.isEmptyObject(result)) {
+                    if(result.success == 1) {
+                        for(x in result.data.contacts) {
+                            $("#id_author").append(' \
+                                <OPTION value="'+result.data.contacts[x].id+'">'+result.data.contacts[x].first_name+' '+result.data.contacts[x].last_name+' ('+result.data.contacts[x].email+')</OPTION>'
+                            );
+                        }
+                    }
+                }
+            }
+
+            $.ajax({
+                url: "{% url 'companies:getcontacts' 0 %}".replace('0', company_id),
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });
+        }
+
+        function getQueues() {
+            function onSuccessCallback(result) {
+                if(!jQuery.isEmptyObject(result)) {
+                    if(result.success == 1) {
+                        for(x in result.data.queues) {
+                            $("#id_queue").append('<OPTION value="'+result.data.queues[x].id+'">'+result.data.queues[x].title+'</OPTION>');
+                        }
+                    }
+                }
+            }
+
+            $.ajax({
+                url: "{% url 'tickets:getqueue' %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });
+        }
+    </script>
+{% endblock %}
+
+{% block jquery_document_ready %}
+    getCompanies();
+    getQueues();
+
+    // Contacts table click bindings
+    $('#id_company').on('change', function () {
+        getCompanyContacts($(this).val());
+    });
+{% endblock %}
+
 {% block content %}
  <!-- BEGIN NEW TICKET CONTENT -->
 
@@ -29,24 +104,44 @@
         <form role="form" id="new_ticket_form" name="new_ticket_form" class="col-md-12 form form-horizontal" enctype="multipart/form-data" method="POST" action="{% url 'tickets:create_ticket' %}">
             {% csrf_token %}
             <div class="form-group">
-                <label class="control-label col-md-3">Summary</label> 
+                <label class="control-label col-md-3">Summary</label>
                 <div class="controls col-md-6">
                     <input type="text" maxlength="64" class="form-control" id="id_ticket_summary" name="description" />
                     <span class="help-block"></span>
-                </div>                             
+                </div>
             </div>
+            {% if user.is_staff %}
+                <div class="form-group">
+                    <label class="control-label col-md-3">Company</label>
+                    <div class="controls col-md-6">
+                        <select class="form-control" id="id_company" name="company" autocomplete="off"><OPTION>----</OPTION></select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-md-3">Author</label>
+                    <div class="controls col-md-6">
+                        <select class="form-control" id="id_author" name="author" autocomplete="off"></select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-md-3">Queue</label>
+                    <div class="controls col-md-6">
+                        <select class="form-control" id="id_queue" name="queue" autocomplete="off"></select>
+                    </div>
+                </div>
+            {% endif %}
             <div class="form-group">
-                <label class="control-label col-md-3">Priority</label> 
+                <label class="control-label col-md-3">Priority</label>
                 <div class="controls col-md-6">
                     <select class="form-control" id="id_priority" name="priority" autocomplete="off">
                         <OPTION value="Low">Low</OPTION>
                         <OPTION value="Normal">Normal</OPTION>
                         <OPTION value="Urgent">Urgent</OPTION>
                     </select>
-                </div>             
+                </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-md-3">Service</label> 
+                <label class="control-label col-md-3">Service</label>
                 <div class="controls col-md-6">
                     <select class="form-control" id="id_service" name="service" autocomplete="off">
                         {% for service in user.get_services %}
@@ -54,44 +149,44 @@
                         {% endfor %}
                         <OPTION value="0">Other</OPTION>
                     </select>
-                </div>             
-            </div>            
+                </div>
+            </div>
             <div class="form-group">
-                <label class="control-label col-md-3">Contacts</label> 
+                <label class="control-label col-md-3">Contacts</label>
                 <div class="controls col-md-6">
                     <select multiple="multiple" class="form-control" id="id_ticket_contacts" name="contacts" >
                         {% for contact in fellow_contacts %}
                             <option value="{{ contact.id }}">{{ contact.get_full_name }}</option>
-                        {% endfor %}                                
-                    </select>                                                                    
-                </div>                                          
-            </div>                    
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
             <div class="form-group {% if new_post_form.contents.errors %}error{% endif %}">
-                <label class="control-label col-md-3">Description</label>    
+                <label class="control-label col-md-3">Description</label>
                 <div class="controls col-md-9">
                     <textarea class="form-control" id="id_contents" name="contents" rows="6"></textarea>
-                </div>            
-            </div>        
+                </div>
+            </div>
             <div class="form-group">
-                <label class="control-label col-md-3 {% if new_post_form.attachment.errors %}error{% endif %}">Attachment</label>                      
+                <label class="control-label col-md-3 {% if new_post_form.attachment.errors %}error{% endif %}">Attachment</label>
                 <div class="controls col-md-6">
                     <div class="fileupload fileupload-new" data-provides="fileupload">
                         <input type="file" name="attachment" />
                     </div>
-                </div>            
-            </div>                                    
+                </div>
+            </div>
             <div class="form-actions fluid">
                 <div class="row">
                     <div class="col-md-12">
                         <div class="col-md-offset-3 col-md-9">
                             <button type="submit" class="btn"><i class="fa fa-check"></i> Submit</button>
-                            <button type="button" class="btn" onclick="window.location='{% url 'tickets:index' %}';">Cancel</button>                              
+                            <button type="button" class="btn" onclick="window.location='{% url 'tickets:index' %}';">Cancel</button>
                         </div>
                     </div>
                 </div>
-            </div>        
-        </form>  
-        <!-- END NEW TICKET FORM -->                  
+            </div>
+        </form>
+        <!-- END NEW TICKET FORM -->
     </div>
     <!-- END CONTAINER BODY -->
 

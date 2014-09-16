@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% load staticfiles %}
+{% load common_tags %}
 
 {% block sitetitle %}| Support{% endblock %}
 {% block heading %}Support <small>Trouble Tickets</small>{% endblock %}
@@ -39,6 +40,7 @@
                                 <tr data-id="'+result.data.tickets[x].id+'"> \
                                     <td>'+result.data.tickets[x].id+'</td> \
                                     <td>'+result.data.tickets[x].description+'</td> \
+                                    <td>'+result.data.tickets[x].queue+'</td> \
                                     <td>'+result.data.tickets[x].author+'</td> \
                                     <td>'+result.data.tickets[x].date+'</td> \
                                     <td>'+result.data.tickets[x].priority+flagged+'</td> \
@@ -72,7 +74,9 @@
 
     // hosts event bindings
     $('#tickets-tbody').on('click', 'tr', function () {
-        window.location = "{% url 'tickets:detail' 0 %}".replace('0', $(this).data('id'));
+        if($(this).data('id')) {
+            window.location = "{% url 'tickets:detail' 0 %}".replace('0', $(this).data('id'));
+        }
     });
 {% endblock %}
 
@@ -84,7 +88,7 @@
         <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Trouble Tickets</h3></div>
         <div class="col-md-6 text-right">
             <div class="btn-group">
-                <a href="{% url 'tickets:create_ticket' %}" role="button" id="create-ticket-button" class="badge" data-toggle="modal">Create Ticket <i class="fa fa-plus"></i></a>
+                <a href="{% url 'tickets:create_ticket' %}" id="create-ticket-button" class="badge">Create Ticket <i class="fa fa-plus"></i></a>
             </div>
         </div>
     </div>
@@ -98,6 +102,7 @@
                 <tr>
                     <th>ID</th>
                     <th>Description</th>
+                    <th>Queue</th>
                     <th>Author</th>
                     <th>Date</th>
                     <th>Priority</th>

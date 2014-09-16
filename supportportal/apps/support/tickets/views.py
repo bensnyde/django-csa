@@ -9,8 +9,8 @@ from apps.loggers.models import ActionLogger
 from common.decorators import validated_request, validated_staff
 from common.helpers import format_ajax_response
 # App
-from .models import Ticket, Post, get_ticket_contacts_list, set_ticket_contacts_list, get_tickets_summary, get_companies_active_contacts
-from .forms import TicketForm, PostForm, TicketIDForm, PostIDForm
+from .models import Queue, Ticket, Post, get_ticket_contacts_list, set_ticket_contacts_list, get_tickets_summary, get_companies_active_contacts
+from .forms import QueueForm, TicketForm, PostForm, TicketIDForm, PostIDForm
 
 
 logger = logging.getLogger(__name__)
@@ -56,6 +56,27 @@ def detail(request, ticket_id):
     return render(request, 'tickets/detail.html', {'ticket_id': ticket_id})
 
 
+@validated_staff
+def admin(request):
+    """Ticket Detail View
+
+        Retrieves and displays details of a single specified Ticket.
+
+    Middleware
+        See SETTINGS for active Middleware.
+    Decorators
+        @login_required
+            request.user.is_authenticated() must be True
+    Paremeters
+        request: HttpRequest
+        ticket_id: int ticket id
+    Returns
+        HttpResponse (tickets/index.html)
+            ticket_id: int ticket id
+    """
+    return render(request, 'tickets/admin.html', {'queueform': QueueForm()})
+
+
 @validated_request(None)
 def get_tickets(request):
     """Get Tickets
@@ -81,11 +102,11 @@ def get_tickets(request):
     try:
         if request.user.is_staff:
             if "flagged" in request.POST and request.POST["flagged"]==1:
-                qset =  Ticket.objects.filter(status="Open").filter(flagged=True).order_by("-priority")
+                qset =  Ticket.objects.filter(status=1).filter(flagged=True).order_by("-priority")
             else:
-                qset = Ticket.objects.filter(status="Open").order_by("-priority")
+                qset = Ticket.objects.filter(status=1).order_by("-priority")
         else:
-            qset = Ticket.objects.filter(owner_id__company_id=request.user.company_id).filter(status="Open").order_by('-priority')
+            qset = Ticket.objects.filter(owner_id__company_id=request.user.company_id).filter(status=1).order_by('-priority')
 
         tickets = []
         for ticket in qset:
@@ -287,7 +308,7 @@ def create_ticket(request, service_id=0):
                 new_ticket.author_id = request.user.id
                 new_ticket.owner_id = request.user.id
 
-                if "service" in request.POST:
+                if "service" in request.POST and int(request.POST['service']):
                     new_ticket.service = request.user.company.services.get(pk=int(request.POST["service"]))
 
                 new_ticket.save()
@@ -391,3 +412,56 @@ def toggle_flag(request):
     except Exception as ex:
         logger.error("Failed to toggle_flag: %s" % ex)
         return format_ajax_response(False, "There was an error toggling post's flag.")
+
+
+@validated_staff
+@validated_request(None)
+def get_queue(request):
+    try:
+        if 'queue_id' in request.POST and int(request.POST['queue_id']):
+            # Detail
+            queue = Queue.objects.get(pk=int(request.POST['queue_id']))
+            data = {'queue': queue.dump_to_dict(full=True)}
+        else:
+            # Index
+            queues = []
+            for queue in Queue.objects.all():
+                queues.append(queue.dump_to_dict())
+            data = {'queues': queues}
+
+        return format_ajax_response(True, "Queue index retrieved successfully.", data)
+    except Exception as ex:
+        logger.error("Failed to get_queues: %s" % ex)
+        return format_ajax_response(False, "There wasn a error retrieving queue index.")
+
+@validated_staff
+@validated_request(None)
+def delete_queue(request):
+    try:
+        Queue.objects.get(pk=int(request.POST['queue_id'])).delete()
+
+        return format_ajax_response(True, "Queue deleted successfully.")
+    except Exception as ex:
+        logger.error("Failed to delete_queue: %s" % ex)
+        return format_ajax_response(False, "There wasn a error deleting the specified queue.")
+
+@validated_staff
+@validated_request(None)
+def set_queue(request):
+    try:
+        if 'queue_id' in request.POST and request.POST['queue_id']:
+            queue = Queue.objects.get(pk=request.POST['queue_id'])
+            form = QueueForm(request.POST, instance=queue)
+        else:
+            form = QueueForm(request.POST)
+
+        if form.is_valid():
+            queue = form.save()
+
+            return format_ajax_response(True, "Queue updated successfully.")
+        else:
+            return format_ajax_response(False, "Form data failed validation.", errors=dict((k, [unicode(x) for x in v]) for k,v in form.errors.items()))
+
+    except Exception as ex:
+        logger.error("Failed to set_queue: %s" % ex)
+        return format_ajax_response(False, "There wasn a error setting the specified queue.")

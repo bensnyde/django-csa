@@ -99,7 +99,7 @@ def get_companies(request):
     try:
         companies = []
         for company in Company.objects.all():
-            companies.append({'name': company.name, 'status': company.status, 'id': company.pk})
+            companies.append(company.dump_to_dict())
 
         return format_ajax_response(True, "Companies list retrieved successfully.", {'companies': companies})
     except Exception as ex:
@@ -189,7 +189,7 @@ def get(request, company_id):
         if not (request.user.company_id == int(company_id) or request.user.is_admin == True):
             raise Exception("Fobiden: requesting user doesn't have permission to specified Company.")
 
-        return format_ajax_response(True, "Company profile retrieved successfully.", {'company': company.dump_to_dict()})
+        return format_ajax_response(True, "Company profile retrieved successfully.", {'company': company.dump_to_dict(True)})
     except Exception as ex:
         logger.error("Failed to get: %s" % ex)
         return format_ajax_response(False, "There was a problem retrieving the company profile.")
