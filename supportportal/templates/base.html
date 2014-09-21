@@ -25,9 +25,29 @@
 
     {% block css %}{% endblock %}
 
-     <style>
+     <style type="text/css">
       .page-head { border-bottom: 1px solid black; margin-bottom: 20px; }
       .page-head h3 { padding: 0; margin: 0; display: inline; }
+      #suggestions { 
+        display: none; 
+        position: absolute; 
+        z-index: 10;  
+        background: black; 
+        color: white; 
+        width: 300px; 
+        padding: 10px; 
+        margin: 0
+      }
+      #back-up-top { 
+        background-color: lightgray; 
+        float: right; 
+        display: block; 
+        text-decoration: none; 
+        cursor: pointer; 
+        margin-top: 6px; 
+        font-size: 16px; 
+        padding: 0 6px 0 6px
+      }
      </style>
 
 
@@ -47,15 +67,6 @@
                 default:
                   $("#flash-message").html('<div class="alert alert-danger">Server returned error.</div>');
             }
-        }
-
-        // Customizes modal title, body and onclick response
-        function buildModal(label, body, saveaction) {
-          $('#flash-message').hide();
-          $('#mlabel').html(label);
-          $('#mbody').html(body);
-          $('#msave').attr('onclick', saveaction);
-          $("#mmodal").modal('show');
         }
 
         // Django CSRF protection
@@ -109,41 +120,45 @@
           }
         });
 
-        // Handle AJAX autocomplete Search results
+        // AJAX autocomplete Search results
         function lookup(inputString) {
           if(inputString.length == 0) {
-            $('#suggestions').fadeOut(); // Hide the suggestions box
+            $('#suggestions').fadeOut();
           }
           else {
             function onSuccessCallback(result) {
               if(!jQuery.isEmptyObject(result)) {
+                // build output string
                 var out = '<div id="searchresults" class="list-group">';
                 for(category in result) {
                   out = out + '<h4 class="category">'+category+'</h4>';
                   for(record in result[category]) {
-                    out = out + '<div class="list-group-item"><div class="list-group-item-heading"><a href="'+result[category][record]['link']+'"><strong>'+result[category][record]['title']+'</strong></a></div>';
+                    out = out + ' \
+                      <div class="list-group-item">\
+                        <div class="list-group-item-heading"> \
+                          <a href="'+result[category][record]['link']+'"><strong>'+result[category][record]['title']+'</strong></a> \
+                        </div>';
                     if(result[category][record].hasOwnProperty('preview'))
                       out = out + '<div class="list-group-item-text">'+result[category][record]['preview']+'</div>';
                     out = out + '</div></div>'
                   }
                 }
 
-                $('#suggestions').fadeIn(); // Show the suggestions box
-                $('#suggestions').html(out); // Fill the suggestions box
+                $('#suggestions').fadeIn(); 
+                $('#suggestions').html(out);
               }
               else {
                 // No results
-                $('#suggestions').fadeOut(); // Hide the suggestions box
+                $('#suggestions').fadeOut();
               }
             }
 
-            // Make the AJAX call
             $.ajax({
-                url: "{% url 'search:results' %}",
-                type: "POST",
-                data: {querystr: inputString},
-                success: onSuccessCallback,
-                error: defaultErrorCallback
+              url: "{% url 'search:results' %}",
+              type: "POST",
+              data: {querystr: inputString},
+              success: onSuccessCallback,
+              error: defaultErrorCallback
             });
           }
         }
@@ -227,7 +242,7 @@
                   <div class="form-group">
                     <input type="text" class="form-control" placeholder="Search..." name="querystr" onkeyup="lookup(this.value);">
                   </div>
-                  <div id="suggestions" style="display: none; pull-right; position: absolute; z-index: 10;  background: black; color: white; width: 300px; padding: 10px; margin: 0"></div>
+                  <div id="suggestions"></div>
                 </form>
               </li>
               <!-- END SEARCH -->
@@ -294,7 +309,7 @@
           &copy; 2014 <a href="http://www.example.com" alt="Company Name">Company Name</a> All rights reserved.
         </div>
         <div class="col-md-4">
-          <span style="background-color: lightgray; float: right; display: block; text-decoration: none; cursor: pointer; margin-top: 6px; font-size: 16px; padding: 0 6px 0 6px"><i class="fa fa-angle-up"></i></span>
+          <span id="back-up-top"><i class="fa fa-angle-up"></i></span>
         </div>
       </div>
      </div>
