@@ -3,5 +3,4 @@ from apps.support.contact import views
 
 urlpatterns = patterns('',
     url(r'^$', views.index, name='index'),
-    url(r'feedback/', views.feedback, name='feedback'),
 )

@@ -19,21 +19,17 @@
     <script type="text/javascript" src="{% static '/assets/plugins/data-tables/DT_bootstrap.js' %}"></script>
 
     <script type="text/javascript">
-        // Default Success Callback function for AJAX calls
         function defaultSuccessCallback(result) {
             if(!jQuery.isEmptyObject(result)) {
                 $('#flash-message').fadeIn();
                 if(result.success == 1) {
-                    // AJAX call returned successful
                     $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
                     getZones();
                     setTimeout("$('.modal.in').modal('hide')",2000);
                 }
                 else {
-                    // AJAX call returned failed
                     $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
                     if(result.hasOwnProperty('errors')) {
-                        // iterate through and display form validation errors
                         $.each(result.errors, function(k,v) {
                             $("#id_"+k).parents('div').addClass("has-error");
                             $("#"+k+"-help").html(v);
@@ -57,89 +53,38 @@
 
         // Retrieve listing of DNS zones belonging to account
         function getZones() {
-            // Destroy existing
             $("#dns-zones-table").dataTable().fnDestroy();
             $("#zones-tbody").html("");
 
-            // Successfull AJAX callback function
             function successCallback(result) {
                 if(!jQuery.isEmptyObject(result)) {
                     if(result.success == 1) {
-                        // AJAX call returned successful
                         for(x in result.data.zones) {
                             $("#zones-tbody").append(' \
                                 <tr data-domain="'+result.data.zones[x].domain+'"> \
                                     <td>'+result.data.zones[x].domain+'</td> \
                                     <td> \
-                                        <a class="btn edit-domain" role="button"><i class="fa fa-edit"></i> Edit</a> \
-                                        <a class="btn del-domain" role="button" data-toggle="modal"><i class="fa fa-trash-o"></i> Delete</a> \
+                                        <a href="#" class="edit-domain" role="button"><i class="fa fa-edit" style="color:green"></i></a> \
+                                        <a href="#" class="del-domain" role="button"><i class="fa fa-trash-o" style="color:red"></i></a> \
                                     </td> \
                                 </tr>'
                             );
                         }
 
-                        // Initialize datatables
                         $("#dns-zones-table").dataTable({"aoColumnDefs": [], "aaSorting": [[0, 'asc']]});
                     }
                     else {
-                        // AJAX call returned failed
                         $("#zones-tbody").html("<tr><td colspan=2>There was an error retrieving DNS zones.</td></tr>");
                     }
                 }
             }
 
-            // Make the AJAX call
             sendPost("{%url 'dns:getzones' service_id %}", null, successCallback, defaultErrorCallback);
         }
 
-        // Customizes modal with specifications
-        function buildModal(label, body, saveaction) {
-            $('#flash-message').hide();
-            $('#mlabel').html(label);
-            $('#mbody').html(body);
-            $('#msave').attr('onclick', saveaction);
-            $("#mmodal").modal('show');
-        }
-
-        // Build and display Add Zone modal
-        function build_add_zone_modal() {
-            var modal_onclick_action = 'sendPost("{% url 'dns:createzone' service_id %}", $("#dns-add-zone-form").serialize(), defaultSuccessCallback, defaultErrorCallback)';
-            var modal_title = "Add Zone";
-            var modal_body = ' \
-                <form class="form" role="form" id="dns-add-zone-form"> \
-                    <table class="table table-bordered table-hover" id="add-dns-zone-table"> \
-                        <tr class="form-group"> \
-                            <td><label class="control-label">Domain</label></td> \
-                            <td> \
-                                <div class="controls"> \
-                                    <input type="text" name="domain" id="id_domain" class="form-control" /> \
-                                    <span id="domain-help" class="help-block"></span> \
-                                </div> \
-                            </td> \
-                        </tr> \
-                        <tr class="form-group"> \
-                            <td><label class="control-label">IP Address</label></td> \
-                            <td> \
-                                <div class="controls"> \
-                                    <input type="text" name="ip" id="id_ip" class="form-control" /> \
-                                    <span id="ip-help" class="help-block"></span> \
-                                </div> \
-                            </td> \
-                        </tr> \
-                    </table> \
-                </form>';
-
-
-            buildModal(modal_title, modal_body, modal_onclick_action);
-        }
-
-        // Build and display Delete Zone modal
-        function build_delete_zone_modal(zone) {
-            var modal_title = "Delete Zone";
-            var modal_body = "Are you sure you want to delete zone " + zone + "?";
-            var modal_onclick_action = 'sendPost("{% url 'dns:deletezone' service_id %}", {zone: "'+zone+'"}, defaultSuccessCallback, defaultErrorCallback)';
-
-            buildModal(modal_title, modal_body, modal_onclick_action);
+        function showAddRecordForm() {
+            $("#dns-add-zone-form").trigger('reset');
+            $("#add-dom-modal").modal("show");
         }
     </script>
 {% endblock %}
@@ -151,7 +96,8 @@
     $('#zones-tbody')
         .on('click', 'a.del-domain', function (e) {
             e.preventDefault();
-            build_delete_zone_modal($(this).closest('tr').data('domain'));
+            $("#dns-del-record-form #zone").val($(this).closest('tr').data('domain'));
+            $("#del-dom-modal").modal('show');
         })
         .on('click', 'a.edit-domain', function (e) {
             e.preventDefault();
@@ -167,7 +113,7 @@
         <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Domains</h3></div>
         <div class="col-md-6 text-right">
             <div class="btn-group">
-                <a onclick="build_add_zone_modal()" role="button" class="badge" data-toggle="modal">Add Domain <i class="fa fa-plus"></i></a>
+                <a onclick="showAddRecordForm()" role="button" class="badge" data-toggle="modal">Add Domain <i class="fa fa-plus"></i></a>
             </div>
         </div>
     </div>
@@ -176,11 +122,11 @@
     <!-- BEGIN DNS ZONES CONTAINER -->
     <div class="row">
         <!-- BEGIN ZONES TABLE -->
-        <table class="table table-striped table-bordered table-hover" id="dns-zones-table">
-            <thead>
+        <table class="table table-striped table-bordered table-hover col-md-12" id="dns-zones-table">
+            <thead class="row">
                 <tr>
-                    <th>Domain</th>
-                    <th width=220 align=center></th>
+                    <th class="col-md-10">Domain</th>
+                    <th class="col-md-2"></th>
                 </tr>
             </thead>
             <tbody id="zones-tbody"></tbody>
@@ -189,32 +135,87 @@
     </div>
     <!-- END DNS ZONES CONTAINER -->
 
-    <!-- BEGIN MODAL -->
-    <div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
+    <!-- BEGIN ADD DOMAIN MODAL -->
+    <div id="add-dom-modal" class="modal fade in" role="dialog">
         <div class="modal-dialog">
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
-                    <h3 id="mlabel"></h3>
+                    <h3 id="mlabel">Add Domain</h3>
                 </div>
                 <!-- END MODAL HEADER -->
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
                     <div id="flash-message"></div>
-                    <div id="mbody" class="well"></div>
+                    <div id="mbody" class="well">
+                        <!-- BEGIN ADD ZONE FORM -->
+                        <form class="form" role="form" id="dns-add-zone-form">
+                            <table class="table table-bordered table-hover" id="add-dns-zone-table">
+                                <tr class="form-group">
+                                    <td><label class="control-label">Domain</label></td>
+                                    <td>
+                                        <div class="controls">
+                                            <input type="text" name="domain" id="id_domain" class="form-control" />
+                                            <span id="domain-help" class="help-block"></span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="form-group">
+                                    <td><label class="control-label">IP Address</label></td>
+                                    <td>
+                                        <div class="controls">
+                                            <input type="text" name="ip" id="id_ip" class="form-control" />
+                                            <span id="ip-help" class="help-block"></span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </form>
+                        <!-- END ADD ZONE FORM -->
+                    </div>
                 </div>
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
                 <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
-                    <button id="msave" class="btn btn-primary">Ok</button>
+                    <button class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button id="msave" class="btn btn-primary" onclick='sendPost("{% url 'dns:createzone' service_id %}", $("#dns-add-zone-form").serialize(), defaultSuccessCallback, defaultErrorCallback)'>Ok</button>
                 </div>
                 <!-- END MODAL FOOTER -->
             </div>
         </div>
     </div>
-    <!-- END MODAL -->
+    <!-- END ADD DOMAIN MODAL -->
+
+    <!-- BEGIN DELETE DOMAIN MODAL -->
+    <div id="del-dom-modal" class="modal fade in" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <!-- BEGIN MODAL HEADER -->
+                <div class="modal-header">
+                    <h3 id="mlabel">Delete Domain</h3>
+                </div>
+                <!-- END MODAL HEADER -->
+                <!-- BEGIN MODAL BODY -->
+                <div class="modal-body">
+                    <div id="flash-message"></div>
+                    <div id="mbody" class="well">
+                        <span>Are you sure you want to delete the domain?</span>
+                        <form id="dns-del-record-form">
+                            <input type="hidden" name="zone" id="zone" value="" />
+                        </form>
+                    </div>
+                </div>
+                <!-- END MODAL BODY -->
+                <!-- BEGIN MODAL FOOTER -->
+                <div class="modal-footer" id="modalfooter">
+                    <button class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button id="msave" class="btn btn-primary" onclick='sendPost("{% url 'dns:deletezone' service_id %}", $("#dns-del-record-form").serialize(), defaultSuccessCallback, defaultErrorCallback)'>Ok</button>
+                </div>
+                <!-- END MODAL FOOTER -->
+            </div>
+        </div>
+    </div>
+    <!-- END DELETE DOMAIN MODAL -->
 
  <!-- END DNS INDEX CONTENT -->
 {% endblock %}

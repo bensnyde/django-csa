@@ -14,13 +14,10 @@
 
 {% block js %}
 	<script type="text/javascript">
-        // Fetch Server details via AJAX
 		function getServer() {
-			// onSuccess callback function
 			function onSuccessCallback(result) {
 				if(!jQuery.isEmptyObject(result)) {
 					if(result.success == 1) {
-						// AJAX call returned success
 						$("#server-name-breadcrumb").html(result.data.server.name);
 						$("#server-title").html(result.data.server.name);
 						$("#server-name").html(result.data.server.name);
@@ -41,13 +38,11 @@
 						}
 					}
 					else {
-						// AJAX call returned failed
 						$("#zones-tbody").html("<tr><td colspan=5>"+result.message+"</td></tr>");
 					}
 				}
 			}
 
-            // Make AJAX call to retrieve accounts
             $.ajax({
                 url: "{%url 'servers:getserver' service_id server.id %}",
                 type: "POST",
@@ -56,22 +51,17 @@
             });
 		}
 
-        // Fetch Server details via AJAX
 		function setServer() {
-			// onSuccess callback function
 			function onSuccessCallback(result) {
 				if(!jQuery.isEmptyObject(result)) {
 					if(result.success == 1) {
-						// AJAX call returned success
 	                    $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
 	                    getServer();
 	                    setTimeout("$('.modal.in').modal('hide');$('#flash-message').html('')",2000);
 					}
 					else {
-						// AJAX call returned failed
 						$('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
 	                    if(result.hasOwnProperty('errors')) {
-	                        // iterate through and display form validation errors
 	                        $.each(result.errors, function(k,v) {
 	                            $("#id_"+k).closest('tr').addClass("has-error");
 	                            $("#"+k+"-help").html(v);
@@ -81,7 +71,6 @@
 				}
 			}
 
-            // Make AJAX call to retrieve accounts
             $.ajax({
                 url: "{%url 'servers:setserver' service_id %}",
                 data: $('#set-server-form').serialize(),
@@ -106,7 +95,7 @@
         <div class="col-md-6 text-right">
             <div class="btn-group">
                 <a href="{% url 'tickets:create_ticket' service_id %}" role="button" class="badge">Open Support Request <i class="fa fa-plus"></i></a>
-                <a onclick="$('#mmodal').modal('show');" role="button" class="badge" data-toggle="modal">Edit Server <i class="fa fa-plus"></i></a>
+                <a onclick="$('#set-server-modal').modal('show');" role="button" class="badge" data-toggle="modal">Edit Server <i class="fa fa-plus"></i></a>
             </div>
         </div>
     </div>
@@ -148,17 +137,17 @@
     <!-- END SERVER DETAILS CONTAINER -->
 
 	<!-- BEGIN MODAL -->
-	<div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
+	<div id="set-server-modal" class="modal fade in" role="dialog">
 		<div class="modal-dialog">
 			<div class="modal-content">
 				<div class="modal-header">
-					<button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
 					<h3 id="mlabel">Set Server</h3>
 				</div>
 				<div class="modal-body form">
 					<!-- BEGIN MODAL BODY -->
 					<div id="flash-message"></div>
 					<div id="mbody" class="well">
+						<!-- BEGIN SET SERVER FORM -->
 						<form id="set-server-form">
 							<input type="hidden" name="server_id" value="{{ server.pk }}" />
 				    		<table class="table table-striped table-bordered table-hover" id="create-contact-form-table">
@@ -175,11 +164,12 @@
 							    {% endfor %}
 							</table>
 						</form>
+						<!-- END SET SERVER FORM -->
 					</div>
 					<!-- END MODAL BODY -->
 				</div>
 				<div class="modal-footer" id="modalfooter">
-					<button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
+					<button class="btn btn-default" data-dismiss="modal">Close</button>
 					<button id="msave" class="btn btn-primary" onclick="setServer()">Ok</button>
 				</div>
 			</div>

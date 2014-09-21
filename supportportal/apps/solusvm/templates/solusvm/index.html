@@ -12,22 +12,19 @@
 		var vnc_port;		// local variable to hold vnc server's port
 		var vnc_pass;		// local variable to hold vnc server's password
 
-        // Default Success Callback function for AJAX calls
         function defaultSuccessCallback(result) {
             if(!jQuery.isEmptyObject(result)) {
                 $('#flash-message').fadeIn();
                 if(result.success == 1) {
-                	// AJAX call returned success
                     $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
                     getSolusStats();
                 }
                 else {
-                	// AJAX call returned failed
                     $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
                 }
                 $('#flash-message').delay(3000).fadeOut();
             }
-        }             
+        }
 
 	    // Makes AJAX call to supplied resource with supplied data
 	    function sendPost(url, data) {
@@ -64,16 +61,10 @@
 		    return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
 		};
 
-		// Fetch SolusVM Server stats via AJAX
 		function getSolusStats() {
-			// Destroy existing
-			// *************************** FIX ME ******************************
-
-			// onSuccess callback function
 			function onSuccessCallback(result) {
 		        if(!jQuery.isEmptyObject(result)) {
 		            if(result.success == 1) {
-		            	// AJAX call returned success
 		            	$("#stats-type").html(result.data.statistics.type);
 		            	$("#stats-node").html(result.data.state.node);
 		            	$("#stats-hostname").html(result.data.statistics.hostname);
@@ -84,43 +75,32 @@
 		            	$("#stats-bandwidth").html('<img src="http://vcp.vservercenter.com' + result.data.state.trafficgraph + '" />');
 		            	$("#hostname").val(result.data.statistics.hostname);
 		            	$("#vm-stats-table").fadeIn();
-		            	
+
 		            	vnc_ip = result.data.vnc.vncip;
 		            	vnc_port = result.data.vnc.vncport;
-		            	vnc_pass = result.data.vnc.vncpassword;		            	
-		            }
-		            else {
-		            	// AJAX call returned failed
-		            	// *************************** FIX ME ******************************
+		            	vnc_pass = result.data.vnc.vncpassword;
 		            }
 		        }
 			}
 
-			// Make AJAX call to retrieve server details
             $.ajax({
                 url: "{% url 'solusvm:getdetails' service_id server.id %}",
                 type: "POST",
                 success: onSuccessCallback,
                 error: defaultErrorCallback
-            });				
+            });
 		}
 
 		// Fetch ISO list from SolusVM via AJAX
 		function getIsoList() {
-			// onSuccess callback function
 			function onSuccessCallback(result) {
 		        if(!jQuery.isEmptyObject(result)) {
 		            if(result.success == 1) {
-		            	// AJAX call returned success
 		            	for(iso in result.data.isos) {
 		            		$("#iso-select").append('<OPTION>'+result.data.isos[iso]+'</OPTION>');
 		            	}
 		            }
-		            else {
-		            	// AJAX call returned failed
-		            	// *************************** FIX ME ******************************
-		            }
-		        }				
+		        }
 			}
 
             $.ajax({
@@ -128,13 +108,13 @@
                 type: "POST",
                 success: onSuccessCallback,
                 error: defaultErrorCallback
-            });		  				
+            });
 		}
 
-		jQuery(document).ready(function() { 
+		jQuery(document).ready(function() {
 			getSolusStats();
 			getIsoList();
-		});		
+		});
 	</script>
 {% endblock %}
 
@@ -152,7 +132,7 @@
 
     <!-- BEGIN SOLUSVM CONTAINER -->
     <div class="row">
-		<!-- BEGIN VSERVER CONTROLS -->	
+		<!-- BEGIN VSERVER CONTROLS -->
 		<div class="well">
 			<!-- BEGIN VSERVER CONTENT HEADER -->
 			<div class="control-group text-center">
@@ -168,7 +148,7 @@
 				<button type="button" class="btn btn-danger" onclick='sendPost("{% url 'solusvm:shutdown' service_id server.id %}", {})'>shutdown</button>
 				<br /><br />
 				<button type="button" class="btn" onclick='start_vnc_applet()'>Open Console</button>
-			</div><br />		
+			</div><br />
 			<!-- END VSERVER CONTROLS CONTAINER -->
 
 			<!-- BEGIN VSERVER SELECTS CONTAINER -->
@@ -182,8 +162,8 @@
 						<span class="input-group-btn">
 							<button type="button" class="btn btn-primary" onclick='sendPost("{% url 'solusvm:mount' service_id server.id %}", {"iso": $("#iso-select").val()})'>Set</button>
 						</span>
-					</div>       
-                </div>    
+					</div>
+                </div>
 				<div class="control-group">
                     <label class="control-label" for="bootorder">Boot Order</label>
 					<div class="input-group text-left">
@@ -198,13 +178,13 @@
                         	<button type="button" class="btn btn-primary" onclick='sendPost("{% url 'solusvm:set_bootorder' service_id server.id %}", {"bootorder": $("#bootorder").val()})'>Set</button>
                         </span>
                     </div>
-                </div> 
+                </div>
             </div>
-            <!-- END VSERVER SELECTS CONTAINER -->                             
+            <!-- END VSERVER SELECTS CONTAINER -->
 		</div>
 		<!-- END VSERVER CONTROLS -->
 
-		<!-- BEGIN VSERVER STATS CONTAINER -->						
+		<!-- BEGIN VSERVER STATS CONTAINER -->
 		<div id="solus-stats-container">
 			<!-- BEGIN VSERVER STATS TABLE -->
 			<table class="table table-striped table-bordered table-hover" id="vm-stats-table">
@@ -215,7 +195,7 @@
 				<tr><td>Disk Space</td><td id="stats-hdd"></td></tr>
 				<tr><td>Memory</td><td id="stats-ram"></td></tr>
 				<tr><td>IP Addresses</td><td id="stats-ipaddresses"></td></tr>
-				<tr><td>Bandwidth</td><td id="stats-bandwidth"></td></tr>			
+				<tr><td>Bandwidth</td><td id="stats-bandwidth"></td></tr>
 			</table>
 			<!-- END VSERVER STATS TABLE -->
 		</div>

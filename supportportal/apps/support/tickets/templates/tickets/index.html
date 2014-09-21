@@ -19,13 +19,10 @@
     <script type="text/javascript" src="{% static '/assets/plugins/data-tables/jquery.dataTables.js' %}"></script>
     <script type="text/javascript" src="{% static '/assets/plugins/data-tables/DT_bootstrap.js' %}"></script>
     <script type="text/javascript">
-    	// Fetch Tickets listing via AJAX
         function getTickets() {
-        	// Destroy existing
             $("#tickets-table").dataTable().fnDestroy();
             $("#tickets-tbody").html("");
 
-            // onSuccess callback function
             function onSuccessCallback(result) {
                 if(!jQuery.isEmptyObject(result)) {
                     if(result.success == 1) {
@@ -58,7 +55,6 @@
                 }
             }
 
-            // Make the AJAX call
             $.ajax({
                 url: "{%url 'tickets:gettickets' %}",
                 type: "POST",
@@ -72,7 +68,6 @@
 {% block jquery_document_ready %}
     getTickets();
 
-    // hosts event bindings
     $('#tickets-tbody').on('click', 'tr', function () {
         if($(this).data('id')) {
             window.location = "{% url 'tickets:detail' 0 %}".replace('0', $(this).data('id'));

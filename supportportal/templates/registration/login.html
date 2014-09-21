@@ -1,147 +1,147 @@
 {% load staticfiles %}
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<title>Company Name | Customer Support Portal</title>
-		<meta content="width=device-width, initial-scale=1.0" name="viewport" />
-		<meta content="Customer Support Portal" name="description" />
-		<meta content="Benton Snyder" name="author" />
+    <head>
+        <meta charset="utf-8" />
+        <title>Company Name | Customer Support Portal</title>
+        <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+        <meta content="Customer Support Portal" name="description" />
+        <meta content="Benton Snyder" name="author" />
 
-	    <link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css" rel="stylesheet">
-	    <link href="//netdna.bootstrapcdn.com/bootswatch/3.1.1/cosmo/bootstrap.min.css" rel="stylesheet">
-	    <link rel="shortcut icon" href="{% static '/assets/favicon.ico' %}" />
-	</head>
+        <link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css" rel="stylesheet">
+        <link href="//netdna.bootstrapcdn.com/bootswatch/3.1.1/cosmo/bootstrap.min.css" rel="stylesheet">
+        <link rel="shortcut icon" href="{% static '/assets/favicon.ico' %}" />
+    </head>
 
-	<body>
-		<!-- BEGIN TOP NAVIGATION BAR -->
-		<div class="navbar navbar-default navbar-fixed-top">
-			<div class="container">
-			    <!-- BEGIN LOGO -->
-			    <div style="padding-top: 10px; float: left">
-			    	<span style="font-size: 24px; color: #ffffff">Company Name</span>
-			    </div>
-			    <!-- END LOGO -->
-			  </div>
-			</div>
-		</div>
-		<!-- END TOP NAVIGATION BAR -->
+    <body>
+        <!-- BEGIN TOP NAVIGATION BAR -->
+        <div class="navbar navbar-default navbar-fixed-top">
+            <div class="container">
+                <!-- BEGIN LOGO -->
+                <div style="padding-top: 10px; float: left">
+                    <span style="font-size: 24px; color: #ffffff">Company Name</span>
+                </div>
+                <!-- END LOGO -->
+              </div>
+            </div>
+        </div>
+        <!-- END TOP NAVIGATION BAR -->
 
-		<!-- BEGIN MAIN CONTENT -->
-		<div class="container" style="margin-top: 300px;">
-			{% if form.errors %}
-				<!-- BEGIN FORM ERRORS -->
-				<div class="row">
-					<div class="col-md-offset-4 col-md-4 col-md-offset-4 alert alert-danger" style="text-align: center;">
-						{{ form.errors }}
-					</div>
-				</div>
-				<!-- END FORM ERRORS -->
-			{% endif %}
+        <!-- BEGIN MAIN CONTENT -->
+        <div class="container" style="margin-top: 300px;">
+            {% if form.errors %}
+                <!-- BEGIN FORM ERRORS -->
+                <div class="row">
+                    <div class="col-md-offset-4 col-md-4 col-md-offset-4 alert alert-danger" style="text-align: center;">
+                        {{ form.errors }}
+                    </div>
+                </div>
+                <!-- END FORM ERRORS -->
+            {% endif %}
 
-			<!-- BEGIN LOGIN -->
-			<div class="row">
-				<!-- BEGIN LOGIN FORM -->
-				<form class="col-md-4 col-md-offset-4 form form-vertical" id="login-form" action="{% url 'django.contrib.auth.views.login' %}" method="POST">{% csrf_token %}
-					<div class="form-group">
-						<div class="controls">
-							<div class="input-group">
-								<input type="text" class="form-control" placeholder="Email" name="username" />
-								<span class="input-group-addon">
-							        <i class="fa fa-envelope"></i>
-							    </span>
-							</div>
-						</div>
-					</div>
-					<div class="form-group">
-						<div class="controls">
-							<div class="input-group">
-								<input type="password" class="form-control" placeholder="Password" name="password" />
-								<span class="input-group-addon">
-							        <i class="fa fa-lock"></i>
-							    </span>
-							</div>
-						</div>
-					</div>
-					<div class="form-actions">
-						<div class="forget-password pull-right">
-							<span><a href="#" onclick="$('#mmodal').modal('show');" data-toggle="mmodal" id="forget-password">Forgot Password</a></span>
-						</div>
-						<div style="text-indent: 2px">
-							<span><a href="#" onclick="$('#login-form').submit();" role="button">Login</a></span>
-						</div>
-					</div>
-				</form>
-				<!-- END LOGIN FORM -->
-			</div>
-			<!-- END LOGIN -->
-		</div>
-		<!-- END MAIN CONTENT -->
+            <!-- BEGIN LOGIN -->
+            <div class="row">
+                <!-- BEGIN LOGIN FORM -->
+                <form class="col-md-4 col-md-offset-4 form form-vertical" id="login-form" action="{% url 'django.contrib.auth.views.login' %}" method="POST">{% csrf_token %}
+                    <div class="form-group">
+                        <div class="controls">
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="Email" name="username" />
+                                <span class="input-group-addon">
+                                    <i class="fa fa-envelope"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="controls">
+                            <div class="input-group">
+                                <input type="password" class="form-control" placeholder="Password" name="password" />
+                                <span class="input-group-addon">
+                                    <i class="fa fa-lock"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <div class="forget-password pull-right">
+                            <span><a href="#" onclick="$('#mmodal').modal('show');" data-toggle="mmodal" id="forget-password">Forgot Password</a></span>
+                        </div>
+                        <div style="text-indent: 2px">
+                            <span><a href="#" onclick="$('#login-form').submit();" role="button">Login</a></span>
+                        </div>
+                    </div>
+                </form>
+                <!-- END LOGIN FORM -->
+            </div>
+            <!-- END LOGIN -->
+        </div>
+        <!-- END MAIN CONTENT -->
 
-		<!-- BEGIN FOOTER -->
-	     <div class="navbar navbar-fixed-bottom" style="background-color: #f5f5f5">
-	      <div class="container">
-	          &copy; 2014 <a href="http://www.example.com" alt="Company Name">Company Name</a> All rights reserved.
-	      </div>
-	     </div>
-		<!-- END FOOTER -->
+        <!-- BEGIN FOOTER -->
+         <div class="navbar navbar-fixed-bottom" style="background-color: #f5f5f5">
+          <div class="container">
+              &copy; 2014 <a href="http://www.example.com" alt="Company Name">Company Name</a> All rights reserved.
+          </div>
+         </div>
+        <!-- END FOOTER -->
 
-	    <!-- BEGIN MODAL -->
-	    <div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
-	        <div class="modal-dialog">
-	            <div class="modal-content">
-	                <!-- BEGIN MODAL HEADER -->
-	                <div class="modal-header">
-	                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
-	                    <h3 id="mlabel">Forget Password</h3>
-	                </div>
-	                <!-- END MODAL HEADER -->
-	                <!-- BEGIN MODAL BODY -->
-	                <div class="modal-body">
-	                    <div id="flash-message"></div>
-	                    <div id="mbody" class="well">
-							<!-- BEGIN FORGOT PASSWORD FORM -->
-							<form class="form">
-								<p>Enter your e-mail address below to reset your password.</p>
-								<div class="control-group">
-									<div class="controls">
-										<div class="input-group">
-											<input type="text" class="form-control" placeholder="Email" name="username" />
-											<span class="input-group-addon">
-										        <i class="fa fa-envelope"></i>
-										    </span>
-										</div>
-									</div>
-								</div>
-							</form>
-							<!-- END FORGOT PASSWORD FORM -->
-	                    </div>
-	                </div>
-	                <!-- END MODAL BODY -->
-	                <!-- BEGIN MODAL FOOTER -->
-	                <div class="modal-footer" id="modalfooter">
-	                    <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
-	                    <button id="msave" class="btn btn-primary">Ok</button>
-	                </div>
-	                <!-- END MODAL FOOTER -->
-	            </div>
-	        </div>
-	    </div>
-	    <!-- END MODAL -->
+        <!-- BEGIN MODAL -->
+        <div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <!-- BEGIN MODAL HEADER -->
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
+                        <h3 id="mlabel">Forget Password</h3>
+                    </div>
+                    <!-- END MODAL HEADER -->
+                    <!-- BEGIN MODAL BODY -->
+                    <div class="modal-body">
+                        <div id="flash-message"></div>
+                        <div id="mbody" class="well">
+                            <!-- BEGIN FORGOT PASSWORD FORM -->
+                            <form class="form">
+                                <p>Enter your e-mail address below to reset your password.</p>
+                                <div class="control-group">
+                                    <div class="controls">
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" placeholder="Email" name="username" />
+                                            <span class="input-group-addon">
+                                                <i class="fa fa-envelope"></i>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                            <!-- END FORGOT PASSWORD FORM -->
+                        </div>
+                    </div>
+                    <!-- END MODAL BODY -->
+                    <!-- BEGIN MODAL FOOTER -->
+                    <div class="modal-footer" id="modalfooter">
+                        <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
+                        <button id="msave" class="btn btn-primary">Ok</button>
+                    </div>
+                    <!-- END MODAL FOOTER -->
+                </div>
+            </div>
+        </div>
+        <!-- END MODAL -->
 
-		<!-- BEGIN JAVASCRIPTS -->
-		<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
-	    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
-		<script>
-			$(document).ready(function() {
-				$('#login-form input').keydown(function(e) {
-				    if (e.keyCode == 13) {
-				        $('#login-form').submit();
-				    }
-				});
-			});
-		</script>
-		<!-- END JAVASCRIPTS -->
-	</body>
+        <!-- BEGIN JAVASCRIPTS -->
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+        <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+        <script>
+            $(document).ready(function() {
+                $('#login-form input').keydown(function(e) {
+                    if (e.keyCode == 13) {
+                        $('#login-form').submit();
+                    }
+                });
+            });
+        </script>
+        <!-- END JAVASCRIPTS -->
+    </body>
 
 </html>

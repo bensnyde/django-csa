@@ -12,9 +12,7 @@
 
 {% block js %}
 	<script type="text/javascript">
-        // Set Ticket's Contact list via AJAX
 		function setContacts() {
-			// onSuccess callback function
 			function onSuccessCallback(result) {
 				if(!jQuery.isEmptyObject(result)) {
 					$('#flash-message').fadeIn();
@@ -33,7 +31,6 @@
 				}
 			}
 
-			// Make the AJAX call
 			$.ajax({
                 url: "{% url 'tickets:set_contacts' %}",
                 data: {"contacts[]": $("#id_ticket_contacts").val(), "ticket_id": "{{ ticket_id }}"},
@@ -43,14 +40,11 @@
             });
 		}
 
-		// Fetch Ticket via AJAX
 		function getTicket() {
-			// Destroy existing
 			$("#posts-list").html("");
 			$("#contacts-list").html("");
 			$("#id_ticket_contacts").html("");
 
-			// onSuccess callback function
 			function onSuccessCallback(result) {
 				if(!jQuery.isEmptyObject(result)) {
 					if(result.success == 1) {
@@ -106,14 +100,9 @@
 							);
 						}
 					}
-					else {
-						// AJAX call returned failed
-						// ********************FIX ME********************************
-					}
 				}
 			}
 
-			// Make the AJAX call
 			$.ajax({
                 url: "{% url 'tickets:getticket' ticket_id %}",
                 type: "POST",
@@ -123,25 +112,18 @@
 		}
 
 		{% if user.is_staff %}
-			// Fetch Ticket via AJAX
 			function togglePost(item, post_id) {
-				// onSuccess callback function
 				function onSuccessCallback(result) {
 					if(!jQuery.isEmptyObject(result)) {
 						if(result.success == 1) {
-							// AJAX call returned successful
 							$('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
 							getTicket();
 							$('#flash-message').fadeOut();
 						}
-						else {
-							// AJAX call returned failed
-							// ********************FIX ME********************************
-						}
 					}
 				}
 
-				var url;
+				var url="";
 				if(item=="visibility") {
 					url = "{% url 'tickets:togglevisibility' %}";
 				}
@@ -259,12 +241,11 @@
 	<!-- END POSTS CONTAINER -->
 
     <!-- BEGIN MODAL -->
-    <div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
+    <div id="mmodal" class="modal fade in" role="dialog">
         <div class="modal-dialog">
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
                     <h3 id="mlabel">Ticket Contacts</h3>
                 </div>
                 <!-- END MODAL HEADER -->
@@ -283,7 +264,7 @@
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
                 <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
+                    <button class="btn btn-default" data-dismiss="modal">Close</button>
                     <button id="msave" class="btn btn-primary" onclick="setContacts()">Ok</button>
                 </div>
                 <!-- END MODAL FOOTER -->

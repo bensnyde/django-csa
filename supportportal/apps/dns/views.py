@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 def index(request, service_id):
     """DNS List View
 
-        Retrieve listing of DNS zones. 
+        Retrieve listing of DNS zones.
 
     Middleware
         See SETTINGS for active Middleware.
@@ -37,10 +37,10 @@ def index(request, service_id):
 
 
 @login_required
-def detail(request, zone, service_id):    
+def detail(request, zone, service_id):
     """DNS Detail View
 
-        Retrieve records for specified DNS zone. 
+        Retrieve records for specified DNS zone.
 
     Middleware
         See SETTINGS for active Middleware.
@@ -75,7 +75,7 @@ def getzones(request, cpanel_username):
             request.user.is_authenticated() must be True
         @validated_service
             service_id must belong to request.user.company.services
-            service.vars is injected into view parameter            
+            service.vars is injected into view parameter
     Parameters
         request: HttpRequest
         cpanel_username: str cpanel account username
@@ -115,7 +115,7 @@ def getrecords(request, cpanel_username):
             request.user.is_authenticated() must be True
         @validated_service
             service_id must belong to request.user.company.services
-            service.vars is injected into view parameter           
+            service.vars is injected into view parameter
     Parameters
         request: HttpRequest
             zone: str domain name
@@ -157,7 +157,7 @@ def addrecord(request, cpanel_username):
             request.user.is_authenticated() must be True
         @validated_service
             service_id must belong to request.user.company.services
-            service.vars is injected into view parameter  
+            service.vars is injected into view parameter
     Parameters
         request: HttpRequest
             rtype: str record type
@@ -173,7 +173,7 @@ def addrecord(request, cpanel_username):
         HttpResponse (JSON)
             success: int status result of API call
             message: str response message from API call
-    """ 
+    """
     try:
         # Conditionally select Form for POST validation
         if request.POST['rtype'] == 'MX':
@@ -184,13 +184,13 @@ def addrecord(request, cpanel_username):
             form = AddRecordForm(request.POST)
 
         if form.is_valid():
-            if not does_domain_belong_to_username(cpanel_username, request.form.cleaned_data['zone']):
+            if not does_domain_belong_to_username(cpanel_username, form.cleaned_data['zone']):
                 raise Exception("Forbidden: specified Domain doesn't belong to specified Service.")
 
             data = {
-                'name': form.cleaned_data['domain'], 
-                'ttl': form.cleaned_data['ttl'], 
-                'zone': form.cleaned_data['zone'], 
+                'name': form.cleaned_data['domain'],
+                'ttl': form.cleaned_data['ttl'],
+                'zone': form.cleaned_data['zone'],
                 'type': form.cleaned_data['rtype']
             }
 
@@ -239,7 +239,7 @@ def deleterecord(request, cpanel_username):
             request.user.is_authenticated() must be True
         @validated_service
             service_id must belong to request.user.company.services
-            service.vars is injected into view parameter  
+            service.vars is injected into view parameter
     Parameters
         request: HttpRequest
             zone: string domain name
@@ -281,7 +281,7 @@ def createzone(request, cpanel_username):
             request.user.is_authenticated() must be True
         @validated_service
             service_id must belong to request.user.company.services
-            service.vars is injected into view parameter              
+            service.vars is injected into view parameter
     Parameters
         request: HttpRequest
             domain: string domain name
@@ -308,7 +308,7 @@ def createzone(request, cpanel_username):
 def deletezone(request, cpanel_username):
     """Delete DNS zone
 
-        Deletes specified DNS zone from remote Cpanel server. 
+        Deletes specified DNS zone from remote Cpanel server.
 
     Middleware
         See SETTINGS for active Middleware.
@@ -320,7 +320,7 @@ def deletezone(request, cpanel_username):
             request.user.is_authenticated() must be True
         @validated_service
             service_id must belong to request.user.company.services
-            service.vars is injected into view parameter              
+            service.vars is injected into view parameter
     Parameters
         request: HttpRequest
             zone: string domain name
@@ -347,20 +347,20 @@ def deletezone(request, cpanel_username):
 def search(user, service_id, querystr):
     """Search domains for string
 
-        Queries remote Cpanel server for domains matching specified search string. 
+        Queries remote Cpanel server for domains matching specified search string.
 
     Middleware
         See SETTINGS for active Middleware.
     Decorators
         @login_required
-            request.user.is_authenticated() must be True          
+            request.user.is_authenticated() must be True
     Parameters
         user: django user object
         service_id: int service id
-        querystr: str search string 
+        querystr: str search string
     Returns
         list of domains matching query
-    """ 
+    """
     service_vars = user.get_service_vars("/services/dns/", service_id)
     if not service_vars:
         return False
@@ -376,12 +376,12 @@ def search(user, service_id, querystr):
 def does_domain_belong_to_username(cpanel_username, domain):
     """Check to see if domain belongs to Cpanel user
 
-        Queries remote Cpanel server to see if specified domain is defined on and is belonging to specified cpanel_username. 
-     
+        Queries remote Cpanel server to see if specified domain is defined on and is belonging to specified cpanel_username.
+
     Parameters
         cpanel_username: str cpanel account name
         domain: str dns domain name
     Returns
         boolean
     """
-    return any(domain in zone["domain"] for zone in Cpanel().listZones(cpanel_username))    
+    return any(domain in zone["domain"] for zone in Cpanel().listZones(cpanel_username))

@@ -17,212 +17,190 @@
   <script type="text/javascript" src="{% static '/assets/plugins/data-tables/DT_bootstrap.js' %}"></script>
 
   <script type="text/javascript">
-      function build_announcements_modal() {
-        var modal_title = "Announcements Posting";
-        var modal_onclick_action = "addNewsPosting()";
-        var modal_body = ' \
-            <form id="announcements-form"> \
-              <div class="form-group"> \
-                <label class="control-label col-md-3">Title</label> \
-                <div class="controls col-md-9"> \
-                  <input type="text" class="form-control" name="title" id="news-article-title" /> \
-                  <span id="title-help" class="help-block"></span> \
-                </div> \
-              </div> \
-              <div class="form-group"> \
-                <label class="control-label col-md-3">Public</label> \
-                <div class="controls col-md-9"> \
-                  <input type="checkbox" class="form-control" name="public" id="news-article-public" /> \
-                  <span id="public-help" class="help-block"></span> \
-                </div> \
-              </div> \
-              <div class="form-group"> \
-                <label class="control-label col-md-3">Contents</label> \
-                <div class="controls col-md-9"> \
-                  <TEXTAREA class="form-control" name="body" id="news-article-contents"></TEXTAREA> \
-                  <span id="body-help" class="help-block"></span> \
-                </div> \
-              </div> \
-            </form>';
-
-        buildModal(modal_title, modal_body, modal_onclick_action);
-      }
-
-      function addNewsPosting() {
-          function onSuccessCallback(result) {
-              if(!jQuery.isEmptyObject(result)) {
-                  $('#flash-message').fadeIn();
-                  if(result.success == 1) {
-                      // AJAX call returned successful
-                      $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
-                      getNews();
-                      $('.modal.in').modal('hide');
-                  }
-                  else {
-                      // AJAX call returned failed
-                      $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
-                      if(result.hasOwnProperty('errors')) {
-                          // iterate through and display form validation errors
-                          $.each(result.errors, function(k,v) {
-                              $("#"+k+"-help").closest('div').addClass("has-error");
-                              $("#"+k+"-help").html(v);
-                          });
-                      }
-                  }
-                  setTimeout("$('#flash-message').fadeOut()",2000);
-              }
+    function setAnnouncement() {
+      function onSuccessCallback(result) {
+        if(!jQuery.isEmptyObject(result)) {
+          $('#flash-message').fadeIn();
+          if(result.success == 1) {
+            $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+            getAnnouncements();
+            $('#set-announcement-modal').modal('hide');
           }
-
-          // Make the AJAX call
-          $.ajax({
-              url: "{% url 'announcements:setnews' %}",
-              type: "POST",
-              data: {
-                  title: $("#news-article-title").val(),
-                  body: $("#news-article-contents").val(),
-              },
-              success: onSuccessCallback,
-              error: defaultErrorCallback
-          });
-      }
-
-      function delNewsPosting() {
-          function onSuccessCallback(result) {
-              if(!jQuery.isEmptyObject(result)) {
-                  $('#flash-message').fadeIn();
-                  if(result.success == 1) {
-                      // AJAX call returned successful
-                      $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
-                  }
-                  else {
-                      // AJAX call returned failed
-                      $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
-                      if(result.hasOwnProperty('errors')) {
-                          // iterate through and display form validation errors
-                          $.each(result.errors, function(k,v) {
-                              $("#id_"+k).closest('div').addClass("has-error");
-                              $("#"+k+"-help").html(v);
-                          });
-                      }
-                  }
-                  setTimeout("$('#flash-message').fadeOut()",2000);
-              }
-          }
-
-          // Make the AJAX call
-          $.ajax({
-              url: "{% url 'announcements:delnews' %}",
-              type: "POST",
-              data: {news_id: 3},
-              success: onSuccessCallback,
-              error: defaultErrorCallback
-          });
-      }
-
-        // Fetch Support Tickets summary via AJAX
-        function getNews() {
-          // Destroy existing
-          $("#news-postings").html("");
-
-            // onSuccess callback function
-            function onSuccessCallback(result) {
-                 if(!jQuery.isEmptyObject(result)) {
-                    if(result.success==1) {
-                        // AJAX call returned successful
-                        if(result.data.news.length > 0) {
-                            for(x in result.data.news) {
-                                $("#news-postings").append(' \
-                                    <!-- BEGIN POSTING --> \
-                                    <div class="list-group-item"> \
-                                        <div class="row"> \
-                                            <div class="col-md-5" style="text-indent: 10px"><strong>'+result.data.news[x].title+'</strong></div> \
-                                            <div class="col-md-7 text-right"><small>'+result.data.news[x].author+' @ '+result.data.news[x].timestamp+'</small></div> \
-                                        </div> \
-                                        <div class="row"> \
-                                            <p class="col-md-12 text-justify" style="text-indent: 6px; margin-top: 10px">'+result.data.news[x].body+'</p> \
-                                        </div> \
-                                    </div> \
-                                    <!-- END POSTING -->');
-                            }
-                        }
-                        else {
-                            // No articles returned
-                            $("#news-postings").html('<div class="alert text-center">No News</div>');
-                        }
-                    }
-                 }
-                 else {
-                    // AJAX call returned failed
-                    $("#news-postings").html('<div class="alert alert-danger text-center">'+result.message+'.</div>');
-                 }
+          else {
+            $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+            if(result.hasOwnProperty('errors')) {
+              $.each(result.errors, function(k,v) {
+                $("#"+k+"-help").closest('tr').addClass("has-error");
+                $("#"+k+"-help").html(v);
+              });
             }
-
-            // Make the AJAX call
-            $.ajax({
-                url: "{% url 'announcements:getnews' %}",
-                type: "POST",
-                success: onSuccessCallback,
-                error: defaultErrorCallback
-            });
+          }
+          setTimeout("$('#flash-message').fadeOut()",2000);
         }
+      }
 
-        // Fetch Tickets listing via AJAX
-        function getTickets() {
-          // Destroy existing
-            $("#tickets-tbody").html("");
+      $.ajax({
+        url: "{% url 'announcements:setnews' %}",
+        type: "POST",
+        data: $("#set-announcements-form").serialize(),
+        success: onSuccessCallback,
+        error: defaultErrorCallback
+      });
+    }
 
-            // onSuccess callback function
-            function onSuccessCallback(result) {
-                if(!jQuery.isEmptyObject(result)) {
-                    if(result.success == 1) {
-                      // AJAX call returned successful
-                      if(result.data.tickets.length == 0)
-                      {
-                        $("#tickets-tbody").html('<tr><td colspan=5>There are no open tickets.</td></tr>');
-                      }
-                      else {
-                        for(x in result.data.tickets) {
-                            var priority = "gray";
-                            if(result.data.tickets[x].priority=="Urgent") {
-                              priority = "red";
-                            }
-                            else if(result.data.tickets[x].priority=="Normal") {
-                              priority = "green"
-                            }
+    function delAnnouncement() {
+      function onSuccessCallback(result) {
+        if(!jQuery.isEmptyObject(result)) {
+          $('#flash-message').fadeIn();
+          if(result.success == 1) {
+            $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+            getAnnouncements();
+            $('#del-announcement-modal').modal('hide');
+          }
+          else {
+            $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+          }
+          setTimeout("$('#flash-message').fadeOut()",2000);
+        }
+      }
 
-                            $("#tickets-tbody").append(' \
-                                <tr data-id="'+result.data.tickets[x].id+'" style="background-color: '+priority+'"> \
-                                    <td>'+result.data.tickets[x].id+'</td> \
-                                    <td>'+result.data.tickets[x].description+'</td> \
-                                    <td>'+result.data.tickets[x].author+'</td> \
-                                    <td>'+result.data.tickets[x].owner+'</td> \
-                                    <td>'+result.data.tickets[x].lastupdate+'</td> \
-                                </tr>'
-                            );
-                        }
-                      }
-                    }
-                    else {
-                      // AJAX call returned failed
-                        $("#tickets-tbody").html("<tr><td colspan=5>"+result.message+"</td></tr>");
-                    }
+      $.ajax({
+        url: "{% url 'announcements:delnews' %}",
+        type: "POST",
+        data: $("#del-announcements-form").serialize(),
+        success: onSuccessCallback,
+        error: defaultErrorCallback
+      });
+    }
+
+    function showSetAnnouncementForm() {
+      $("#id_title").val("");
+      $("#id_body").val("");
+      $("#id_public").removeAttr('checked');
+      $("#set-announcements-form #announcement_id").val("");
+      $("#set-announcement-modal").modal('show');
+    }
+
+    function getAnnouncement(announcement_id) {
+      function onSuccessCallback(result) {
+       if(!jQuery.isEmptyObject(result)) {
+          if(result.success==1) {
+            $("#id_title").val(result.data.announcement.title);
+            $("#id_body").val(result.data.announcement.body);
+            $("#id_public").prop('checked', result.data.announcement.public);
+          }
+        }
+      }
+
+      $.ajax({
+        url: "{% url 'announcements:get' %}",
+        type: "POST",
+        data: {'announcement_id': announcement_id},
+        success: onSuccessCallback,
+        error: defaultErrorCallback
+      });
+    }
+
+    function getAnnouncements() {
+      $("#news-postings").html("");
+
+      function onSuccessCallback(result) {
+       if(!jQuery.isEmptyObject(result)) {
+          if(result.success==1) {
+            if(result.data.news.length > 0) {
+              for(x in result.data.news) {
+                var priv = "";
+                if(!result.data.news[x].public) {
+                  priv = '<i class="fa fa-eye"></i>';
                 }
-            }
 
-            // Make the AJAX call
-            $.ajax({
-                url: "{%url 'tickets:gettickets' %}",
-                type: "POST",
-                data: {"flagged": 1},
-                success: onSuccessCallback,
-                error: defaultErrorCallback
-            });
+                $("#news-postings").append(' \
+                  <!-- BEGIN POSTING --> \
+                  <div class="list-group-item" data-id="'+result.data.news[x].id+'"> \
+                      <div class="row"> \
+                          <div class="col-md-5" style="text-indent: 10px"><strong>'+result.data.news[x].title+priv+'</strong></div> \
+                          <div class="col-md-7 text-right"><small>'+result.data.news[x].author+' @ '+result.data.news[x].timestamp+'</small></div> \
+                      </div> \
+                      <div class="row"> \
+                        <span class="col-md-12 text-justify" style="text-indent: 6px; margin-top: 10px">'+result.data.news[x].body+'</span> \
+                        <span class="pull-right" style="padding-right: 15px"> \
+                          <a href="#" class="edit-announcement"><i class="fa fa-edit" style="color: green"></i></a>\
+                          <a href="#" class="del-announcement"><i class="fa fa-trash-o" style="color: red"></i></a>\
+                        </span> \
+                      </div> \
+                  </div> \
+                  <!-- END POSTING -->'
+                );
+              }
+            }
+            else {
+              $("#news-postings").html('<div class="alert text-center">No announcements.</div>');
+            }
+          }
         }
+        else {
+          $("#news-postings").html('<div class="alert alert-danger text-center">'+result.message+'.</div>');
+        }
+      }
+
+      $.ajax({
+        url: "{% url 'announcements:getall' %}",
+        type: "POST",
+        success: onSuccessCallback,
+        error: defaultErrorCallback
+      });
+    }
+
+    function getTickets() {
+      $("#tickets-tbody").html("");
+
+      function onSuccessCallback(result) {
+        if(!jQuery.isEmptyObject(result)) {
+          if(result.success == 1) {
+            if(result.data.tickets.length == 0)
+            {
+              $("#tickets-tbody").html('<tr><td colspan=5>There are no open tickets.</td></tr>');
+            }
+            else {
+              for(x in result.data.tickets) {
+                var priority = "#ddd";
+                if(result.data.tickets[x].priority=="Urgent") {
+                  priority = "red";
+                }
+                else if(result.data.tickets[x].priority=="Normal") {
+                  priority = "green"
+                }
+
+                $("#tickets-tbody").append(' \
+                    <tr data-id="'+result.data.tickets[x].id+'" style="background-color: '+priority+'"> \
+                        <td>'+result.data.tickets[x].id+'</td> \
+                        <td>'+result.data.tickets[x].description+'</td> \
+                        <td>'+result.data.tickets[x].author+'</td> \
+                        <td>'+result.data.tickets[x].owner+'</td> \
+                        <td>'+result.data.tickets[x].lastupdate+'</td> \
+                    </tr>'
+                );
+              }
+            }
+          }
+          else {
+            $("#tickets-tbody").html("<tr><td colspan=5>"+result.message+"</td></tr>");
+          }
+        }
+      }
+
+      $.ajax({
+        url: "{%url 'tickets:gettickets' %}",
+        type: "POST",
+        success: onSuccessCallback,
+        error: defaultErrorCallback
+      });
+    }
   </script>
 {% endblock %}
 
 {% block jquery_document_ready %}
-  getNews();
+  getAnnouncements();
   getTickets();
 
   $("#tickets-tbody").on('click', 'tr', function () {
@@ -230,6 +208,21 @@
       window.location = "{% url 'tickets:detail' 0 %}".replace('0', $(this).data('id'));
     }
   });
+
+  $("#news-postings")
+    .on('click', 'a.del-announcement', function (e) {
+      if($(this).closest('div').parent().data('id')) {
+        $("#del-announcements-form #announcement_id").val($(this).closest('div').parent().data('id'));
+        $('#del-announcement-modal').modal('show');
+      }
+    })
+    .on('click', 'a.edit-announcement', function (e) {
+      if($(this).closest('div').parent().data('id')) {
+        showSetAnnouncementForm();
+        $("#set-announcements-form #announcement_id").val($(this).closest('div').parent().data('id'));
+        getAnnouncement($(this).closest('div').parent().data('id'));
+      }
+    });
 {% endblock %}
 
 {% block content %}
@@ -238,36 +231,41 @@
   <div class="row">
     <!-- BEGIN NEWS CONTAINER -->
     <div class="col-md-6">
-        <div class="panel panel-default">
-          <div class="panel-heading" style="font-weight: bold">
-          <div style="float: right"><a href="#" onclick="build_announcements_modal()"><i class="fa fa-plus"></i></a></div>
-            <div>Announcements</div>
-          </div>
-
-          <div class="panel-body">
-            <!-- BEGIN NEWS POSTINGS -->
-            <div id="news-postings" class="list-group"></div>
-            <!-- END NEWS POSTINGS -->
-          </div>
+      <div class="panel panel-default">
+        <div class="panel-heading" style="font-weight: bold">Announcements
+          <span class="pull-right">
+            <a href="#" onclick="getAnnouncements()"><i class="fa fa-refresh"></i></a>
+            <a href="#" onclick="showSetAnnouncementForm()"><i class="fa fa-plus"></i></a>
+          </span>
         </div>
+        <div class="panel-body">
+          <!-- BEGIN NEWS POSTINGS -->
+          <div id="news-postings" class="list-group"></div>
+          <!-- END NEWS POSTINGS -->
+        </div>
+      </div>
     </div>
     <!-- END NEWS CONTAINER -->
     <!-- BEGIN TICKETS CONTAINER -->
     <div class="col-md-6">
         <div class="panel panel-default">
           <div class="panel-heading" style="font-weight: bold">Open Tickets
-            <span class="pull-right"><a href="{% url 'tickets:create_ticket' %}"><i class="fa fa-plus"></i></a></span></div>
+            <span class="pull-right">
+              <a onclick="getTickets();" href="#"><i class="fa fa-refresh"></i></a>
+              <a href="{% url 'tickets:create_ticket' %}"><i class="fa fa-plus"></i></a>
+            </span>
+          </div>
           <div class="panel-body">
             <!-- BEGIN FLAGGED TICKETS -->
             <div id="flagged-tickets" class="list-group">
               <table>
-                <thead>
+                <thead class="row">
                   <tr>
-                    <th>ID</th>
-                    <th>Description</th>
-                    <th>Author</th>
-                    <th>Owner</th>
-                    <th>Last Update</th>
+                    <th class="col-md-1">ID</th>
+                    <th class="col-md-3">Description</th>
+                    <th class="col-md-3">Author</th>
+                    <th class="col-md-3">Owner</th>
+                    <th class="col-md-2">Last Update</th>
                 </thead>
                 <tbody id="tickets-tbody"></tbody>
               </table>
@@ -281,25 +279,78 @@
   </div>
 
   <!-- BEGIN MODAL -->
-  <div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
+  <div id="set-announcement-modal" class="modal fade in" role="dialog">
       <div class="modal-dialog">
           <div class="modal-content">
               <!-- BEGIN MODAL HEADER -->
               <div class="modal-header">
-                  <button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
-                  <h3 id="mlabel"></h3>
+                  <h3 id="mlabel">Announcements</h3>
               </div>
               <!-- END MODAL HEADER -->
               <!-- BEGIN MODAL BODY -->
               <div class="modal-body">
                   <div id="flash-message"></div>
-                  <div class="well" id="mbody"></div>
+                  <div class="well" id="mbody">
+                    <!-- BEGIN ANNOUNCEMENTS FORM -->
+                    <form role="form" class="form" id="set-announcements-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="announcement_id" id="announcement_id" value="" />
+                        <table class="table table-striped table-bordered table-hover" id="announcement-form-table">
+                            {% for field in announcementform %}
+                                <tr class="form-group">
+                                    <td><label class="control-label">{{ field.label_tag }}</label></td>
+                                    <td>
+                                        <div class="controls">
+                                            {{ field|addcss:"form-control" }}
+                                            <span id="{{ field.html_name }}-help" class="help-inline"></span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </table>
+                    </form>
+                    <!-- END ANNOUNCEMENTS FORM -->
+                  </div>
               </div>
               <!-- END MODAL BODY -->
               <!-- BEGIN MODAL FOOTER -->
               <div class="modal-footer" id="modalfooter">
-                  <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
-                  <button id="msave" class="btn btn-primary">Ok</button>
+                  <button class="btn btn-default" data-dismiss="modal">Close</button>
+                  <button id="msave" class="btn btn-primary" onclick="setAnnouncement()">Ok</button>
+              </div>
+              <!-- END MODAL FOOTER -->
+          </div>
+      </div>
+  </div>
+  <!-- END MODAL -->
+
+
+  <!-- BEGIN MODAL -->
+  <div id="del-announcement-modal" class="modal fade in" role="dialog">
+      <div class="modal-dialog">
+          <div class="modal-content">
+              <!-- BEGIN MODAL HEADER -->
+              <div class="modal-header">
+                  <h3 id="mlabel">Delete Announcement</h3>
+              </div>
+              <!-- END MODAL HEADER -->
+              <!-- BEGIN MODAL BODY -->
+              <div class="modal-body">
+                  <div id="flash-message"></div>
+                  <div class="well" id="mbody">
+                    <span>Are you sure you want to delete the specified announcement?</span>
+                    <!-- BEGIN ANNOUNCEMENTS FORM -->
+                    <form role="form" class="form" id="del-announcements-form">
+                      <input type="hidden" name="announcement_id" id="announcement_id" value="" />
+                    </form>
+                    <!-- END ANNOUNCEMENTS FORM -->
+                  </div>
+              </div>
+              <!-- END MODAL BODY -->
+              <!-- BEGIN MODAL FOOTER -->
+              <div class="modal-footer" id="modalfooter">
+                  <button class="btn btn-default" data-dismiss="modal">Close</button>
+                  <button id="msave" class="btn btn-primary" onclick="delAnnouncement()">Ok</button>
               </div>
               <!-- END MODAL FOOTER -->
           </div>

@@ -11,12 +11,9 @@
 	<script type="text/javascript">
 		var images = [];	// local array to store fetched uri's
 
-		// Fetch Interface Graphs via AJAX
 		function getGraphs(drange) {
-			// Destroy existing
 			$("#interface-graphs-container").html("");
 
-			// onSuccess callback function
 			function onSuccessCallback(result) {
 				if(!jQuery.isEmptyObject(result)) {
 					if(result["success"]==true) {
@@ -31,7 +28,6 @@
 				}
 			}
 
-			// onError callback function
 			function onErrorCallback(xhr, ajaxOptions, thrownError) {
                 switch (xhr.status) {
                     case 403:
@@ -42,7 +38,6 @@
                 }
             }
 
-            // Make the AJAX call
             $.ajax({
                 url: "{% url 'zenoss:getgraphs' service_id server.id %}",
                 data: {"drange": drange},
@@ -52,9 +47,7 @@
             });
 		}
 
-		// Fetch Interface details via AJAX
 		function getZenossDetails() {
-			// onSuccess callback function
 			function onSuccessCallback(result) {
 				if(!jQuery.isEmptyObject(result)) {
 					if(result["success"]==true) {
@@ -69,7 +62,6 @@
 				}
 			}
 
-			// onError callback function
 			function onErrorCallback(xhr, ajaxOptions, thrownError) {
                 switch (xhr.status) {
                     case 403:
@@ -80,7 +72,6 @@
                 }
             }
 
-			// Make the AJAX call
             $.ajax({
                 url: "{% url 'zenoss:getdetails' service_id server.id %}",
                 type: "POST",

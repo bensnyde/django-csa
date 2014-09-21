@@ -10,19 +10,14 @@
 
 {% block js %}
 	<script type="text/javascript">
-		// Fetch Knowledgebase summary via AJAX
-		function getSummary() {		
-			// Destroy existing
+		function getSummary() {
 			$("#kb-categories").html("");
 			$("#popular-articles").html("");
 			$("#newest-articles").html("");
 
-			// onSuccess callback function
 			function onSuccessCallback(result) {
 				if(!jQuery.isEmptyObject(result)) {
 					if(result.success == 1) {
-						// AJAX call returned successful
-
 						// Newest articles
 						for(x in result.data.newest) {
 							$("#newest-articles").append(' \
@@ -30,7 +25,7 @@
 									<a href="{%url 'knowledgebase:index' %}'+result.data.newest[x].id+'"> \
 										<em>'+result.data.newest[x].title+'</em> \
 									</a> \
-								</li>'								
+								</li>'
 							);
 						}
 
@@ -41,47 +36,51 @@
 									<a href="{%url 'knowledgebase:index' %}'+result.data.popular[x].id+'"> \
 										<em>'+result.data.popular[x].title+'</em> \
 									</a> \
-								</li>'								
+								</li>'
 							);
-						}						
+						}
 
 						// Categories
 						for(x in result.data.categories) {
 							var articles = "";
 							for(y in result.data.categories[x].articles) {
 								articles += '<p><a href="{%url 'knowledgebase:index' %}'+result.data.categories[x].articles[y].id+'">'+result.data.categories[x].articles[y].title+'</a></p>';
-							}							
+							}
 
 							$("#kb-categories").append(' \
 								<li class="list-group-item row"> \
 									<div class="col-md-10"> \
-										<a onclick="$(this).next(\'div\').toggle();">'+result.data.categories[x].category+'</a> \
+										<a class="toggle-child">'+result.data.categories[x].category+'</a> \
 										<div style="display: none; margin: 10px">'+articles+'</div> \
 									</div><div class="col-md-2 text-right"><span class="badge">'+result.data.categories[x].articles.length+'</span></div> \
 								</li>'
 							);
 						}
-					}					
+					}
 					else {
-						// AJAX call returned failed
 						$("#kb-categories").html(result.message);
 					}
-				}				
+				}
 			}
 
-			// Make the AJAX call
 			$.ajax({
                 url: "{%url 'knowledgebase:getsummary' %}",
                 type: "POST",
                 success: onSuccessCallback,
                 error: defaultErrorCallback
-            });		
+            });
 		}
 	</script>
 {% endblock %}
 
 {% block jquery_document_ready %}
 	getSummary();
+
+  $('#kb-categories')
+      .on('click', 'a.toggle-child', function (e) {
+          e.preventDefault();
+          $(this).next('div').toggle();
+      })
 {% endblock %}
 
 {% block content %}
@@ -92,11 +91,11 @@
 	    <div class="row page-head">
 	        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Knowledgebase</h3></div>
 	        {% if user.is_staff %}
-	        <div class="col-md-6 text-right">        
+	        <div class="col-md-6 text-right">
 	            <div class="btn-group">
 	                <a href="{% url 'knowledgebase:admin' %}" role="button" id="create-ticket-button" class="badge" data-toggle="modal">Administer <i class="fa fa-plus"></i></a>
 	            </div>
-	        </div>	        
+	        </div>
 	        {% endif %}
 	    </div>
 	    <!-- END CONTAINER HEAD -->
@@ -127,11 +126,11 @@
 					</div>
 					<!-- END POPULAR ARTICLES -->
 				</div>
-			</div>		
-			<!-- END RIGHT COLUMN -->		
+			</div>
+			<!-- END RIGHT COLUMN -->
 		</div>
-	    <!-- END CONTAINER BODY -->  
-    <!-- END KNOWLEDGEBASE CONTAINER --> 
+	    <!-- END CONTAINER BODY -->
+    <!-- END KNOWLEDGEBASE CONTAINER -->
 
  <!-- END KNOWLEDGEBASE INDEX CONTENT -->
 {% endblock %}

@@ -23,7 +23,7 @@ def results(request):
     """
     Displays search results.
     """
-    matches = {} 
+    matches = {}
     querystr = ""
     if request.method == 'POST':
         form = SearchForm(request.POST)
@@ -31,29 +31,30 @@ def results(request):
             querystr = form.cleaned_data['querystr']
 
             # Search Tickets
-            tickets = query_support_tickets(querystr) 
+            tickets = query_support_tickets(querystr)
             if tickets:
                 matches['Tickets'] = tickets
 
             # Search Knowledgebase
-            kb_articles = query_support_knowledgebase(querystr) 
+            kb_articles = query_support_knowledgebase(querystr)
             if kb_articles:
                 matches['Knowledgebase'] = kb_articles
-            
-            # Search Customers
-            contacts = query_account_contacts(request.user.company_id, querystr)
-            if contacts:
-                matches['Contacts'] = contacts
 
-            # Company Services
-            company = Company.objects.get(pk=request.user.company_id)
-            services = company.services.all()
-            for service in services:
-                result = coupler_uri_to_model_search(service.coupler.uri, request.user, service.id, querystr)
-                if result:
-                    matches.update({service.name: result})              
+            if not request.user.is_staff:
+                # Search Customers
+                contacts = query_account_contacts(request.user.company_id, querystr)
+                if contacts:
+                    matches['Contacts'] = contacts
 
-    if request.is_ajax(): 
+                # Company Services
+                company = Company.objects.get(pk=request.user.company_id)
+                services = company.services.all()
+                for service in services:
+                    result = coupler_uri_to_model_search(service.coupler.uri, request.user, service.id, querystr)
+                    if result:
+                        matches.update({service.name: result})
+
+    if request.is_ajax():
         return format_ajax_response(True, "Search results retrieved successfully.", {"matches": matches})
     else:
         return render(request, 'search/results.html', {'querystr': querystr, 'matches': matches})
@@ -65,13 +66,13 @@ def query_support_knowledgebase(querystr):
     if kbarticles:
         for article in kbarticles:
             matches.append({
-                'link': reverse('knowledgebase:detail', kwargs={"article_id": article.id}), 
-                'title': article.title, 
+                'link': reverse('knowledgebase:detail', kwargs={"article_id": article.id}),
+                'title': article.title,
                 'preview': article.contents[:128]
             })
 
     return matches
-        
+
 def query_support_tickets(querystr):
     return ticketsearch(querystr)
 
@@ -81,8 +82,8 @@ def query_account_contacts(company_id, querystr):
     if contacts:
         for contact in contacts:
             matches.append({
-                'link': reverse('contacts:detail', kwargs={"user_id": contact.id}), 
-                'title': contact.email, 
+                'link': reverse('contacts:detail', kwargs={"user_id": contact.id}),
+                'title': contact.email,
                 'preview': contact.get_full_name()
             })
 
@@ -98,7 +99,7 @@ def query_dns_service(user, service_id, query_str):
     if domains:
         for domain in domains:
             matches.append({
-                'link': reverse('dns:detail', kwargs={"service_id": service_id, "zone": domain}), 
+                'link': reverse('dns:detail', kwargs={"service_id": service_id, "zone": domain}),
                 'title': domain
             })
 

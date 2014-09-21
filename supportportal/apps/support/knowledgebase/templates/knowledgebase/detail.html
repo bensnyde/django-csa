@@ -12,12 +12,9 @@
 
 {% block js %}
 	<script type="text/javascript">
-		// Fetch Article via AJAX
-		function getArticle() {	
-			// Destroy existing	
+		function getArticle() {
 			$("#article-stats").html("");
 
-			// onSuccess callback function
 			function onSuccessCallback(result) {
 				if(!jQuery.isEmptyObject(result)) {
 					if(result.success == 1) {
@@ -42,21 +39,20 @@
 								<ul class="list-unstyled">'+tags+'</ul> \
 							</dd>'
 						);
-					}					
+					}
 					else {
 						// AJAX call returned failed
 						$("#article-content").html(result.message);
 					}
-				}				
+				}
 			}
 
-			// Make the AJAX call
 			$.ajax({
                 url: "{%url 'knowledgebase:getarticle' article_id %}",
                 type: "POST",
                 success: onSuccessCallback,
                 error: defaultErrorCallback
-            });			
+            });
 		}
 	</script>
 {% endblock %}
@@ -67,35 +63,35 @@
 
 {% block content %}
  <!-- BEGIN KNOWLEDGEBASE DETAIL CONTENT -->
-	     <!-- BEGIN CONTAINER HEAD -->
-	    <div class="row page-head">
-	        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3 id="article-title"></h3></div>
-	        {% if user.is_staff %}
-	        <div class="col-md-6 text-right">        
-	            <div class="btn-group">
-	                <a href="{% url 'knowledgebase:admin' article_id %}" role="button" id="create-ticket-button" class="badge" data-toggle="modal">Administer <i class="fa fa-plus"></i></a>
-	            </div>
-	        </div>	        
-	        {% endif %}	        
-	    </div>
-	    <!-- END CONTAINER HEAD -->
-	    <!-- BEGIN CONTAINER BODY -->
-		<div class="row">
-			<!-- BEGIN LEFT COLUMN -->
-			<div class="col-md-8">
-				<div id="article-content"></div>
-			</div>	
-			<!-- END LEFT COLUMN -->
-			<!-- BEGIN RIGHT COLUMN -->
-			<div class="col-md-4">
-				<!-- BEGIN ARTICLE STATS -->	
-				<div>
-					<dl id="article-stats"></dl>
-				</div>
-				<!-- END ARTICLE STATS -->
-			</div>
-			<!-- END RIGHT COLUMN -->			
+    <!-- BEGIN CONTAINER HEAD -->
+    <div class="row page-head">
+        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3 id="article-title"></h3></div>
+        {% if user.is_staff %}
+        <div class="col-md-6 text-right">
+            <div class="btn-group">
+                <a href="{% url 'knowledgebase:admin' article_id %}" role="button" id="create-ticket-button" class="badge" data-toggle="modal">Administer <i class="fa fa-plus"></i></a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    <!-- END CONTAINER HEAD -->
+    <!-- BEGIN CONTAINER BODY -->
+	<div class="row">
+		<!-- BEGIN LEFT COLUMN -->
+		<div class="col-md-8">
+			<div id="article-content"></div>
 		</div>
-	    <!-- END CONTAINER BODY -->  
+		<!-- END LEFT COLUMN -->
+		<!-- BEGIN RIGHT COLUMN -->
+		<div class="col-md-4">
+			<!-- BEGIN ARTICLE STATS -->
+			<div>
+				<dl id="article-stats"></dl>
+			</div>
+			<!-- END ARTICLE STATS -->
+		</div>
+		<!-- END RIGHT COLUMN -->
+	</div>
+    <!-- END CONTAINER BODY -->
  <!-- END KNOWLEDGEBASE DETAIL CONTENT -->
 {% endblock %}

@@ -3,7 +3,8 @@ from apps.announcements import views
 
 urlpatterns = patterns('',
     # AJAX
-    url(r'^get/$', views.get_news, name='getnews'),
-    url(r'^set/$', views.set_news, name='setnews'),
-    url(r'^del/$', views.delete_news, name='delnews'),
+    url(r'^index/$', views.get_index, name='getall'),
+    url(r'^detail/$', views.get_detail, name='get'),
+    url(r'^set/$', views.set, name='setnews'),
+    url(r'^del/$', views.delete, name='delnews'),
 )

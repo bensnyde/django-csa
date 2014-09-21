@@ -13,16 +13,16 @@ WHMPASS = settings.CPANEL_DNS["password"]
 
 class Cpanel:
     def cQuery(self, query):
-        """Query Cpanel 
-            
+        """Query Cpanel
+
             Queries WHM server's JSON API with specified query string.
 
         Parameters
             query: str url safe string
         Returns
             json decoded response from remote server
-        """        
-        try:       
+        """
+        try:
             conn = httplib.HTTPSConnection(WHMURL, 2087)
             conn.request('GET', '/json-api/%s' % query, headers={'Authorization':'Basic ' + base64.b64encode(WHMROOT+':'+WHMPASS).decode('ascii')})
             response = conn.getresponse()
@@ -39,7 +39,7 @@ class Cpanel:
     def addZone(self, domain, ip, trueowner=None):
         """Add DNS Zone
 
-            This function creates a DNS zone. All zone information other than domain 
+            This function creates a DNS zone. All zone information other than domain
             name and IP address is created based on the standard zone template in WHM.
 
         Parameters
@@ -84,7 +84,7 @@ class Cpanel:
             **target:str - The hostname of the machine providing a specified service.
         Returns
             result: bool api result status
-        """    
+        """
         querystr =     'addzonerecord?'
         for name,val in kwargs.iteritems():
             querystr = querystr + "&%s=%s" % (name, val)
@@ -125,10 +125,10 @@ class Cpanel:
             *serial:int - The unsigned 32-bit version number of the original copy of the zone.
             *txtdata:str - Text record data.
             *type:str - The type of zone record being added.
-            *ttl:int - The record's time to live.        
+            *ttl:int - The record's time to live.
         Returns
             result: bool api result status
-        """                
+        """
         querystr = 'editzonerecord?zone=%s&Line=%s' % (domain, line)
         for name,val in args:
             querystr = querystr + "&%s=%s" % (name, val)
@@ -147,7 +147,7 @@ class Cpanel:
     def addReverseZoneRecord(self, zone, name, ptrdname):
         """Add DNS PTR Record
 
-            The addzonerecord function allows you to add reverse DNS functionality using PTR records. 
+            The addzonerecord function allows you to add reverse DNS functionality using PTR records.
             PTR records are used in reverse DNS lookups that convert IP addresses into domain names.
 
         Parameters
@@ -158,7 +158,7 @@ class Cpanel:
             result: bool api result status
         """
         querystr = 'addzonerecord?zone=%s&name=%s&ptrdname=%s&type=PTR' % (zone, name, ptrdname)
-        result = self.cQuery(querystr) 
+        result = self.cQuery(querystr)
 
         try:
             if result["result"][0]["status"] == 1:
@@ -171,14 +171,14 @@ class Cpanel:
 
     def getZoneRecord(self, domain, line):
         """Get DNS Zone Record
-        
+
             This function will return zone records for a domain.
 
         Parameters
             domain:str - The domain whose zone record you wish to view.
             line:str - The line you wish to view in the zone record.
         Returns
-            record:     
+            record:
                 name:str - Domain name. Example: example.com
                 Line:str - The number of the zone record line retrieved by the function.
                 address:str - The IP address associated with the zone record.
@@ -186,7 +186,7 @@ class Cpanel:
                 raw:str - Raw line data.
                 ttl:int - The record's time to live.
                 type:str - The DNS record type. Example: NS, SOA, A, etc.
-        """              
+        """
         querystr = 'getzonerecord?domain=%s&line=%s' % (domain, lineline)
         result = self.cQuery(querystr)
 
@@ -201,7 +201,7 @@ class Cpanel:
 
     def deleteZone(self, domain):
         """Delete DNS Zone
-        
+
             This function deletes a DNS zone.
 
         Parameters
@@ -211,7 +211,7 @@ class Cpanel:
         """
         querystr = 'killdns?domain=%s' % domain
         result = self.cQuery(querystr)
-
+        logger.error("result: %s" % result)
         try:
             if result["result"][0]["status"] == 1:
                 return True
@@ -232,12 +232,12 @@ class Cpanel:
             zones:
                 domain:str - Domain name. Example: example.com
                 zonefile:str - Zone file name. Example: example.com.db
-        """            
+        """
         if cpanel_user:
             querystr = 'cpanel?cpanel_jsonapi_module=DomainLookup&cpanel_jsonapi_func=getbasedomains&cpanel_xmlapi_version=2&cpanel_jsonapi_user=%s' % cpanel_user
         else:
             querystr = 'listzones'
-            
+
         result = self.cQuery(querystr)
 
         try:
@@ -246,7 +246,7 @@ class Cpanel:
         except Exception as ex:
             logger.error('%s threw exception: %s' % (querystr, ex))
 
-        return False  
+        return False
 
 
     def listZone(self, domain):
@@ -263,7 +263,7 @@ class Cpanel:
                 Lines:int - Number of lines. (only appears if more than 1 line)
                 address:str - IP address. Example: 127.0.0.1
                 class:str - The class of the record. (typically IN for "Internet")
-                exchange:str - In an MX record, the name of the destination mail server. 
+                exchange:str - In an MX record, the name of the destination mail server.
                 preference:int - In an MX record, the priority of the destination mail server. (0 is highest priority)
                 expire:str - A 32-bit time value that specifies the upper limit on the time interval that can elapse before the zone is no longer authoritative.
                 minimum:int - The unsigned 32-bit minimum TTL field that should be exported with any record from this zone.
@@ -335,13 +335,13 @@ class Cpanel:
         except Exception as ex:
             logger.error('%s threw exception: %s' % (querystr, ex))
 
-        return False     
+        return False
 
 
     def resetZone(self, domain=None, zone=None, user=None):
-        """Reset Zone 
+        """Reset Zone
 
-            You can use this function to restore a DNS zone to its default values. This includes 
+            You can use this function to restore a DNS zone to its default values. This includes
             any subdomain DNS records associated with the domain.
 
         Parameters
@@ -351,7 +351,7 @@ class Cpanel:
             **Only one of domain/zone is required.
         Returns
             result: bool api result status
-        """                
+        """
         if not domain and not zone:
             return False
 
@@ -402,12 +402,12 @@ class Cpanel:
         except Exception as ex:
             logger.error('%s threw exception: %s' % (querystr, ex))
 
-        return False    
+        return False
 
 
     def addZoneMXRecord(self, domain, name, exchange, preference, aclass=None, serialnum=None, ttl=None):
         """Add DNS MX Record
-        
+
             This function will add an MX record.
 
         Parameters

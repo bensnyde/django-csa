@@ -10,37 +10,6 @@
 	<li>Contact</li>
 {% endblock %}
 
-{% block js %}
-	<script type="text/javascript">
-		// Makes AJAX call to supplied resource with supplied data
-		function sendPost() {
-			// onSuccess callback function
-			function onSuccessCallback(result) {
-				if(!jQuery.isEmptyObject(result)) {
-					$('#flash-message').fadeIn();
-					if(result.success == 1) {
-						// AJAX call returned successful
-						$('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
-					}
-					else {
-						// AJAX call returned failed
-						$('#flash-message').html('<div class="alert alert-error">'+result.message+'</div>');
-					}
-				}
-			}
-
-			// Make the AJAX call
-			$.ajax({
-                url: "{% url 'contact:feedback' %}",
-                data: $('#contact-form').serialize(),
-                type: "POST",
-                success: onSuccessCallback,
-                error: defaultErrorCallback
-            });
-		}
-	</script>
-{% endblock %}
-
 {% block content %}
  <!-- BEGIN CONTACTUS CONTENT -->
 
@@ -95,31 +64,6 @@
 				</div>
 			</div>
 			<!-- END ADDRESS CONTAINER -->
-			<!-- BEGIN CONTACT FORM CONTAINER -->
-			<div class="row">
-				<form id="contact-form" class="form-horizontal col-md-12" role="form">
-					{% csrf_token %}
-					{% for field in contact_form %}
-						<div class="form-group">
-							<label class="control-label col-md-2">{{ field.label }}</label>
-							<div class="controls col-md-10">
-								{{ field }}
-								<span id="{{ field.label }}-help" class="help-block"></span>
-							</div>
-						</div>
-					{% endfor %}
-
-					<div class="row">
-						<div class="col-md-12">
-							<div class="col-md-offset-2 col-md-10">
-								<button class="btn btn-primary" onclick="sendPost()"><i class="fa fa-envelope"></i> Send</button>
-							</div>
-						</div>
-					</div>
-
-				</form>
-			</div>
-			<!-- END CONTACT FORM CONTAINER -->
 	    <!-- END CONTAINER BODY -->
     <!-- END CONTACTUS CONTAINER -->
 

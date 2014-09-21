@@ -7,9 +7,9 @@ class CategoryForm(ModelForm):
 
 class TagForm(ModelForm):
 	class Meta:
-		model = Tag		
+		model = Tag
 
 class ArticleForm(ModelForm):
 	class Meta:
-		model = Article		
-		fields = ['title', 'contents', 'category']
+		model = Article
+		fields = ['title', 'contents', 'category', 'tags']

@@ -17,7 +17,12 @@ class PostForm(ModelForm):
 class TicketForm(ModelForm):
     class Meta:
         model = Ticket
-        fields = ['contacts', 'description', 'queue']
+        fields = ['contacts', 'description', 'queue', 'priority', 'service', 'due_date']
+
+class AdminTicketForm(ModelForm):
+    class Meta:
+        model = Ticket
+        fields = ['contacts', 'description', 'queue', 'priority', 'service', 'author', 'due_date']
 
 class QueueForm(ModelForm):
     class Meta:

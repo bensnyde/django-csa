@@ -21,7 +21,7 @@
                                             <div class="col-md-6" style="text-indent: 10px"><strong>'+result.data.news[x].title+'</strong></div> \
                                             <div class="col-md-6 text-right"><small>'+result.data.news[x].author+' @ '+result.data.news[x].timestamp+'</small></div> \
                                         </div> \
-                                        <div class="row"> \
+                                        <div class="row"><i class="fa fa-trash"></i> \
                                             <p class="col-md-12 text-justify" style="text-indent: 6px; margin-top: 10px">'+result.data.news[x].body+'</p> \
                                         </div> \
                                     </div> \
@@ -42,7 +42,7 @@
 
             // Make the AJAX call
             $.ajax({
-                url: "{% url 'announcements:getnews' %}",
+                url: "{% url 'announcements:getall' %}",
                 type: "POST",
                 success: onSuccessCallback,
                 error: defaultErrorCallback
@@ -159,7 +159,7 @@
             <div class="row">
                 <div class="col-md-12">
                     <div class="panel panel-default">
-                      <div class="panel-heading text-center" style="font-weight: bold">News & Events</div>
+                      <div class="panel-heading">Announcements</div>
                       <div class="panel-body">
                         <!-- BEGIN NEWS POSTINGS -->
                         <div id="news-postings" class="list-group"></div>

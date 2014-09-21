@@ -177,8 +177,8 @@
                 <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Accounts <span class="caret"></span></a>
                 <ul class="dropdown-menu" role="menu">
                   {% if user.is_staff %}
-                    <li><a href="{% url 'companies:index' %}"><i class="fa fa-user"></i> Companies</a></li>
-                    <li><a href="{% url 'contacts:index' %}"><i class="fa fa-user"></i> Contacts</a></li>
+                    <li><a href="{% url 'companies:index' %}">Companies</a></li>
+                    <li><a href="{% url 'contacts:index' %}">Contacts</a></li>
                   {% else %}
                     <li><a href="{% url 'companies:detail' user.company_id %}">Company</a></li>
                     <li><a href="{% url 'contacts:detail' user.id %}">Contact</a></li>
@@ -207,12 +207,12 @@
               <li class="dropdown">
                 <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Support <span class="caret"></span></a>
                 <ul class="dropdown-menu" role="menu">
-                    <li><a href="{% url 'tickets:index' %}"><i class="fa fa-user"></i> Tickets</a></li>
+                    <li><a href="{% url 'tickets:index' %}">Tickets</a></li>
                     {% if user.is_staff %}
-                      <li><a href="{% url 'tickets:admin' %}"><i class="fa fa-user"></i> Ticket Queues</a></li>
+                      <li><a href="{% url 'tickets:admin' %}">Ticket Queues</a></li>
                     {% endif %}
-                    <li><a href="{% url 'knowledgebase:index'%}"><i class="fa fa-user"></i> Knowledgebase</a></li>
-                    <li><a href="{% url 'contact:index' %}"><i class="fa fa-user"></i> Contact Us</a></li>
+                    <li><a href="{% url 'knowledgebase:index'%}">Knowledgebase</a></li>
+                    <li><a href="{% url 'contact:index' %}">Contact Us</a></li>
                 </ul>
               </li>
               <!-- END SUPPORT DROPDOWN -->
@@ -227,6 +227,7 @@
                   <div class="form-group">
                     <input type="text" class="form-control" placeholder="Search..." name="querystr" onkeyup="lookup(this.value);">
                   </div>
+                  <div id="suggestions" style="display: none; pull-right; position: absolute; z-index: 10;  background: black; color: white; width: 300px; padding: 10px; margin: 0"></div>
                 </form>
               </li>
               <!-- END SEARCH -->
@@ -257,7 +258,7 @@
       {% block page_header %}
       <div class="row">
         <div class="col-md-12">
-          <div id="suggestions" style="display: none; position: absolute; z-index: 10; left: 300px; background: black; color: white; width: 300px; padding: 10px; margin: 0"></div>
+          
           <h3 class="page-title">{% block heading %}Support Portal <small>Dashboard</small>{% endblock %}</h3>
           <ul class="page-breadcrumb breadcrumb">
             <li>

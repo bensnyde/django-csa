@@ -11,21 +11,17 @@
 
 {% block js %}
     <script type="text/javascript">
-        // Default Success Callback function for AJAX calls
         function defaultSuccessCallback(result) {
             if(!jQuery.isEmptyObject(result)) {
                 $('#flash-message').fadeIn();
                 if(result.success == 1) {
-                    // AJAX call returned successful
                     $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
                     getRecords();
                     setTimeout("$('.modal.in').modal('hide')",2000);
                 }
                 else {
-                    // AJAX call returned failed
                     $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
                     if(result.hasOwnProperty('errors')) {
-                        // iterate through and display form validation errors
                         $.each(result.errors, function(k,v) {
                             $("#id_"+k).parents('tr').addClass("has-error");
                             $("#"+k+"-help").html(v);
@@ -48,19 +44,16 @@
 
         // Retrieve listing of DNS records under zone
         function getRecords() {
-            // destroy existing
             $("#dns-records-tbody").html("");
 
-            // ajax onSuccess callback
             function onSuccessCallback(result) {
                 if(!jQuery.isEmptyObject(result)) {
                     if(result.success == 1) {
-                        // Parse and display returned records depending on record type
                         for(x in result.data.records) {
                             var output = "";
                             if(result.data.records[x].type != ":RAW" && result.data.records[x].type != "$TTL") {
                                 output = output + ' \
-                                    <tr valign="top" data-record="'+result.data.records[x].Line+'"> \
+                                    <tr valign="top" data-id="'+result.data.records[x].Line+'"> \
                                         <td>'+result.data.records[x].name+'</td> \
                                         <td>'+result.data.records[x].ttl+'</td> \
                                         <td>'+result.data.records[x].type+'</td>';
@@ -110,7 +103,7 @@
                                 }
 
                                 output = output + ' \
-                                            <td><a role="button" class="btn del-record" data-toggle="modal"><i class="fa fa-trash-o"></i> Delete</a></td> \
+                                            <td><a href="#" role="button" class="del-record" data-toggle="modal"><i class="fa fa-trash-o" style="color: red"></i></a></td> \
                                         </tr>';
                             }
 
@@ -118,13 +111,11 @@
                         }
                     }
                     else {
-                        // AJAX call returned status code fail
                         $("#dns-records-tbody").html("<tr><td colspan=5>'+result.message+'</td></tr>");
                     }
                 }
             }
 
-            // make ajax call
             $.ajax({
                 url: "{%url 'dns:getrecords' service_id %}",
                 data: {zone: "{{ zone }}"},
@@ -132,70 +123,6 @@
                 success: onSuccessCallback,
                 error: defaultErrorCallback
             });
-        }
-
-        // Customizes modal with specifications
-        function buildModal(label, body, saveaction) {
-            $('#flash-message').hide();
-            $('#mlabel').html(label);
-            $('#mbody').html(body);
-            $('#msave').attr('onclick', saveaction);
-            $("#mmodal").modal('show');
-        }
-
-        // Builds Delete Record modal
-        function build_delete_record_modal(linenum) {
-            var modal_title = "Delete Record";
-            var modal_body = 'Are you sure you want to delete this record?';
-            var modal_onclick_action = 'sendPost("{% url 'dns:deleterecord' service_id %}", {line: '+linenum+', zone: \'{{ zone }}\'})';
-
-            buildModal(modal_title, modal_body, modal_onclick_action);
-        }
-
-        // Builds Add Record modal
-        function build_add_record_modal() {
-            var modal_onclick_action = 'sendPost("{% url 'dns:addrecord' service_id %}", $("#add-record-form").serialize())';
-            var modal_title = "Add Record";
-            var modal_body = ' \
-                <form class="form" role="form" id="add-record-form"> \
-                    <input type="hidden" name="zone" value="{{ zone }}" /> \
-                    <table class="table table-bordered" id="add-dns-record-table"> \
-                        <tr class="form-group"> \
-                            <td><label class="control-label" for="domain">Domain</label></td> \
-                            <td><input type="text" name="domain" id="id_domain" class="form-control" /><span id="domain-help" class="help-block"></span></td> \
-                        </tr> \
-                        <tr class="form-group"> \
-                            <td><label class="control-label" for="ttl">TTL</label></td> \
-                            <td><input type="text" name="ttl" id="id_ttl" class="form-control" /><span id="ttl-help" class="help-block"></span></td> \
-                        </tr> \
-                        <tr class="form-group" id="rtype-select"> \
-                            <td><label class="control-label" for="rtype">Type</label></td> \
-                            <td> \
-                                <select name="rtype" id="id_rtype" onchange="processAddRecordSelection($(this).val())" class="form-control" autocomplete="off"> \
-                                    <option SELECTED>A</option> \
-                                    <option>A6</option> \
-                                    <option>AAAA</option> \
-                                    <option>CNAME</option> \
-                                    <option>DNAME</option> \
-                                    <option>MX</option> \
-                                    <option>NS</option> \
-                                    <option>PTR</option> \
-                                    <option>SRV</option> \
-                                    <option>TXT</option> \
-                                </select> \
-                                <span id="rtype-help" class="help-block"></span> \
-                            </td> \
-                        </tr> \
-                        <tbody id="add-record-tbody"> \
-                            <tr class="form-group"> \
-                                <td><label class="control-label" for="record">Hostname</label></td> \
-                                <td><input type="text" name="record" id="id_record" class="form-control" /><span id="record-help" class="help-block"></span></td> \
-                            </tr> \
-                        </tbody> \
-                    </table> \
-                </form>';
-
-            buildModal(modal_title, modal_body, modal_onclick_action);
         }
 
         // Populates add record form with proper fields for selected type
@@ -272,15 +199,20 @@
                     break;
             }
         }
+
+        function showAddRecordModal() {
+            $("#add-record-form").trigger("reset");
+            $("#add-record-modal").modal('show');
+        }
     </script>
 {% endblock %}
 
 {% block jquery_document_ready %}
     getRecords();
 
-    // DNS Records event bindings
-    $('#dns-records-tbody').on('click', 'tr', function () {
-        window.location = "{% url 'tickets:detail' 0 %}".replace('0', $(this).data('id'));
+    $('#dns-records-tbody').on('click', 'a.del-record', function () {
+        $("#del-record-form #line").val($(this).closest('tr').data('id'));
+        $("#del-record-modal").modal("show");
     });
 {% endblock %}
 
@@ -292,7 +224,7 @@
         <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>{{ zone }}</h3></div>
         <div class="col-md-6 text-right">
             <div class="btn-group">
-                <a onclick="build_add_record_modal()" role="button" class="badge" data-toggle="modal">Add Record <i class="fa fa-plus"></i></a>
+                <a onclick="showAddRecordModal()" role="button" class="badge" data-toggle="modal">Add Record <i class="fa fa-plus"></i></a>
             </div>
         </div>
     </div>
@@ -317,32 +249,103 @@
     </div>
     <!-- END DNS RECORDS CONTAINER -->
 
-    <!-- BEGIN MODAL -->
-    <div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
+    <!-- BEGIN DELETE RECORD MODAL -->
+    <div id="del-record-modal" class="modal fade in" role="dialog">
         <div class="modal-dialog">
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
-                    <h3 id="mlabel"></h3>
+                    <h3 id="mlabel">Delete Record</h3>
                 </div>
                 <!-- END MODAL HEADER -->
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
                     <div id="flash-message"></div>
-                    <div id="mbody" class="well"></div>
+                    <div id="mbody" class="well">
+                        <span>Are you sure you want to delete this record?</span>
+                        <form id="del-record-form">
+                            <input type="hidden" name="line" id="line" value="" />
+                            <input type="hidden" name="zone" value="{{ zone }}" />
+                        </form>
+                    </div>
                 </div>
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
                 <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
-                    <button id="msave" class="btn btn-primary">Ok</button>
+                    <button class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button id="msave" class="btn btn-primary" onclick='sendPost("{% url 'dns:deleterecord' service_id %}", $("#del-record-form").serialize())'>Ok</button>
                 </div>
                 <!-- END MODAL FOOTER -->
             </div>
         </div>
     </div>
-    <!-- END MODAL -->
+    <!-- END DELETE RECORD MODAL -->
+
+    <!-- BEGIN ADD RECORD MODAL -->
+    <div id="add-record-modal" class="modal fade in" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <!-- BEGIN MODAL HEADER -->
+                <div class="modal-header">
+                    <h3 id="mlabel">Add Record</h3>
+                </div>
+                <!-- END MODAL HEADER -->
+                <!-- BEGIN MODAL BODY -->
+                <div class="modal-body">
+                    <div id="flash-message"></div>
+                    <div id="mbody" class="well">
+                        <!-- BEGIN ADD RECORD FORM -->
+                        <form class="form" role="form" id="add-record-form">
+                            <input type="hidden" name="zone" value="{{ zone }}" />
+                            <table class="table table-bordered" id="add-dns-record-table">
+                                <tr class="form-group">
+                                    <td><label class="control-label" for="domain">Domain</label></td>
+                                    <td><input type="text" name="domain" id="id_domain" class="form-control" /><span id="domain-help" class="help-block"></span></td>
+                                </tr>
+                                <tr class="form-group">
+                                    <td><label class="control-label" for="ttl">TTL</label></td>
+                                    <td><input type="text" name="ttl" id="id_ttl" class="form-control" /><span id="ttl-help" class="help-block"></span></td>
+                                </tr>
+                                <tr class="form-group" id="rtype-select">
+                                    <td><label class="control-label" for="rtype">Type</label></td>
+                                    <td>
+                                        <select name="rtype" id="id_rtype" onchange="processAddRecordSelection($(this).val())" class="form-control" autocomplete="off">
+                                            <option SELECTED>A</option>
+                                            <option>A6</option>
+                                            <option>AAAA</option>
+                                            <option>CNAME</option>
+                                            <option>DNAME</option>
+                                            <option>MX</option>
+                                            <option>NS</option>
+                                            <option>PTR</option>
+                                            <option>SRV</option>
+                                            <option>TXT</option>
+                                        </select>
+                                        <span id="rtype-help" class="help-block"></span>
+                                    </td>
+                                </tr>
+                                <tbody id="add-record-tbody">
+                                    <tr class="form-group">
+                                        <td><label class="control-label" for="record">Hostname</label></td>
+                                        <td><input type="text" name="record" id="id_record" class="form-control" /><span id="record-help" class="help-block"></span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </form>
+                        <!-- END ADD RECORD FORM -->
+                    </div>
+                </div>
+                <!-- END MODAL BODY -->
+                <!-- BEGIN MODAL FOOTER -->
+                <div class="modal-footer" id="modalfooter">
+                    <button class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button id="msave" class="btn btn-primary" onclick='sendPost("{% url 'dns:addrecord' service_id %}", $("#add-record-form").serialize())'>Ok</button>
+                </div>
+                <!-- END MODAL FOOTER -->
+            </div>
+        </div>
+    </div>
+    <!-- END ADD RECORD MODAL -->
 
  <!-- END DNS DETAIL CONTENT -->
 {% endblock %}

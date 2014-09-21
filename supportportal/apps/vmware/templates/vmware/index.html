@@ -8,7 +8,6 @@
 
 {% block js %}
 	<script type="text/javascript">
-        // Default Success Callback function for AJAX calls
         function defaultSuccessCallback(result) {
 	        if(!jQuery.isEmptyObject(result)) {
 	            $('#flash-message').fadeIn();
@@ -19,7 +18,6 @@
 	                window.location.reload();
 	            }
 	            else {
-	            	// AJAX call returned failed
 	                $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
 	            }
 	            $('#flash-message').delay(3000).fadeOut();
@@ -47,11 +45,9 @@
 
 		// Retrieve and process Statistics
 		function getVmwareStats() {
-			// onSuccess callback function
 			function onSuccessCallback(result) {
 		        if(!jQuery.isEmptyObject(result)) {
 		            if(result.success == 1) {
-		            	// AJAX call returned success
 		            	var hdds = "";
 
 		            	$("#vm-stats-state").html(result.data.statistics.state);
@@ -68,14 +64,9 @@
 
 		            	$("#vm-stats-hdds").html(hdds);
 		            }
-		            else {
-		            	// AJAX call returned failed
-		            	// ****************fix me***********************
-		            }
 		        }
 			}
 
-			// onError callback function
 			function onErrorCallback(xhr, ajaxOptions, thrownError) {
                 switch (xhr.status) {
                     case 403:
@@ -83,7 +74,6 @@
                 }
             }
 
-			// Make the AJAX call
             $.ajax({
                 url: "{% url 'vmware:getstats' service_id server.id %}",
                 type: "POST",
@@ -98,24 +88,19 @@
 			$("#iso-select").prop("disabled", false);
 			$("#iso-select").html("");
 
-			// onSuccess callback function
 			function onSuccessCallback(result) {
 		        if(!jQuery.isEmptyObject(result)) {
 		            if(result.success == 1) {
-		            	// AJAX call returned success
 		            	for(iso in result.data.isos) {
 		            		$("#iso-select").append('<OPTION>'+result.data.isos[iso]+'</OPTION>');
 		            	}
 		            }
 		            else {
-		            	// AJAX call returned failed
-		            	// ****************fix me***********************
 		            	$("#iso-select").prop("disabled", true);
 		            }
 		        }
 			}
 
-			// onError callback function
 			function onErrorCallback(xhr, ajaxOptions, thrownError) {
                 switch (xhr.status) {
                     case 403:
@@ -123,7 +108,6 @@
                 }
             }
 
-			// Make the AJAX call
             $.ajax({
                 url: "{% url 'vmware:getisos' service_id server.id %}",
                 type: "POST",
@@ -132,13 +116,10 @@
             });
 		}
 
-		// Fetch Snapshots via AJAX
 		function getSnapshots() {
-			// onSuccess callback function
 			function onSuccessCallback(result) {
 		        if(!jQuery.isEmptyObject(result)) {
 		            if(result.success == 1) {
-		            	// AJAX call returned success
 		            	var count = 0;
 		            	for(snapshot in result.data.snapshots) {
 		            		count++;	// to track current snapshot count
@@ -162,14 +143,9 @@
 		            		$("#create_snapshot").attr("onclick", "return false");
 		            	}
 		            }
-		            else {
-		            	// AJAX call returned failed
-		                // ****************fix me***********************
-		            }
 		        }
 			}
 
-			// onError callback function
 			function onErrorCallback(xhr, ajaxOptions, thrownError) {
                 switch (xhr.status) {
                     case 403:
@@ -177,7 +153,6 @@
                 }
             }
 
-            // Make the AJAX call
             $.ajax({
                 url: "{% url 'vmware:getsnapshots' service_id server.id %}",
                 type: "POST",
@@ -197,7 +172,6 @@
 				$(this).html(kbytesToSize($(this).html()));
 			});
 
-		    // Snapshot controls event bindings
 		    $('#vm-snapshots-table')
 		        .on('click', 'a.revert-snapshot', function (e) {
 		            e.preventDefault();

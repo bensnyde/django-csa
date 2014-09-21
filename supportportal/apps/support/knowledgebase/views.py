@@ -1,6 +1,6 @@
 # System
 import logging
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 # Project
 from apps.loggers.models import ActionLogger
 from common.decorators import validated_request, validated_staff
@@ -16,12 +16,12 @@ logger = logging.getLogger(__name__)
 def index(request):
     """Knowledgebase Index View
 
-        Lists categories and popular/recently modified articles. 
+        Lists categories and popular/recently modified articles.
 
     Middleware
         See SETTINGS for active Middleware.
     Decorators
-        None   
+        None
     Parameters
         request: HttpRequest
     Returns
@@ -33,12 +33,12 @@ def index(request):
 def detail(request, article_id):
     """Knowledgebase Detail View
 
-        Retrieves specified article's details. 
+        Retrieves specified article's details.
 
     Middleware
         See SETTINGS for active Middleware.
     Decorators
-        None   
+        None
     Parameters
         request: HttpRequest
         article_id: int article id
@@ -53,18 +53,24 @@ def detail(request, article_id):
 def admin(request, article_id=0):
     """Knowledgebase Index View
 
-        Lists categories and popular/recently modified articles. 
+        Lists categories and popular/recently modified articles.
 
     Middleware
         See SETTINGS for active Middleware.
     Decorators
-        None   
+        None
     Parameters
         request: HttpRequest
     Returns
         HttpReponse (knowledgebase/admin.html)
     """
-    return render(request, 'knowledgebase/admin.html', {'article_id': article_id})
+    if article_id:
+        article = get_object_or_404(Article, pk=article_id)
+        articleform = ArticleForm(instance=article)
+    else:
+        articleform = ArticleForm()
+
+    return render(request, 'knowledgebase/admin.html', {'articleform': articleform, 'article_id': article_id})
 
 
 @validated_request(None)
@@ -76,10 +82,10 @@ def get_summary(request):
     Middleware
         See SETTINGS for active Middleware.
     Decorators
-        @validated_request     
+        @validated_request
             request.method must be POST
             request.is_ajax() must be True
-            request.user.is_authenticated() must be True        
+            request.user.is_authenticated() must be True
     Parameters
         request: HttpRequest
     Returns
@@ -90,7 +96,7 @@ def get_summary(request):
                 newest: dict of newest article(s)
                 popular: dict of most viewed article(s)
                 categories: dict of categories annotated with respective articles
-    """    
+    """
     try:
         # Fetch most recent article(s)
         newest_list = []
@@ -109,7 +115,7 @@ def get_summary(request):
     except Exception as ex:
         logger.error("Failed to get_summary: %s" % ex)
         return format_ajax_response(False, "There was an error retrieving the knowledgebase overview.")
-  
+
 
 @validated_request(None)
 def get_article(request, article_id):
@@ -120,10 +126,10 @@ def get_article(request, article_id):
     Middleware
         See SETTINGS for active Middleware.
     Decorators
-        @validated_request     
+        @validated_request
             request.method must be POST
             request.is_ajax() must be True
-            request.user.is_authenticated() must be True            
+            request.user.is_authenticated() must be True
     Parameters
         request: HttpRequest
         article_id: int article id
@@ -165,10 +171,10 @@ def set_article(request):
         @validated_staff
             request.user.is_staff must be True
         @validated_request
-            request.POST must validate against ArticleForm        
+            request.POST must validate against ArticleForm
             request.method must be POST
             request.is_ajax() must be True
-            request.user.is_authenticated() must be True          
+            request.user.is_authenticated() must be True
     Parameters
         request: HttpRequest
             contents: str article contents
@@ -185,7 +191,7 @@ def set_article(request):
         # Update existing Article if article_id exists, else create new Article
         if "article_id" not in request.POST or not int(request.POST["article_id"]):
             # Create new Article
-            article = Article.objects.create(category=request.form.cleaned_data["category"], contents=request.form.cleaned_data["contents"], title=request.form.cleaned_data["title"], author=request.user) 
+            article = Article.objects.create(category=request.form.cleaned_data["category"], contents=request.form.cleaned_data["contents"], title=request.form.cleaned_data["title"], author=request.user)
 
             tags = request.POST.getlist('tags', 0)
             if tags:
@@ -229,7 +235,7 @@ def delete_article(request):
         @validated_request
             request.method must be POST
             request.is_ajax() must be True
-            request.user.is_authenticated() must be True       
+            request.user.is_authenticated() must be True
     Parameters
         request: HttpRequest
             article_id: int article id
@@ -237,7 +243,7 @@ def delete_article(request):
         HttpResponse (JSON)
             success: int status result
             message: str response message
-    """        
+    """
     try:
         articles = request.POST.getlist('article_id')
         Article.objects.filter(pk__in=articles).delete()
@@ -265,11 +271,11 @@ def set_tag(request):
             request.POST must validate against TagForm
             request.method must be POST
             request.is_ajax() must be True
-            request.user.is_authenticated() must be True 
+            request.user.is_authenticated() must be True
     Parameters
         request: HttpRequest
             title: str tag title
-            *tag_id: int tag id            
+            *tag_id: int tag id
     Returns
         HttpResponse (JSON)
             success: int status result
@@ -277,9 +283,9 @@ def set_tag(request):
     """
     try:
         # Update existing Tag if tag_id exists, else create new Tag
-        if "tag_id" not in request.POST or not int(request.POST["tag_id"]):
+        if "tag_id" not in request.POST or not request.POST["tag_id"]:
             # Create new Tag
-            tag = Tag.objects.create(title=request.form.cleaned_data["title"]) 
+            tag = Tag.objects.create(title=request.form.cleaned_data["title"])
 
             ActionLogger().log(request.user, "created", "Knowledgebase Tag %s" % tag)
             return format_ajax_response(True, "Knowledgebase tag created successfully.")
@@ -308,10 +314,10 @@ def delete_tag(request):
     Decorators
         @validated_staff
             request.user.is_staff must be True
-        @validated_request     
+        @validated_request
             request.method must be POST
             request.is_ajax() must be True
-            request.user.is_authenticated() must be True          
+            request.user.is_authenticated() must be True
     Parameters
         request: HttpRequest
             tag_id: int[] article id
@@ -319,7 +325,7 @@ def delete_tag(request):
         HttpResponse (JSON)
             success: int status result
             message: str response message
-    """        
+    """
     try:
         tags = request.POST.getlist('tag_id')
         tag = Tag.objects.filter(pk__in=tags).delete()
@@ -327,7 +333,7 @@ def delete_tag(request):
         return format_ajax_response(True, "Knoweldgebase tag(s) deleted successfully.")
     except Exception as ex:
         logger.error("Failed to delete_tag: %s" % ex)
-        return format_ajax_response(False, "There was an error deleting the specified knowledgebase tag(s).")     
+        return format_ajax_response(False, "There was an error deleting the specified knowledgebase tag(s).")
 
 
 @validated_staff
@@ -342,10 +348,10 @@ def get_tags(request):
     Decorators
         @validated_staff
             request.user.is_staff must be True
-        @validated_request     
+        @validated_request
             request.method must be POST
             request.is_ajax() must be True
-            request.user.is_authenticated() must be True      
+            request.user.is_authenticated() must be True
     Parameters
         request: HttpRequest
     Returns
@@ -356,7 +362,7 @@ def get_tags(request):
                 tags:
                     title: str tag title
                     id: int tag id
-    """    
+    """
     try:
         tags = []
         for tag in Tag.objects.all():
@@ -380,10 +386,10 @@ def get_categories(request):
     Decorators
         @validated_staff
             request.user.is_staff must be True
-        @validated_request     
+        @validated_request
             request.method must be POST
             request.is_ajax() must be True
-            request.user.is_authenticated() must be True            
+            request.user.is_authenticated() must be True
     Parameters
         request: HttpRequest
     Returns
@@ -394,7 +400,7 @@ def get_categories(request):
                 categories:
                     title: str category name
                     id: int category id
-    """       
+    """
     try:
         categories = []
         for category in Category.objects.all():
@@ -418,10 +424,10 @@ def delete_category(request):
     Decorators
         @validated_staff
             request.user.is_staff must be True
-        @validated_request     
+        @validated_request
             request.method must be POST
             request.is_ajax() must be True
-            request.user.is_authenticated() must be True         
+            request.user.is_authenticated() must be True
     Parameters
         request: HttpRequest
             category_id: int category id
@@ -429,7 +435,7 @@ def delete_category(request):
         HttpResponse (JSON)
             success: int status result
             message: str response message
-    """        
+    """
     try:
         categories = request.POST.getlist('category_id')
         category = Category.objects.filter(pk__in=categories).delete()
@@ -454,14 +460,14 @@ def set_category(request):
         @validated_staff
             request.user.is_staff must be True
         @validated_request
-            request.POST must validate against CategoryForm        
+            request.POST must validate against CategoryForm
             request.method must be POST
             request.is_ajax() must be True
-            request.user.is_authenticated() must be True         
+            request.user.is_authenticated() must be True
     Parameters
         request: HttpRequest
             title: str category title
-            *category_id: int category id            
+            *category_id: int category id
     Returns
         HttpResponse (JSON)
             success: int status result
@@ -469,15 +475,15 @@ def set_category(request):
     """
     try:
         # Update existing category if category_id exists, else create new Category
-        if "category_id" not in request.POST or not int(request.POST["category_id"]):
+        if "category_id" not in request.POST or not request.POST["category_id"]:
             # Create new Category
-            category = Category.objects.create(title=request.form.cleaned_data["title"]) 
+            category = Category.objects.create(title=request.form.cleaned_data["title"])
 
             ActionLogger().log(request.user, "created", "Knowledgebase Category %s" % category)
             return format_ajax_response(True, "Knowledgebase category created successfully.")
         else:
             # Update existing category
-            category = Category.objects.get(pk=int(request.POST["category_id"]))
+            category = Category.objects.get(pk=request.POST["category_id"])
             category.title = request.form.cleaned_data["title"]
             category.save()
 

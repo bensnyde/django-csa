@@ -10,7 +10,7 @@ from common.decorators import validated_request, validated_staff
 from common.helpers import format_ajax_response
 # App
 from .models import Queue, Ticket, Post, get_ticket_contacts_list, set_ticket_contacts_list, get_tickets_summary, get_companies_active_contacts
-from .forms import QueueForm, TicketForm, PostForm, TicketIDForm, PostIDForm
+from .forms import QueueForm, TicketForm, AdminTicketForm, PostForm, TicketIDForm, PostIDForm
 
 
 logger = logging.getLogger(__name__)
@@ -339,7 +339,12 @@ def create_ticket(request, service_id=0):
             else:
                 form_errors = new_ticket_form.errors
 
-    response = {'fellow_contacts': get_companies_active_contacts(request.user.company_id, request.user.id), 'service_id': int(service_id)}
+    if request.user.is_staff:
+        ticketform = AdminTicketForm()
+    else:
+        ticketform = TicketForm()
+
+    response = {'ticketform': ticketform, 'postform': PostForm(), 'fellow_contacts': get_companies_active_contacts(request.user.company_id, request.user.id), 'service_id': int(service_id)}
     try:
         response.update({"form_errors": form_errors})
     except:
