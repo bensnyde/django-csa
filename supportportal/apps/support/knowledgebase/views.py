@@ -50,7 +50,7 @@ def detail(request, article_id):
 
 
 @validated_staff
-def admin(request, article_id=0):
+def admin(request):
     """Knowledgebase Index View
 
         Lists categories and popular/recently modified articles.
@@ -64,14 +64,21 @@ def admin(request, article_id=0):
     Returns
         HttpReponse (knowledgebase/admin.html)
     """
-    if article_id:
-        article = get_object_or_404(Article, pk=article_id)
-        articleform = ArticleForm(instance=article)
-    else:
-        articleform = ArticleForm()
+    return render(request, 'knowledgebase/admin.html', {'articleform': ArticleForm(), 'categoryform': CategoryForm(), 'tagform': TagForm()})
 
-    return render(request, 'knowledgebase/admin.html', {'articleform': articleform, 'article_id': article_id})
 
+@validated_staff
+@validated_request(None)
+def get_articles(request):
+    try:
+        articles = []
+        for article in Article.objects.all():
+            articles.append(article.dump_to_dict())
+
+        return format_ajax_response(True, "Knowledgebase articles listing retrieving successfully.", {"articles": articles})
+    except Exception as ex:
+        logger.error("Failed to get_articles: %s" % ex)
+        return format_ajax_response(False, "There was an error retrieving knowledgebase articles listing.")
 
 @validated_request(None)
 def get_summary(request):
@@ -203,6 +210,7 @@ def set_article(request):
         else:
             # Update existing category
             article = Article.objects.get(pk=int(request.POST["article_id"]))
+            article.views = request.form.cleaned_data["views"]
             article.title = request.form.cleaned_data["title"]
             article.contents = request.form.cleaned_data["contents"]
             article.category = request.form.cleaned_data["category"]

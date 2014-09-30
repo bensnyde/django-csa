@@ -9,14 +9,14 @@ class Category(models.Model):
 
     def __unicode__(self):
         return '%s' % (self.title)
-   
+
 
 class Tag(models.Model):
     title = models.SlugField(max_length=64, null=False, blank=False, unique=True)
 
     def __unicode__(self):
         return '%s' % (self.title)
-        
+
 
 class Article(models.Model):
     author = models.ForeignKey(settings.AUTH_USER_MODEL, null=False, blank=False, related_name="knowledgebase_author")
@@ -66,7 +66,7 @@ def get_categories_annotate_articles():
     Returns
         kb_categories: queryset of Categories and Articles
             [{"category": "Category 1", "articles": [<Article 1>, <Article 2>]}]
-    """    
+    """
     kb_categories = []
     for category in Category.objects.annotate(count=models.Count('article')):
         articles_list = []
@@ -74,14 +74,14 @@ def get_categories_annotate_articles():
             articles_list.append({"id": article.pk, "author": article.author.get_full_name(), "title": article.title, "views": article.views, "category": article.category.title, "updated": str(article.modified)})
 
         kb_categories.append({
-            "category": category.title, 
+            "category": category.title,
             "articles": articles_list
-        })  
+        })
 
-    return kb_categories          
+    return kb_categories
 
 def increment_articles_views(article_id):
-    """Increment Article views 
+    """Increment Article views
 
         Increments view count on specified Article.
 
@@ -89,7 +89,7 @@ def increment_articles_views(article_id):
         article_id: int article id
     Returns
         bool result
-    """    
+    """
     return Article.objects.filter(pk=article_id).update(views=models.F('views')+1)
 
 def get_articles_by_tag(*tags):
@@ -98,7 +98,7 @@ def get_articles_by_tag(*tags):
         Retrieves queryset of all Articles containing specified tag(s).
 
     Parameters:
-        tags: str[] tags 
+        tags: str[] tags
     Returns
         queryset of matched Articles
     """
@@ -110,7 +110,7 @@ def search(query):
     Parameters
     :param: str query - query string to search for
 
-    Returns 
+    Returns
     :queryset: Article
     """
     return Article.objects.filter(contents__icontains=query)

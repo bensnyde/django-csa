@@ -9,7 +9,7 @@ from common.helpers import format_ajax_response
 from apps.companies.models import Company
 from apps.loggers.models import ActionLogger, AuthenticationLogger
 # App
-from .forms import ContactForm, ContactPasswordForm, ContactCreationForm
+from .forms import ContactForm, ContactPasswordForm, ContactCreationForm, ContactAdminForm
 from .models import Contact
 
 
@@ -18,8 +18,19 @@ logger = logging.getLogger(__name__)
 
 @validated_staff
 def index(request):
-    contacts = Contact.objects.filter(is_active=True)
-    return render(request, 'contacts/index.html', {'contacts': contacts})
+    return render(request, 'contacts/index.html', {'contactform': ContactAdminForm()})
+
+@validated_staff
+@validated_request(None)
+def get_contacts(request):
+    try:
+        contacts = []
+        for contact in Contact.objects.filter(is_active=True):
+            contacts.append(contact.dump_to_dict())
+        return format_ajax_response(True, "Contacts listing retrieved successfully.", {"contacts": contacts})
+    except Exception as ex:
+        logger.error("Failed to get_contacts: %s" % ex)
+        return format_ajax_response(False, "There was an error retrieving the contacts listing.")
 
 
 @login_required
@@ -51,7 +62,7 @@ def detail(request, user_id):
             logger.error("Forbidden: customer attempted access to staff profile.")
             return HttpResponseForbidden()
 
-    return render(request, 'contacts/detail.html', {'user_details': user})
+    return render(request, 'contacts/detail.html', {'user_details': user, 'contactform': ContactForm()})
 
 
 @validated_request(None)
@@ -124,21 +135,22 @@ def set(request):
             message: str response message
     """
     try:
-        user = Contact.objects.get(pk=int(request.POST['user_id']))
+        contact = Contact.objects.get(pk=int(request.POST['user_id']))
 
-        if not (request.user.company_id == user.company_id or request.user.is_staff == True):
+        if not (request.user.company_id == contact.company_id or request.user.is_staff == True):
             raise Exception("Forbidden: requesting user doesn't have permission to access specified Company's Contacts.")
 
-        form = ContactForm(request.POST, instance=user)
+        form = ContactForm(request.POST, instance=contact)
         if form.is_valid():
-            user = form.save()
+            if form.cleaned_data["role"] == "Admin":
+                # Ensure requesting user is Company Admin or Staff
+                if not request.user.is_admin or not request.user.is_staff:
+                    raise Exception("Forbidden: only Staff and Admin's can promote contacts to Admin role.")
 
-            if form.cleaned_data["role"] == "Admin" and request.user.is_admin is True:
-                user.is_admin = True
-            else:
-                user.is_admin = False
-
+            user = form.save(commit=False)
+            user.company = contact.company
             user.save()
+
             ActionLogger().log(request.user, "modified",  "Contact %s" % user)
             return format_ajax_response(True, "Contact set successfully.")
         else:
@@ -175,10 +187,17 @@ def create(request):
             message: str response message
     """
     try:
-        company = Company.objects.get(pk=int(request.POST["company"]))
+        company = 0
+        if "company" in request.POST and request.POST['company']:
+            company = Company.objects.get(pk=int(request.POST["company"]))
 
-        if not (request.user.company_id == company.pk or request.user.is_admin == True):
-            raise Exception("Forbidden: requesting user doesn't have permission to specified Company's Contacts.")
+            # Ensure requesting user is contact of specified company or staff
+            if not (request.user.company_id == company.pk or request.user.is_staff == True):
+                raise Exception("Forbidden: requesting user doesn't have permission to specified Company's Contacts.")
+        else:
+            # If no company specified, then contact is to be staff
+            if not request.user.is_staff:
+                raise Exception("Forbidden.") # Only staff can create staff
 
         contact = Contact.objects.create_user(
             email=request.form.cleaned_data["email"],
@@ -195,8 +214,8 @@ def create(request):
 
         if contact.role == "Admin":
             contact.is_admin = True
-            contact.save()
 
+        contact.save()
         ActionLogger().log(request.user, "created",  "Contact %s" % contact)
         return format_ajax_response(True, "Contact created successfully.")
     except Exception as ex:

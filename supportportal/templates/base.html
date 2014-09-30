@@ -28,24 +28,24 @@
      <style type="text/css">
       .page-head { border-bottom: 1px solid black; margin-bottom: 20px; }
       .page-head h3 { padding: 0; margin: 0; display: inline; }
-      #suggestions { 
-        display: none; 
-        position: absolute; 
-        z-index: 10;  
-        background: black; 
-        color: white; 
-        width: 300px; 
-        padding: 10px; 
+      #suggestions {
+        display: none;
+        position: absolute;
+        z-index: 10;
+        background: black;
+        color: white;
+        width: 300px;
+        padding: 10px;
         margin: 0
       }
-      #back-up-top { 
-        background-color: lightgray; 
-        float: right; 
-        display: block; 
-        text-decoration: none; 
-        cursor: pointer; 
-        margin-top: 6px; 
-        font-size: 16px; 
+      #back-up-top {
+        background-color: lightgray;
+        float: right;
+        display: block;
+        text-decoration: none;
+        cursor: pointer;
+        margin-top: 6px;
+        font-size: 16px;
         padding: 0 6px 0 6px
       }
      </style>
@@ -144,7 +144,7 @@
                   }
                 }
 
-                $('#suggestions').fadeIn(); 
+                $('#suggestions').fadeIn();
                 $('#suggestions').html(out);
               }
               else {
@@ -202,30 +202,37 @@
               </li>
               <!-- END ACCOUNTS DROPDOWN -->
 
-              <!-- BEGIN SERVICES DROPDOWN -->
-              <li class="dropdown">
-                <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Services <span class="caret"></span></a>
-                <ul class="dropdown-menu" role="menu">
-                  <li><a href="{% url 'ip:index' %}">IP Management</a></li>
-                  {% if user.is_staff %}
-                    <li><a href="#">Service Management</a></li>
-                  {% else %}
+              {% if user.is_staff %}
+                <!-- BEGIN ADMINISTRATION DROPDOWN -->
+                <li class="dropdown">
+                  <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Administration <span class="caret"></span></a>
+                  <ul class="dropdown-menu" role="menu">
+                    <li><a href="{% url 'ip:admin' %}">IP Management</a></li>
+                    <li><a href="{% url 'knowledgebase:admin'%}">Knowledgebase</a></li>
+                    <li><a href="{% url 'tickets:admin' %}">Ticket Queues</a></li>
+                    <li><a href="{% url 'services:index' %}">Service Management</a></li>
+                  </ul>
+                </li>
+                <!-- END ADMINISTRATION DROPDOWN -->
+              {% else %}
+                <!-- BEGIN SERVICES DROPDOWN -->
+                <li class="dropdown">
+                  <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Services <span class="caret"></span></a>
+                  <ul class="dropdown-menu" role="menu">
+                    <li><a href="{% url 'ip:index' %}">IP Management</a></li>
                     {% for service in user.get_services %}
                       <li><a href="{{ service.uri }}{{ service.id }}">{{ service.name }}</a></li>
                     {% endfor %}
-                  {% endif %}
-                </ul>
-              </li>
-              <!-- END SERVICES DROPDOWN -->
+                  </ul>
+                </li>
+                <!-- END SERVICES DROPDOWN -->
+              {% endif %}
 
               <!-- BEGIN SUPPORT DROPDOWN -->
               <li class="dropdown">
                 <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Support <span class="caret"></span></a>
                 <ul class="dropdown-menu" role="menu">
                     <li><a href="{% url 'tickets:index' %}">Tickets</a></li>
-                    {% if user.is_staff %}
-                      <li><a href="{% url 'tickets:admin' %}">Ticket Queues</a></li>
-                    {% endif %}
                     <li><a href="{% url 'knowledgebase:index'%}">Knowledgebase</a></li>
                     <li><a href="{% url 'contact:index' %}">Contact Us</a></li>
                 </ul>
@@ -273,9 +280,9 @@
       {% block page_header %}
       <div class="row">
         <div class="col-md-12">
-          
+
           <h3 class="page-title">{% block heading %}Support Portal <small>Dashboard</small>{% endblock %}</h3>
-          <ul class="page-breadcrumb breadcrumb">
+          <ul class="page-breadcrumb breadcrumb" id="breadcrumbs">
             <li>
               <i class="fa fa-home"></i>
               <a href="{% url 'apps.dashboard.views.index' %}">Home</a>

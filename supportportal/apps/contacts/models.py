@@ -97,10 +97,10 @@ class Contact(AbstractBaseUser):
                 'created': str(self.created)
             })
 
-            try:
-                response.update({'company': self.company.name})
-            except Company.DoesNotExist:
-                pass
+        try:
+            response.update({'company': self.company.name})
+        except Company.DoesNotExist:
+            response.update({'company': "---STAFF---"})
 
         return response
 

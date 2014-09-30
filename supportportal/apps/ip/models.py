@@ -7,19 +7,19 @@ import logging
 logger = logging.getLogger(__name__)
 
 class NetworkAddress(models.Model):
-    address = models.IPAddressField()
+    address = models.GenericIPAddressField()
     cidr = models.PositiveIntegerField(validators = [MinValueValidator(24), MaxValueValidator(32)])
     description = models.CharField(max_length=256, null=True, blank=True)
     parent = models.ForeignKey('self', null=True, blank=True)
     vlan = models.ForeignKey('Vlan', null=True, blank=True)
     vrf = models.ForeignKey('Vrf', null=True, blank=True)
-    owner = models.ForeignKey(Company, null=True, blank=True)  
+    owner = models.ForeignKey(Company, null=True, blank=True)
 
     def __unicode__(self):
         return "%s/%d" % (self.address, self.cidr)
 
     class Meta:
-        unique_together = ['address', 'cidr']        
+        unique_together = ['address', 'cidr']
 
     def get_netmask(self):
         return str(ip_network(self).netmask)
@@ -57,7 +57,7 @@ class NetworkAddress(models.Model):
         vrf_pk = 0
         if self.vrf:
             vrf_name = str(self.vrf)
-            vrf_pk = self.vrf.pk            
+            vrf_pk = self.vrf.pk
 
         return {
             'id': self.pk,
@@ -76,15 +76,16 @@ class NetworkAddress(models.Model):
 
 
 class IPAddress(models.Model):
-    address = models.IPAddressField()
+    address = models.GenericIPAddressField()
     description = models.CharField(max_length=256, blank=True, null=True)
     network = models.ForeignKey(NetworkAddress)
-    
+
     def __unicode__(self):
         return "%s" % (self.address)
 
     class Meta:
-        unique_together = ['address', 'network'] 
+        unique_together = ['address', 'network']
+
 
 class Vrf(models.Model):
     distinguisher = models.CharField(max_length=11)
@@ -96,7 +97,7 @@ class Vrf(models.Model):
 
     def dump_to_dict(self, full=False):
         return {
-            'id': self.pk,        
+            'id': self.pk,
             'distinguisher': self.distinguisher,
             'name': self.name,
             'description': self.description

@@ -18,6 +18,29 @@
 			function onSuccessCallback(result) {
 				if(!jQuery.isEmptyObject(result)) {
 					if(result.success == 1) {
+						// Categories
+						if(result.data.categories.length) {
+							for(x in result.data.categories) {
+								var articles = "";
+								for(y in result.data.categories[x].articles) {
+									articles += '<p><a href="{%url 'knowledgebase:index' %}'+result.data.categories[x].articles[y].id+'">'+result.data.categories[x].articles[y].title+'</a></p>';
+								}
+
+								$("#kb-categories").append(' \
+									<li class="list-group-item row"> \
+										<div class="col-md-10"> \
+											<a class="toggle-child">'+result.data.categories[x].category+'</a> \
+											<div style="display: none; margin: 10px">'+articles+'</div> \
+										</div><div class="col-md-2 text-right"><span class="badge">'+result.data.categories[x].articles.length+'</span></div> \
+									</li>'
+								);
+							}
+						}
+						else {
+							$("#kb-categories").html('<span style="font-style: italic">No articles defined.</span>');
+							return false;
+						}
+
 						// Newest articles
 						for(x in result.data.newest) {
 							$("#newest-articles").append(' \
@@ -36,23 +59,6 @@
 									<a href="{%url 'knowledgebase:index' %}'+result.data.popular[x].id+'"> \
 										<em>'+result.data.popular[x].title+'</em> \
 									</a> \
-								</li>'
-							);
-						}
-
-						// Categories
-						for(x in result.data.categories) {
-							var articles = "";
-							for(y in result.data.categories[x].articles) {
-								articles += '<p><a href="{%url 'knowledgebase:index' %}'+result.data.categories[x].articles[y].id+'">'+result.data.categories[x].articles[y].title+'</a></p>';
-							}
-
-							$("#kb-categories").append(' \
-								<li class="list-group-item row"> \
-									<div class="col-md-10"> \
-										<a class="toggle-child">'+result.data.categories[x].category+'</a> \
-										<div style="display: none; margin: 10px">'+articles+'</div> \
-									</div><div class="col-md-2 text-right"><span class="badge">'+result.data.categories[x].articles.length+'</span></div> \
 								</li>'
 							);
 						}
@@ -89,14 +95,7 @@
 	<!-- BEING KNOWLEDGEBASE CONTAINER -->
 	     <!-- BEGIN CONTAINER HEAD -->
 	    <div class="row page-head">
-	        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Knowledgebase</h3></div>
-	        {% if user.is_staff %}
-	        <div class="col-md-6 text-right">
-	            <div class="btn-group">
-	                <a href="{% url 'knowledgebase:admin' %}" role="button" id="create-ticket-button" class="badge" data-toggle="modal">Administer <i class="fa fa-plus"></i></a>
-	            </div>
-	        </div>
-	        {% endif %}
+	        <div class="col-md-12"><h3>Knowledgebase</h3></div>
 	    </div>
 	    <!-- END CONTAINER HEAD -->
 	    <!-- BEGIN CONTAINER BODY -->

@@ -3,21 +3,17 @@ from django.forms import ModelForm
 from django.db import models
 from .models import NetworkAddress, IPAddress, Vlan, Vrf
 
-class NetworkAddressAddForm(ModelForm):
+class NetworkAddressForm(ModelForm):
     class Meta:
         model = NetworkAddress
 
-
 class IPAddressForm(ModelForm):
-	ptr = forms.CharField(required=False) # ADD VALIDATION
+	ptr = forms.CharField(required=False)
 	network = forms.CharField()
 
 	class Meta:
 		model = IPAddress
 		fields = ('address', 'description')
-
-class NetworkAddressForm(forms.Form):
-    parent = forms.CharField(max_length=256)
 
 class VlanForm(ModelForm):
     class Meta:
@@ -27,7 +23,12 @@ class VrfForm(ModelForm):
     class Meta:
         model = Vrf
 
+class NetworkAddressParentForm(forms.Form):
+    parent = forms.CharField(max_length=256)
+
 class ResizeNetworkForm(forms.Form):
-    networkaddress_id = forms.IntegerField(min_value=0, max_value=32)
-    new_cidr = forms.IntegerField(min_value=0, max_value=32)
+    new_cidr = forms.IntegerField(min_value=0, max_value=32, initial=24)
+
+class SplitNetworkForm(forms.Form):
+    new_cidr = forms.IntegerField(min_value=0, max_value=32, widget=forms.Select())
     group_under = forms.BooleanField(required=False)

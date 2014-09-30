@@ -25,4 +25,5 @@ urlpatterns = patterns('',
      url(r'^split/$', views.split_network, name='split'),
      url(r'^getsplitopts/$', views.get_split_network_options, name='getsplitopts'),
      url(r'^resize/$', views.resize_network, name='resize'),
+     url(r'^delnetwork/$', views.delete_network, name='delnetwork'),
 )

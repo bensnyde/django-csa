@@ -9,6 +9,7 @@ urlpatterns = patterns('',
     url(r'^(?P<article_id>\d+)/$', views.detail, name='detail'),
     # AJAX
     url(r'^getsummary/$', views.get_summary, name='getsummary'),
+    url(r'^getarticles/$', views.get_articles, name='getarticles'),
     url(r'^getarticle/(?P<article_id>\d+)/$', views.get_article, name='getarticle'),
     url(r'^setarticle/$', views.set_article, name='setarticle'),
     url(r'^delarticle/$', views.delete_article, name='delarticle'),

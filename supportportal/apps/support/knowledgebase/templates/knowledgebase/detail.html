@@ -6,8 +6,6 @@
 {% block breadcrumbs %}
 	<li><a>Support</a></li>
 	<li><a href="{% url 'knowledgebase:index' %}">Knowledgebase</a></li>
-	<li><a href="{% url 'knowledgebase:index' %}" id="breadcrumb-category-title"></a></li>
-	<li id="breadcrumb-article-title"></li>
 {% endblock %}
 
 {% block js %}
@@ -18,11 +16,10 @@
 			function onSuccessCallback(result) {
 				if(!jQuery.isEmptyObject(result)) {
 					if(result.success == 1) {
-						// AJAX call returned success
 						$("#article-title").html(result.data.article.title);
 						$("#article-content").html(result.data.article.contents);
-						$("#breadcrumb-category-title").html(result.data.article.category);
-						$("#breadcrumb-article-title").html(result.data.article.title);
+						$("#breadcrumbs").append('<li><a href="{% url 'knowledgebase:index' %}">'+result.data.article.category+'</a></li>')
+						$("#breadcrumbs").append('<li>'+result.data.article.title+'</li>')
 
 						var tags = "";
 						for(x in result.data.article.tags) {
@@ -41,7 +38,6 @@
 						);
 					}
 					else {
-						// AJAX call returned failed
 						$("#article-content").html(result.message);
 					}
 				}
@@ -65,14 +61,7 @@
  <!-- BEGIN KNOWLEDGEBASE DETAIL CONTENT -->
     <!-- BEGIN CONTAINER HEAD -->
     <div class="row page-head">
-        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3 id="article-title"></h3></div>
-        {% if user.is_staff %}
-        <div class="col-md-6 text-right">
-            <div class="btn-group">
-                <a href="{% url 'knowledgebase:admin' article_id %}" role="button" id="create-ticket-button" class="badge" data-toggle="modal">Administer <i class="fa fa-plus"></i></a>
-            </div>
-        </div>
-        {% endif %}
+        <div class="col-md-12"><h3 id="article-title"></h3></div>
     </div>
     <!-- END CONTAINER HEAD -->
     <!-- BEGIN CONTAINER BODY -->

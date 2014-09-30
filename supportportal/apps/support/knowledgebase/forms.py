@@ -12,4 +12,4 @@ class TagForm(ModelForm):
 class ArticleForm(ModelForm):
 	class Meta:
 		model = Article
-		fields = ['title', 'contents', 'category', 'tags']
+		exclude = ['author', 'modified']

@@ -80,7 +80,7 @@
 
     <!-- BEGIN CONTENT HEAD -->
     <div class="row page-head">
-        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Trouble Tickets</h3></div>
+        <div class="col-md-6"><h3>Trouble Tickets</h3></div>
         <div class="col-md-6 text-right">
             <div class="btn-group">
                 <a href="{% url 'tickets:create_ticket' %}" id="create-ticket-button" class="badge">Create Ticket <i class="fa fa-plus"></i></a>
@@ -92,7 +92,7 @@
     <!-- BEGIN CONTENT BODY -->
     <div class="row">
         <!-- BEING TICKETS TABLE -->
-        <table class="table table-striped table-bordered table-hover col-md-12" id="tickets-table">
+        <table class="table table-hover col-md-12" id="tickets-table">
             <thead>
                 <tr>
                     <th>ID</th>

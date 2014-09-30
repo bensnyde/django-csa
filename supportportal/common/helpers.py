@@ -1,5 +1,8 @@
 from django.http import HttpResponse
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 def format_ajax_response(success, message, data=False, errors=False):
     """Format standard AJAX response
@@ -20,16 +23,22 @@ def format_ajax_response(success, message, data=False, errors=False):
             success: bool response status
             message: str response status message
             *data: dict additional data
-    """        
-    response = {
-        "success": success,
-        "message": message
-    }
+    """
+    try:
+        response = {
+            "success": success,
+            "message": message
+        }
 
-    if data:
-        response.update({"data": data})
+        if data:
+            response.update({"data": data})
 
-    if errors:
-        response.update({"errors": errors})
+        if errors:
+            response.update({"errors": errors})
 
-    return HttpResponse(json.dumps(response), 'application/json')
+        response = json.dumps(response)
+    except Exception as ex:
+        logger.error('Failed to json encode response string: %s' % ex)
+        response = False
+
+    return HttpResponse(response, 'application/json')

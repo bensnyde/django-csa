@@ -183,7 +183,7 @@
     <!-- BEGIN CONTACT PROFILE CONTAINER -->
     	<!-- BEGIN CONTAINER HEAD -->
 	    <div class="row page-head">
-	        <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Profile</h3></div>
+	        <div class="col-md-6"><h3>Profile</h3></div>
 		        {% if user.id == user_details.id or user.is_admin %}
 			        <div class="col-md-6 text-right">
 			            <div class="btn-group">
@@ -238,7 +238,7 @@
 	<!-- BEING CONTACT HISTORY CONTAINER -->
 	     <!-- BEGIN CONTAINER HEAD -->
 	    <div class="row page-head">
-	        <div class="col-md-12"><i class="fa fa-edit"></i>&nbsp;<h3>History</h3></div>
+	        <div class="col-md-12"><h3>History</h3></div>
 	    </div>
 	    <!-- END CONTAINER HEAD -->
 
@@ -267,11 +267,10 @@
     <!-- END CONTACT HISTORY CONTAINER -->
 
 	<!-- BEGIN MODAL -->
-	<div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
+	<div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label">
 		<div class="modal-dialog">
 			<div class="modal-content">
 				<div class="modal-header">
-					<button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
 					<h3 id="mlabel">Contact Profile</h3>
 				</div>
 				<div class="modal-body form">
@@ -279,109 +278,29 @@
 					<div id="flash-message"></div>
 					<div id="mbody" class="well">
 						<div class="hidden" id="flash-message"></div>
-						<form id="user-id_form" class="form-horizontal form-bordered">
-						    {% csrf_token %}
+						<!-- BEGIN CONTACT FORM -->
+						<form id="user-id_form" class="form-horizontal form-bordered">{% csrf_token %}
 						    <input type="hidden" name="user_id" id="id_user_id" value="{{ user_details.id }}" />
-
-						    <div class="form-group">
-						        <label class="control-label col-md-3">Email Address</label>
-						        <div class="controls col-md-9">
-						            <input class="form-control" id="id_email" maxlength="255" name="email" type="email" />
-						            <span id="email-help" class="help-block"></span>
-						        </div>
-						    </div>
-
-						    <div class="form-group">
-						        <label class="control-label col-md-3">First Name</label>
-						        <div class="controls col-md-9">
-						            <input class="form-control" id="id_first_name" maxlength="100" name="first_name" type="text" />
-						            <span id="first_name-help" class="help-block"></span>
-						        </div>
-						    </div>
-
-						    <div class="form-group">
-						        <label class="control-label col-md-3">Last Name</label>
-						        <div class="controls col-md-9">
-						            <input class="form-control" id="id_last_name" maxlength="100" name="last_name" type="text" />
-						            <span id="last_name-help" class="help-block"></span>
-						        </div>
-						    </div>
-
-						    <div class="form-group">
-						        <label class="control-label col-md-3">Title</label>
-						        <div class="controls col-md-9">
-						            <input class="form-control" id="id_title" maxlength="200" name="title" type="text" />
-						            <span id="title-help" class="help-block"></span>
-						        </div>
-						    </div>
-
-						    <div class="form-group">
-						        <label class="control-label col-md-3">Personal Phone Number</label>
-						        <div class="controls col-md-9">
-						            <input class="form-control" id="id_personal_phone" maxlength="50" name="personal_phone" type="text" />
-						            <span id="personal_phone-help" class="help-block"></span>
-						        </div>
-						    </div>
-
-						    <div class="form-group">
-						        <label class="control-label col-md-3">Office Phone Number</label>
-						        <div class="controls col-md-9">
-						            <input class="form-control" id="id_office_phone" maxlength="50" name="office_phone" type="text" />
-						            <span id="office_phone-help" class="help-block"></span>
-						        </div>
-						    </div>
-
-						    <div class="form-group">
-						        <label class="control-label col-md-3">Fax Number</label>
-						        <div class="controls col-md-9">
-						            <input class="form-control" id="id_fax" maxlength="50" name="fax" type="text" />
-						            <span id="fax-help" class="help-block"></span>
-						        </div>
-						    </div>
-
-						    <div class="form-group">
-						        <label class="control-label col-md-3">Role</label>
-						        <div class="controls col-md-9">
-						            <select class="form-control" id="id_role" name="role" autocomplete="off">
-						                <option value="Consultant">Consultant</option>
-						                <option value="Billing">Billing</option>
-						                <option value="Tech">Tech</option>
-						                <option value="Admin">Admin</option>
-						            </select>
-						          	<span id="role-help" class="help-block"></span>
-						        </div>
-						    </div>
-
-							<div class="form-group">
-								<label class="control-label col-md-3">Old password</label>
-								<div class="controls col-md-9">
-									<input class="form-control" id="id_old_password" name="old_password" type="password" />
-									<span id="old_password-help" class="help-block"></span>
-								</div>
-							</div>
-
-							<div class="form-group">
-								<label class="control-label col-md-3">New password</label>
-								<div class="controls col-md-9">
-									<input class="form-control" id="id_new_password" name="new_password" type="password" />
-									<span id="new_password-help" class="help-block"></span>
-								</div>
-							</div>
-
-							<div class="form-group">
-								<label class="control-label col-md-3">Confirm password</label>
-								<div class="controls col-md-9">
-									<input class="form-control" id="id_confirm_password" name="confirm_password" type="password" />
-									<span id="confirm_password-help" class="help-block"></span>
-								</div>
-							</div>
+                        	<table class="table table-bordered table-hover" id="contact-form-table">
+                          		{% for field in contactform %}
+		                            <tr class="form-group">
+		                              <td><label class="control-label">{{ field.label_tag }}</label></td>
+		                              <td>
+		                                <div class="controls{% if field.errors %} error{% endif %}">
+		                                  {{ field|addcss:"form-control" }}
+		                                  <span class="help-inline" id="{{ field.html_name }}-help"></span>
+		                                </div>
+		                              </td>
+		                            </tr>
+                            	{% endfor %}
+                            </table>
 						</form>
-
+						<!-- END CONTACT FORM -->
 					</div>
 					<!-- END MODAL BODY -->
 				</div>
 				<div class="modal-footer" id="modalfooter">
-					<button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
+					<button class="btn btn-default" data-dismiss="modal">Close</button>
 					<button id="msave" class="btn btn-primary" onclick="sendPost('{% url 'contacts:set' %}', $('#user-id_form').serializeArray())">Ok</button>
 				</div>
 			</div>

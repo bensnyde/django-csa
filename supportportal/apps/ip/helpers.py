@@ -49,15 +49,15 @@ def is_valid_networkaddress(address, cidr):
         if net.is_private:
             raise Exception("Private Network's not allowed.")
         if net.is_loopback:
-            raise Exception("Loopback Network's not allowed.")            
+            raise Exception("Loopback Network's not allowed.")
         if net.is_link_local:
-            raise Exception("Link Local Network's not allowed.")                  
+            raise Exception("Link Local Network's not allowed.")
         if net.is_reserved:
             raise Exception("Reserved Network's not allowed.")
         if net.is_unspecified:
-            raise Exception("Unspecified Network's not allowed.") 
+            raise Exception("Unspecified Network's not allowed.")
         if net.is_multicast:
-            raise Exception("Multicast Network's not allowed.") 
+            raise Exception("Multicast Network's not allowed.")
 
         return True
     except Exception as ex:
@@ -70,17 +70,17 @@ def is_ip_in_network(network, cidr, ipaddr):
         if ip_network.IPv4Address(ipaddr) in ip_network.IPv4Network("%s/%s" % (network, cidr)):
             return True
     except Exception as ex:
-        logger.error(str(ex)) 
-    return False 
+        logger.error(str(ex))
+    return False
 
 
-def reverse_notate(network, cidr, ipaddr=None):    
+def reverse_notate(network, cidr, ipaddr=None):
     try:
         if cidr < 24:
             raise Exception("CIDR must be >= 24.")
 
         octets = re.split('([0-9]*)\.([0-9]*)\.([0-9]*)\.([0-9]*)', network)
-        reversed_zone = octets[3]+'.'+octets[2]+'.'+octets[1]+'.in-addr.arpa' 
+        reversed_zone = octets[3]+'.'+octets[2]+'.'+octets[1]+'.in-addr.arpa'
 
         if cidr > 24:
             reversed_zone = octets[4] + '-' + str(cidr) + '.' + reversed_zone
@@ -108,7 +108,7 @@ def set_ptr_from_zone(parent, ipaddr, ptr=None):
     zone = fetch_dns_zone(rev_zone)
     if not zone:
         return False
-    else: 
+    else:
         try:
             # Convert IP to reverse formatting
             reversed_ip = reverse_notate(ipaddr, parent.cidr)
@@ -116,17 +116,17 @@ def set_ptr_from_zone(parent, ipaddr, ptr=None):
 
             # Delete existing
             for record in zone:
-                if record["type"] == "PTR" and record["name"] == reversed_ip:              
+                if record["type"] == "PTR" and record["name"] == reversed_ip:
                     Cpanel().deleteZoneRecord(rev_zone, record["Line"])
 
             # Set new record
-            if ptr:      
+            if ptr:
                 result = Cpanel().addZoneRecord(**{
                     'name': octets[4],
-                    'ttl': 14400, 
+                    'ttl': 14400,
                     'zone': rev_zone,
                     'type': "PTR",
-                    'ptrdname': ptr       
+                    'ptrdname': ptr
                 })
 
                 # Parse Cpanel result to check for success
@@ -147,7 +147,7 @@ def get_ptr_from_zone(network, cidr, ipaddr):
         zone: dict CpanelDNS zone definition
     Returns
         ptr: str ptr record
-    """    
+    """
     ptr_value = ""
     try:
         rev_zone = reverse_notate(network, cidr)
@@ -176,7 +176,7 @@ def get_ptrs_from_zone(zone):
         ptrs (dict):
             address: str ipaddress
             ptr: str ptr record
-    """     
+    """
     ptrs = []
     p = re.compile(ur'''# First octet
     (?P<octet1>
@@ -220,12 +220,12 @@ def get_ptrs_from_zone(zone):
                 # Convert reversed IPAddress to foward format
                 octets = re.split(p, record['name'])
                 ip = octets[4]+'.'+octets[3]+'.'+octets[2]+'.'+octets[1]
-                
+
                 ptrs.append({'address': ip, 'ptr': record["ptrdname"]})
-        return ptrs                  
+        return ptrs
     except Exception as ex:
         logger.error(str(ex))
-        return False 
+        return False
 
 
 def unset_ip_record(ipaddr):
@@ -243,7 +243,7 @@ def set_ip_record(network, ipaddr, description):
         ip = IPAddress.objects.get(address=ipaddr, network=network)
         ip.description = description
         ip.save()
-        return True            
+        return True
     except ObjectDoesNotExist:
         # IPAddress doesn't exist, create
         try:
@@ -252,7 +252,7 @@ def set_ip_record(network, ipaddr, description):
         except Exception as ex:
             return False
     except Exception:
-        return False         
+        return False
 
 
 
@@ -266,7 +266,7 @@ def get_ipaddresses_and_ptrs_from_networkaddress(parent):
         if not ptrs:
             # ************FIX ME******************
             # Alert user to inability to fetch PTR records
-            #ErrorLogger().log(request, "Error", "Failed to fetch reverse zone from CpanelDNS in apps.ip.views.get_hosts")            
+            #ErrorLogger().log(request, "Error", "Failed to fetch reverse zone from CpanelDNS in apps.ip.views.get_hosts")
             hosts.append({"address": host.address, "description": host.description, "ptr": ""})
         else:
             match = False
@@ -274,10 +274,10 @@ def get_ipaddresses_and_ptrs_from_networkaddress(parent):
                 for x in ptrs:
                     # If Address existings in both PTRs and Descriptions, combine into single record
                     if host.address == x['address']:
-                        hosts.append({"address": host.address, "description": host.description, "ptr": x['ptr']}) 
+                        hosts.append({"address": host.address, "description": host.description, "ptr": x['ptr']})
                         match = True
                         break
-                # Record exists in Descriptions list but not PTRs list 
+                # Record exists in Descriptions list but not PTRs list
                 if not match:
                     hosts.append({"address": host.address, "description": host.description, "ptr": ""})
                 match = True
@@ -286,20 +286,20 @@ def get_ipaddresses_and_ptrs_from_networkaddress(parent):
     if ptrs:
         for x in ptrs:
             if x['address'] not in [y.address for y in IPAddress.objects.filter(network=parent)]:
-                hosts.append({"address": x['address'], "description": '', "ptr": x['ptr']}) 
+                hosts.append({"address": x['address'], "description": '', "ptr": x['ptr']})
 
-    return hosts   
+    return hosts
 
 
-def delete_ptrs_from_zone(networkaddress, cidr): 
+def delete_ptrs_from_zone(networkaddress, cidr):
     try:
         rev_zone = reverse_notate(networkaddress, cidr)
         # Reset zone here
         #for record["type"] as record in fetch_dns_zone(rev_zone):
         #    if record["type"] == "PTR":
         #        logger.error(Cpanel().deleteZoneRecord(rev_zone, record["Line"]))
-            
-        return True               
+
+        return True
     except Exception as ex:
         logger.error(ex)
-        return False  
+        return False
