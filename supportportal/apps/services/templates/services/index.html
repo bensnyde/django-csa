@@ -3,12 +3,11 @@
 {% load staticfiles %}
 {% load common_tags %}
 
-{% block sitetitle %}| Support{% endblock %}
-{% block heading %}Support <small>Trouble Tickets</small>{% endblock %}
+{% block sitetitle %}| Administration{% endblock %}
+{% block heading %}Administration <small>Services</small>{% endblock %}
 
 {% block breadcrumbs %}
-    <li><a>Support</a></i></li>
-    <li>Tickets</a></li>
+    <li>Services</a></li>
 {% endblock %}
 
 {% block css %}
@@ -19,47 +18,55 @@
     <script type="text/javascript" src="{% static '/assets/plugins/data-tables/jquery.dataTables.js' %}"></script>
     <script type="text/javascript" src="{% static '/assets/plugins/data-tables/DT_bootstrap.js' %}"></script>
     <script type="text/javascript">
-        function getCompanies() {
-            $("#companies-index-table").dataTable().fnDestroy();
-            $("#companies-index-tbody").html("");
+        function getServices() {
+            $("#services-index-table").dataTable().fnDestroy();
+            $("#services-index-tbody").html("");
 
             function onSuccessCallback(result) {
-                if(!jQuery.isEmptyObject(result)) {
+                if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
                     if(result.success == 1) {
                     	// AJAX call returned successful
-                        for(x in result.data.companies) {
-                            $("#companies-index-tbody").append(' \
-                                <tr data-id="'+result.data.companies[x].id+'"> \
-                                    <td>'+result.data.companies[x].name+'</td> \
-                                    <td>'+result.data.companies[x].status+'</td> \
+                        for(x in result.data.services) {
+                            $("#services-index-tbody").append(' \
+                                <tr data-id="'+result.data.services[x].id+'"> \
+                                    <td>'+result.data.services[x].name+'</td> \
+                                    <td>'+result.data.services[x].coupler+'</td> \
+                                    <td>'+result.data.services[x].vars+'</td> \
                                 </tr>'
                             );
                         }
 
-                        $("#companies-index-table").dataTable({"aoColumnDefs": [],"aaSorting": [[0, 'desc']]});
+                        $("#services-index-table").dataTable({"aoColumnDefs": [],"aaSorting": [[0, 'desc']]});
                     }
                     else {
-                        $("#companies-index-tbody").html("<tr><td colspan=2>"+result.message+"</td></tr>");
+                        $("#services-index-tbody").html("<tr class='has-error'><td colspan=2><em>"+result.message+"</em></td></tr>");
                     }
                 }
             }
 
             $.ajax({
-                url: "{%url 'companies:getcompanies' %}",
+                url: "{%url 'services:getservices' %}",
                 type: "POST",
                 success: onSuccessCallback,
                 error: defaultErrorCallback
             });
         }
+
+        function resetServicesForm() {
+          $("#set-services-form").trigger('reset');
+          $('#set-service-modal').modal('show');
+        }
     </script>
 {% endblock %}
 
 {% block jquery_document_ready %}
-    getCompanies();
+    getServices();
 
-    $('#companies-index-table').on('click', 'tr', function () {
-        window.location = "{% url 'companies:detail' 0 %}".replace('0', $(this).data('id'));
-    });
+    $(document)
+        .on('click', 'a.show-set-service-modal', function (e) {
+            e.preventDefault();
+            resetServicesForm();
+        })
 {% endblock %}
 
 {% block content %}
@@ -70,46 +77,43 @@
         <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Services</h3></div>
         <div class="col-md-6 text-right">
             <div class="btn-group">
-                <a onclick="$('#mmodal').modal('show')" role="button" id="create-ticket-button"><i class="fa fa-plus"></i></a>
+                <a href="#" role="button" class="show-set-service-modal" alt="Create Service"><i class="fa fa-plus"></i></a>
             </div>
         </div>
     </div>
     <!-- END CONTENT HEAD -->
 
     <!-- BEGIN CONTENT BODY -->
-    <div class="row">
         <!-- BEING TICKETS TABLE -->
-        <table class="table table-striped table-bordered table-hover col-md-12" id="companies-index-table">
-            <thead>
+        <table class="table table-striped table-bordered table-hover" id="services-index-table">
+            <thead class="row">
                 <tr>
-                    <th>Name</th>
-                    <th>Status</th>
+                    <th class="col-md-3">Name</th>
+                    <th class="col-md-3">Coupler</th>
+                    <th class="col-md-6">Variables</th>
                 </tr>
             </thead>
-            <tbody id="companies-index-tbody"></tbody>
+            <tbody id="services-index-tbody"></tbody>
         </table>
         <!-- END TICKETS TABLE -->
-    </div>
     <!-- END CONTENT BODY -->
 
     <!-- BEGIN MODAL -->
-    <div id="mmodal" class="modal fade in" role="dialog">
+    <div id="set-service-modal" class="modal fade in" role="dialog">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3 id="mlabel">Add Company</h3>
+                    <h3>Create Service</h3>
                 </div>
-                <div class="modal-body form">
+                <div class="modal-body">
                     <!-- BEGIN MODAL BODY -->
-                    <div id="flash-message"></div>
-                    <div id="mbody" class="well">
-
-                    </div>
+                    <div class="modal-alert"></div>
+                    <form class="form" role="form" id="set-services-form"></form>
                     <!-- END MODAL BODY -->
                 </div>
-                <div class="modal-footer" id="modalfooter">
+                <div class="modal-footer">
                     <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="msave" class="btn btn-primary">Ok</button>
+                    <button class="btn btn-primary">Ok</button>
                 </div>
             </div>
         </div>

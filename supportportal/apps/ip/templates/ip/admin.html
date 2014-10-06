@@ -4,7 +4,7 @@
 {% load common_tags %}
 
 {% block sitetitle %}| Administration{% endblock %}
-{% block heading %}Admin Portal <small>IP Space</small>{% endblock %}
+{% block heading %}Administration <small>IP Space</small>{% endblock %}
 
 {% block breadcrumbs %}
 	<li><a>Support</a></li>
@@ -21,21 +21,25 @@
     <script type="text/javascript" src="{% static '/assets/plugins/data-tables/DT_bootstrap.js' %}"></script>
 	<script type="text/javascript">
     function defaultSuccessCallback(result) {
-        if(!jQuery.isEmptyObject(result)) {
-            $('#flash-message').fadeIn();
+        if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
+            $('.modal-alert').html(result.message);
+            $('.modal-alert').fadeIn();
+
             if(result.success == 1) {
-                $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
-                setTimeout("$('.modal.in').modal('hide')",2000);
+                $('.modal-alert').addClass('alert alert-success');
                 getNetworks();
+                setTimeout("$('.modal.in').modal('hide')",500);
             }
             else {
-                $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+                $('.modal-alert').addClass('alert alert-danger');
                 $.each(result.errors, function(k,v) {
-                  $("#"+k+"-help").closest('div').addClass("has-error");
+                  $("#"+k+"-help").closest('tr').addClass("has-error");
                   $("#"+k+"-help").html(v);
                 });
             }
-            setTimeout("$('#flash-message').fadeOut()",2000);
+
+            setTimeout("$('.modal-alert').fadeOut()",2000);
+            $('.modal-alert').removeClass().addClass('modal-alert');
         }
     }
 
@@ -53,7 +57,7 @@
         $("#vlans-table-tbody").html("");
 
         function onSuccessCallback(result) {
-            if(!jQuery.isEmptyObject(result)) {
+            if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
                 if(result.success == 1) {
                     for(x in result.data.vlans) {
                         $("#vlans-table-tbody").append(' \
@@ -70,7 +74,7 @@
                     }
                 }
                 else {
-                    $("#vlans-table-tbody").append("<tr><td colspan=4>Error fetching vlans listing.</td></tr>");
+                    $("#vlans-table-tbody").append("<tr class='has-error'><td colspan=4><em>"+result.message+"</em></td></tr>");
                 }
             }
         }
@@ -87,8 +91,7 @@
         $("#vrfs-table-tbody").html("");
 
         function onSuccessCallback(result) {
-            if(!jQuery.isEmptyObject(result)) {
-                $('#flash-message').fadeIn();
+            if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
                 if(result.success == 1) {
                     for(x in result.data.vrfs) {
                         $("#vrfs-table-tbody").append(' \
@@ -105,13 +108,8 @@
                     }
                 }
                 else {
-                    $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
-                    $.each(result.errors, function(k,v) {
-                      $("#"+k+"-help").closest('div').addClass("has-error");
-                      $("#"+k+"-help").html(v);
-                    });
+                    $("#vrfs-table-tbody").append("<tr class='has-error'><td colspan=4><em>"+result.message+"</em></td></tr>");
                 }
-                setTimeout("$('#flash-message').fadeOut()",2000);
             }
         }
 
@@ -124,21 +122,25 @@
       }
 
     function vrfDefaultSuccessCallback(result) {
-        if(!jQuery.isEmptyObject(result)) {
-            $('#flash-message').fadeIn();
+        if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
+            $('.modal-alert').html(result.message);
+            $('.modal-alert').fadeIn();
+
             if(result.success == 1) {
-                $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+                $('.modal-alert').addClass('alert alert-success');
                 getVrfs();
-                $('.modal.in').modal('hide');
+                setTimeout("$('.modal.in').modal('hide')",500);
             }
             else {
-                $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+                $('.modal-alert').addClass("alert alert-danger");
                 $.each(result.errors, function(k,v) {
-                  $("#"+k+"-help").closest('div').addClass("has-error");
+                  $("#"+k+"-help").closest('tr').addClass("has-error");
                   $("#"+k+"-help").html(v);
                 });
             }
-            setTimeout("$('#flash-message').fadeOut()",2000);
+
+            setTimeout("$('.modal-alert').fadeOut()",2000);
+            $('.modal-alert').removeClass().addClass('modal-alert');
         }
     }
 
@@ -163,21 +165,25 @@
       }
 
     function vlanDefaultSuccessCallback(result) {
-        if(!jQuery.isEmptyObject(result)) {
-            $('#flash-message').fadeIn();
+        if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
+            $('.modal-alert').html(result.message);
+            $('.modal-alert').fadeIn();
+
             if(result.success == 1) {
-                $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+               $('.modal-alert').addClass('alert alert-success');
                 getVlans();
-                $('.modal.in').modal('hide');
+                setTimeout("$('.modal.in').modal('hide')",500);
             }
             else {
-                $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+                $('.modal-alert').addClass("alert alert-danger");
                 $.each(result.errors, function(k,v) {
-                  $("#"+k+"-help").closest('div').addClass("has-error");
+                  $("#"+k+"-help").closest('tr').addClass("has-error");
                   $("#"+k+"-help").html(v);
                 });
             }
-            setTimeout("$('#flash-message').fadeOut()",2000);
+
+            setTimeout("$('.modal-alert').fadeOut()",2000);
+            $('.modal-alert').removeClass().addClass('modal-alert');
         }
     }
 
@@ -206,7 +212,7 @@
         $("#networks-list-tbody").html("");
 
         function onSuccessCallback(result) {
-            if(!jQuery.isEmptyObject(result)) {
+            if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
                 if(result.success == 1) {
                     for(x in result.data.networks) {
                         $("#networks-list-tbody").append(' \
@@ -216,12 +222,12 @@
                             <td>'+result.data.networks[x].vlan+'</td> \
                             <td>'+result.data.networks[x].owner+'</td> \
                             <td>'+result.data.networks[x].description+'</td> \
-                            <td> \
-                                <a href="#" class="btn btn-xs btn-primary edit-network" role="button">Edit</a> \
-                                <a href="#" class="btn btn-xs btn-success resize-network" role="button">Resize</a> \
-                                <a href="#" class="btn btn-xs btn-info split-network" role="button">Split</a> \
-                                <a href="#" class="btn btn-xs btn-warning truncate-network" role="button">Truncate</a> \
-                                <a href="#" class="btn btn-xs btn-danger delete-network" role="button">Delete</a> \
+                            <td class="text-right"> \
+                                <a href="#" class="btn btn-xs btn-primary edit-network" role="button" alt="Edit Network Address">Edit</a> \
+                                <a href="#" class="btn btn-xs btn-success resize-network" role="button" alt="Resize Network Address">Resize</a> \
+                                <a href="#" class="btn btn-xs btn-info split-network" role="button" alt="Split Network Address">Split</a> \
+                                <a href="#" class="btn btn-xs btn-warning truncate-network" role="button" alt="Truncate Network Address">Truncate</a> \
+                                <a href="#" class="btn btn-xs btn-danger delete-network" role="button" alt="Delete Network Address">Delete</a> \
                             </td> \
                         </tr>');
 
@@ -234,7 +240,7 @@
                     $("#networks-list-table").dataTable({"aoColumnDefs": [],"aaSorting": [[0, 'asc']]});
                 }
                 else {
-                    $("#networks-list-tbody").html("<tr><td colspan=5>"+result.message+"</td></tr>");
+                    $("#networks-list-tbody").html("<tr class='has-error'><td colspan=5><em>"+result.message+"</em></td></tr>");
                 }
             }
         }
@@ -251,7 +257,7 @@
         $("#split-network-form #id_new_cidr").html("");
 
         function onSuccessCallback(result) {
-            if(!jQuery.isEmptyObject(result)) {
+            if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
                 if(result.success == 1) {
                     for(x in result.data.options) {
                         $("#split-network-form #id_new_cidr").append('<OPTION value="'+result.data.options[x].prefix+'">'+result.data.options[x].numnets+' x /'+result.data.options[x].prefix+' ('+result.data.options[x].numnets+' x '+result.data.options[x].numhosts+' hosts)</OPTION>');
@@ -316,7 +322,7 @@
         $("#id_cidr").attr("readonly", true);
 
         function onSuccessCallback(result) {
-            if(!jQuery.isEmptyObject(result)) {
+            if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
                 if(result.success == 1) {
                     $("#id_address").val(result.data.network.address);
                     $("#id_cidr").val(result.data.network.cidr);
@@ -328,7 +334,7 @@
                     $("#id_networkaddress_id").val(id);
                 }
                 else {
-                    $("#networks-list-tbody").html("<tr><td colspan=5>"+result.message+"</td></tr>");
+                    $("#networks-list-tbody").html("<tr class='has-error'><td colspan=5><em>"+result.message+"</em></td></tr>");
                 }
             }
         }
@@ -344,21 +350,25 @@
 
     function setNetwork() {
         function onSuccessCallback(result) {
-            if(!jQuery.isEmptyObject(result)) {
-                $('#flash-message').fadeIn();
+            if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
+                $('.modal-alert').html(result.message);
+                $('.modal-alert').fadeIn();
+
                 if(result.success == 1) {
-                    $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+                    $('.modal-alert').addClass("alert alert-success");
                     getNetworks();
-                    $('.modal.in').modal('hide');
+                    setTimeout("$('.modal.in').modal('hide')",500);
                 }
                 else {
-                    $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+                    $('.modal-alert').addClass("alert alert-danger");
                     $.each(result.errors, function(k,v) {
-                      $("#"+k+"-help").closest('div').addClass("has-error");
+                      $("#"+k+"-help").closest('tr').addClass("has-error");
                       $("#"+k+"-help").html(v);
                     });
                 }
-                setTimeout("$('#flash-message').fadeOut()",2000);
+
+                setTimeout("$('.modal-alert').fadeOut()",2000);
+                $('.modal-alert').removeClass().addClass('modal-alert');
             }
         }
 
@@ -394,6 +404,68 @@
     getVlans();
     getVrfs();
     getNetworks();
+
+    $(document)
+        .on('click', 'a.truncate-network-form-submit', function (e) {
+            e.preventDefault();
+            truncateNetwork();
+        })
+        .on('click', 'a.resize-network-form-submit', function (e) {
+            e.preventDefault();
+            resizeNetwork();
+        })
+        .on('click', 'a.split-network-form-submit', function (e) {
+            e.preventDefault();
+            splitNetwork();
+        })
+        .on('click', 'a.delete-network-form-submit', function (e) {
+            e.preventDefault();
+            deleteNetwork();
+        })
+        .on('click', 'a.set-network-form-submit', function (e) {
+            e.preventDefault();
+            setNetwork();
+        })
+        .on('click', 'a.delete-vlan-form-submit', function (e) {
+            e.preventDefault();
+            deleteVlan();
+        })
+        .on('click', 'a.set-vlan-form-submit', function (e) {
+            e.preventDefault();
+            deleteVrf();
+        })
+        .on('click', 'a.delete-vrf-form-submit', function (e) {
+            e.preventDefault();
+            deleteVrf();
+        })
+        .on('click', 'a.set-vrf-form-submit', function (e) {
+            e.preventDefault();
+            setVrf();
+        })
+        .on('click', 'a.refresh-vrfs', function (e) {
+            e.preventDefault();
+            getVrfs();
+        })
+        .on('click', 'a.show-set-vrf-modal', function (e) {
+            e.preventDefault();
+            resestVrfForm();
+        })
+        .on('click', 'a.refresh-vlans', function (e) {
+            e.preventDefault();
+            getVlans();
+        })
+        .on('click', 'a.show-set-vlan-modal', function (e) {
+            e.preventDefault();
+            resestVlanForm();
+        })
+        .on('click', 'a.refresh-networks', function (e) {
+            e.preventDefault();
+            getNetworks();
+        })
+        .on('click', 'a.show-set-network-modal', function (e) {
+            e.preventDefault();
+            resetSetNetworkForm();
+        })
 
     $('#vlans-table-tbody')
         .on('click', 'a.del-vlan', function (e) {
@@ -479,17 +551,15 @@
         <div class="col-md-6"><h3 id="article-title">Networks</h3></div>
         <div class="col-md-6 text-right">
             <div class="btn-group">
-                <a href="#" role="button" onclick="getNetworks()"><i class="fa fa-refresh"></i></a>
-                <a href="#" role="button" onclick="resetSetNetworkForm()"><i class="fa fa-plus"></i></a>
+                <a href="#" role="button" class="refresh-networks"><i class="fa fa-refresh"></i></a>
+                <a href="#" role="button" class="show-set-network-modal"><i class="fa fa-plus"></i></a>
             </div>
         </div>
     </div>
     <!-- END NETWORKADDRESS CONTAINER HEAD -->
     <!-- BEGIN NETWORKADDRESS CONTAINER BODY -->
-	<div class="row">
-        <div id="flash-message"></div>
         <!-- BEGIN NETWORKS TABLE -->
-        <table class="table table-hover col-md-12" id="networks-list-table">
+        <table class="table table-hover" id="networks-list-table">
             <thead class="row">
                 <tr>
                     <th class="col-md-2">Network Address</th>
@@ -503,7 +573,6 @@
             <tbody id="networks-list-tbody"></tbody>
         </table>
         <!-- END NETWORKS TABLE -->
-	</div>
     <!-- END NETWORKADDRESS CONTAINER BODY -->
 
     <div class="row">
@@ -513,16 +582,15 @@
                 <div class="col-md-6"><h3 id="article-title">VLANs</h3></div>
                 <div class="col-md-6 text-right">
                     <div class="btn-group">
-                        <a href="#" role="button" onclick="getVlans()"><i class="fa fa-refresh"></i></a>
-                        <a href="#" role="button" onclick="resestVlanForm()"><i class="fa fa-plus"></i></a>
+                        <a href="#" role="button" class="refresh-vlans"><i class="fa fa-refresh"></i></a>
+                        <a href="#" role="button" class="show-set-vlan-modal"><i class="fa fa-plus"></i></a>
                     </div>
                 </div>
             </div>
             <!-- END VLAN CONTAINER HEAD -->
             <!-- BEGIN VLAN CONTAINER BODY -->
-            <div class="row">
                 <!-- BEGIN VLAN TABLE -->
-                <table id="vlans-table" class="table table-hover col-md-12">
+                <table id="vlans-table" class="table table-hover">
                     <thead class="row">
                         <tr>
                             <th class="col-md-2">Number</th>
@@ -531,11 +599,9 @@
                             <th class="col-md-2">&nbsp;</th>
                         </tr>
                     </thead>
-                    <tbody id="vlans-table-tbody">
-                    </tbody>
+                    <tbody id="vlans-table-tbody"></tbody>
                 </table>
                 <!-- END VLAN TABLE -->
-            </div>
             <!-- END VLAN CONTAINER BODY -->
         </div>
         <div class="col-md-offset-2 col-md-5">
@@ -544,14 +610,13 @@
                 <div class="col-md-6"><h3 id="article-title">VRFs</h3></div>
                 <div class="col-md-6 text-right">
                     <div class="btn-group">
-                        <a href="#" role="button" onclick="getVrfs()"><i class="fa fa-refresh"></i></a>
-                        <a href="#" role="button" onclick="resetVrfForm()"><i class="fa fa-plus"></i></a>
+                        <a href="#" role="button" class="refresh-vrfs"><i class="fa fa-refresh"></i></a>
+                        <a href="#" role="button" class="show-set-vrf-modal"><i class="fa fa-plus"></i></a>
                     </div>
                 </div>
             </div>
             <!-- END VRF CONTAINER HEAD -->
             <!-- BEGIN VRF CONTAINER BODY -->
-            <div class="row">
                 <!-- BEGIN VRF TABLE -->
                 <table id="vrfs-table" class="table table-hover">
                     <thead class="row">
@@ -562,11 +627,9 @@
                             <th class="col-md-2">&nbsp;</th>
                         </tr>
                     </thead>
-                    <tbody id="vrfs-table-tbody">
-                    </tbody>
+                    <tbody id="vrfs-table-tbody"></tbody>
                 </table>
                 <!-- END VRF TABLE -->
-            </div>
             <!-- END VRF CONTAINER BODY -->
         </div>
     </div>
@@ -577,24 +640,22 @@
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <h3 id="mlabel">Delete VRF</h3>
+                    <h3>Delete VRF</h3>
                 </div>
                 <!-- END MODAL HEADER -->
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
-                    <div id="flash-message"></div>
-                    <div class="well" id="mbody">
-                        <span>Are you sure you want to delete the selected VRF?</span>
-                        <form id='del-vrf-form'>
-                            <input type='hidden' name='vrf_id' id="vrf_id" value='' />
-                        </form>
-                    </div>
+                    <div class="modal-alert"></div>
+                    <span>Are you sure you want to delete the selected VRF?</span>
+                    <form id='del-vrf-form' role="form">
+                        <input type='hidden' name='vrf_id' id="vrf_id" value="0" />
+                    </form>
                 </div>
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
-                <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="msave" class="btn btn-primary" onclick='deleteVrf()'>Ok</button>
+                <div class="modal-footer">
+                    <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-primary delete-vrf-form-submit">Ok</a>
                 </div>
                 <!-- END MODAL FOOTER -->
             </div>
@@ -608,38 +669,36 @@
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <h3 id="mlabel">Set VRF</h3>
+                    <h3>Set VRF</h3>
                 </div>
                 <!-- END MODAL HEADER -->
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
-                    <div id="flash-message"></div>
-                    <div class="well" id="mbody">
-                        <!-- BEGIN SET VRF FORM -->
-                        <form id="set-vrf-form" class="form" role="form">
-                            <input type="hidden" name="vrf_id" value="" />
-                            <table class="table table-bordered table-hover" id="set-vrf-form-table">
-                                {% for field in vrfform %}
-                                    <tr class="form-group">
-                                        <td><label class="control-label">{{ field.label_tag }}</label></td>
-                                        <td>
-                                            <div class="controls">
-                                                {{ field|addcss:"form-control" }}
-                                                <span id="{{ field.html_name }}-help" class="help-inline"></span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </table>
-                        </form>
-                        <!-- END SET VRF FORM -->
-                    </div>
+                    <div class="modal-alert"></div>
+                    <!-- BEGIN SET VRF FORM -->
+                    <form id="set-vrf-form" class="form form-vertical" role="form">
+                        <input type="hidden" name="vrf_id" value="0" />
+                        <table class="table table-hover" id="set-vrf-form-table">
+                            {% for field in vrfform %}
+                                <tr class="form-group">
+                                    <td><label class="control-label">{{ field.label_tag }}</label></td>
+                                    <td>
+                                        <div class="controls">
+                                            {{ field|addcss:"form-control" }}
+                                            <span id="{{ field.html_name }}-help" class="help-inline"></span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </table>
+                    </form>
+                    <!-- END SET VRF FORM -->
                 </div>
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
-                <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="msave" class="btn btn-primary" onclick='setVrf()'>Ok</button>
+                <div class="modal-footer">
+                    <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-primary set-vrf-form-submit">Ok</a>
                 </div>
                 <!-- END MODAL FOOTER -->
             </div>
@@ -653,24 +712,22 @@
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <h3 id="mlabel">Delete VLAN</h3>
+                    <h3>Delete VLAN</h3>
                 </div>
                 <!-- END MODAL HEADER -->
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
-                    <div id="flash-message"></div>
-                    <div class="well" id="mbody">
-                        <span>Are you sure you want to delete the selected VLAN?</span>
-                        <form id='del-vlan-form'>
-                            <input type='hidden' name='vlan_id' id="vlan_id" value='' />
-                        </form>
-                    </div>
+                    <div class="modal-alert"></div>
+                    <span>Are you sure you want to delete the selected VLAN?</span>
+                    <form id='del-vlan-form' role="form">
+                        <input type='hidden' name='vlan_id' id="vlan_id" value='' />
+                    </form>
                 </div>
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
-                <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="msave" class="btn btn-primary" onclick='deleteVlan()'>Ok</button>
+                <div class="modal-footer">
+                    <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-primary delete-vlan-form-submit">Ok</a>
                 </div>
                 <!-- END MODAL FOOTER -->
             </div>
@@ -684,38 +741,36 @@
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <h3 id="mlabel">Set VLAN</h3>
+                    <h3>Set VLAN</h3>
                 </div>
                 <!-- END MODAL HEADER -->
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
-                    <div id="flash-message"></div>
-                    <div class="well" id="mbody">
-                        <!-- BEGIN SET VLAN FORM -->
-                        <form id="set-vlan-form" class="form" role="form">
-                            <input type="hidden" name="vlan_id" id="vlan_id" value=""/>
-                            <table class="table table-bordered table-hover" id="set-vrf-form-table">
-                                {% for field in vlanform %}
-                                    <tr class="form-group">
-                                        <td><label class="control-label">{{ field.label_tag }}</label></td>
-                                        <td>
-                                            <div class="controls">
-                                                {{ field|addcss:"form-control" }}
-                                                <span id="{{ field.html_name }}-help" class="help-inline"></span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </table>
-                        </form>
-                        <!-- END SET VLAN FORM -->
-                    </div>
+                    <div class="modal-alert"></div>
+                    <!-- BEGIN SET VLAN FORM -->
+                    <form id="set-vlan-form" class="form form-vertical" role="form">
+                        <input type="hidden" name="vlan_id" id="vlan_id" value="0" />
+                        <table class="table table-bordered table-hover" id="set-vrf-form-table">
+                            {% for field in vlanform %}
+                                <tr class="form-group">
+                                    <td><label class="control-label">{{ field.label_tag }}</label></td>
+                                    <td>
+                                        <div class="controls">
+                                            {{ field|addcss:"form-control" }}
+                                            <span id="{{ field.html_name }}-help" class="help-inline"></span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </table>
+                    </form>
+                    <!-- END SET VLAN FORM -->
                 </div>
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
-                <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="msave" class="btn btn-primary" onclick='setVlan()'>Ok</button>
+                <div class="modal-footer">
+                    <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-primary set-vlan-form-submit">Ok</a>
                 </div>
                 <!-- END MODAL FOOTER -->
             </div>
@@ -729,24 +784,22 @@
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <h3 id="mlabel">Truncate Network</h3>
+                    <h3>Truncate Network</h3>
                 </div>
                 <!-- END MODAL HEADER -->
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
-                    <div id="flash-message"></div>
-                    <div class="well" id="mbody">
-                        <span>Truncating the network will purge all IPAddress objects and PTR records belonging to subnet.<br /><br />Proceed?</span>
-                        <form id="truncate-network-form" class="form" role="form">
-                            <input type="hidden" name="networkaddress_id" id="networkaddress_id" value="" />
-                        </form>
-                    </div>
+                    <div class="modal-alert"></div>
+                    <span>Truncating the network will purge all IPAddress objects and PTR records belonging to subnet.<br /><br />Proceed?</span>
+                    <form id="truncate-network-form" class="form" role="form">
+                        <input type="hidden" name="networkaddress_id" id="networkaddress_id" value="0" />
+                    </form>
                 </div>
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
-                <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="msave" class="btn btn-primary" onclick='truncateNetwork()'>Ok</button>
+                <div class="modal-footer">
+                    <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-primary truncate-network-form-submit">Ok</a>
                 </div>
                 <!-- END MODAL FOOTER -->
             </div>
@@ -760,37 +813,37 @@
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <h3 id="mlabel">Resize Network</h3>
+                    <h3>Resize Network</h3>
                 </div>
                 <!-- END MODAL HEADER -->
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
-                    <div id="flash-message"></div>
-                    <div class="well" id="mbody">
-                        <p style="font-style: italic">Any IPAddress objects belonging to existing NetworkAddress must reside inside the new block or else the request will fail.</p>
-                        <form id="resize-network-form" class="form" role="form">
-                            <input type="hidden" name="networkaddress_id" id="networkaddress_id" value="" />
-                            <table class="table table-bordered table-hover" id="resize-network-form-table">
-                                {% for field in resizenetworkform %}
-                                    <tr class="form-group">
-                                        <td><label class="control-label">{{ field.label_tag }}</label></td>
-                                        <td>
-                                            <div class="controls">
-                                                {{ field|addcss:"form-control" }}
-                                                <span id="{{ field.html_name }}-help" class="help-inline"></span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </table>
-                        </form>
-                    </div>
+                    <div class="modal-alert"></div>
+                    <span>
+                        <em>Any IPAddress objects belonging to existing NetworkAddress must reside inside the new block or else the request will fail.</em>
+                    </span>
+                    <form id="resize-network-form" class="form form-vertical" role="form">
+                        <input type="hidden" name="networkaddress_id" id="networkaddress_id" value="0" />
+                        <table class="table table-bordered table-hover" id="resize-network-form-table">
+                            {% for field in resizenetworkform %}
+                                <tr class="form-group">
+                                    <td><label class="control-label">{{ field.label_tag }}</label></td>
+                                    <td>
+                                        <div class="controls">
+                                            {{ field|addcss:"form-control" }}
+                                            <span id="{{ field.html_name }}-help" class="help-inline"></span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </table>
+                    </form>
                 </div>
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
-                <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="msave" class="btn btn-primary" onclick='resizeNetwork()'>Ok</button>
+                <div class="modal-footer">
+                    <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-primary resize-network-form-submit">Ok</a>
                 </div>
                 <!-- END MODAL FOOTER -->
             </div>
@@ -804,38 +857,36 @@
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <h3 id="mlabel">Split Network</h3>
+                    <h3>Split Network</h3>
                 </div>
                 <!-- END MODAL HEADER -->
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
-                    <div id="flash-message"></div>
-                    <div class="well" id="mbody">
-                        <!--BEGIN SPLIT NETWORK FORM -->
-                        <form id="split-network-form" class="form" role="form">
-                            <input type="hidden" name="networkaddress_id" id="networkaddress_id" value="" />
-                            <table class="table table-bordered table-hover" id="split-network-form-table">
-                                {% for field in splitnetworkform %}
-                                    <tr class="form-group">
-                                        <td><label class="control-label">{{ field.label_tag }}</label></td>
-                                        <td>
-                                            <div class="controls">
-                                                {{ field|addcss:"form-control" }}
-                                                <span id="{{ field.html_name }}-help" class="help-inline"></span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </table>
-                        </form>
-                        <!--END SPLIT NETWORK FORM -->
-                    </div>
+                    <div class="modal-alert"></div>
+                    <!--BEGIN SPLIT NETWORK FORM -->
+                    <form id="split-network-form" class="form form-vertical" role="form">
+                        <input type="hidden" name="networkaddress_id" id="networkaddress_id" value="0" />
+                        <table class="table table-hover" id="split-network-form-table">
+                            {% for field in splitnetworkform %}
+                                <tr class="form-group">
+                                    <td><label class="control-label">{{ field.label_tag }}</label></td>
+                                    <td>
+                                        <div class="controls">
+                                            {{ field|addcss:"form-control" }}
+                                            <span id="{{ field.html_name }}-help" class="help-inline"></span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </table>
+                    </form>
+                    <!--END SPLIT NETWORK FORM -->
                 </div>
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
-                <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="msave" class="btn btn-primary" onclick='splitNetwork()'>Ok</button>
+                <div class="modal-footer">
+                    <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-primary split-network-form-submit">Ok</a>
                 </div>
                 <!-- END MODAL FOOTER -->
             </div>
@@ -849,38 +900,36 @@
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <h3 id="mlabel">Set Network</h3>
+                    <h3>Set Network</h3>
                 </div>
                 <!-- END MODAL HEADER -->
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
-                    <div id="flash-message"></div>
-                    <div class="well" id="mbody">
-                        <!--BEGIN SET NETWORK FORM -->
-                        <form id="set-network-address-form">
-                            <input type="hidden" name="networkaddress_id" id="id_networkaddress_id" value="0" />
-                            <table class="table table-bordered table-hover" id="kb-article-form-table">
-                                {% for field in networkaddressform %}
-                                    <tr class="form-group">
-                                        <td><label class="control-label">{{ field.label_tag }}</label></td>
-                                        <td>
-                                            <div class="controls">
-                                                {{ field|addcss:"form-control" }}
-                                                <span id="{{ field.html_name }}-help" class="help-inline"></span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </table>
-                        </form>
-                        <!--END SET NETWORK FORM -->
-                    </div>
+                    <div class="modal-alert"></div>
+                    <!--BEGIN SET NETWORK FORM -->
+                    <form id="set-network-address-form" clas="form form-vertical" role="form">
+                        <input type="hidden" name="networkaddress_id" id="id_networkaddress_id" value="0" />
+                        <table class="table table-hover" id="kb-article-form-table">
+                            {% for field in networkaddressform %}
+                                <tr class="form-group">
+                                    <td><label class="control-label">{{ field.label_tag }}</label></td>
+                                    <td>
+                                        <div class="controls">
+                                            {{ field|addcss:"form-control" }}
+                                            <span id="{{ field.html_name }}-help" class="help-inline"></span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </table>
+                    </form>
+                    <!--END SET NETWORK FORM -->
                 </div>
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
-                <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="msave" class="btn btn-primary" onclick="setNetwork()">Ok</button>
+                <div class="modal-footer">
+                    <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-primary set-network-form-submit">Ok</a>
                 </div>
                 <!-- END MODAL FOOTER -->
             </div>
@@ -894,26 +943,27 @@
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <h3 id="mlabel">Delete Network</h3>
+                    <h3>Delete Network</h3>
                 </div>
                 <!-- END MODAL HEADER -->
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
-                    <div id="flash-message"></div>
-                    <div class="well" id="mbody">
-                        <p>Deleting a NetworkAddress will also delete any related IPAddress objects, PTR records and child NetworkAddresses.<br /><br />Proceed?</p>
-                        <!--BEGIN SET NETWORK FORM -->
-                        <form id="delete-network-form">
-                            <input type="hidden" name="networkaddress_id" id="networkaddress_id" value="0" />
-                        </form>
-                        <!--END SET NETWORK FORM -->
-                    </div>
+                    <div class="modal-alert"></div>
+                    <span>
+                        Deleting a NetworkAddress will also delete any related IPAddress objects,
+                        PTR records and child NetworkAddresses.<br /><br />Proceed?
+                    </span>
+                    <!--BEGIN SET NETWORK FORM -->
+                    <form role="form" id="delete-network-form">
+                        <input type="hidden" name="networkaddress_id" id="networkaddress_id" value="0" />
+                    </form>
+                    <!--END SET NETWORK FORM -->
                 </div>
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
-                <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="msave" class="btn btn-primary" onclick="deleteNetwork()">Ok</button>
+                <div class="modal-footer">
+                    <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-primary delete-network-form-submit">Ok</a>
                 </div>
                 <!-- END MODAL FOOTER -->
             </div>

@@ -70,6 +70,34 @@ class Ticket(models.Model):
         (PRIORITY_URGENT, 'Urgent'),
     )
 
+    SATISFACTION_VERY_DISSATISFIED = 1
+    SATISFACTION_DISSATISFIED = 2
+    SATISFACTION_NEUTRAL = 3
+    SATISFACTION_SATISFIED = 4
+    SATISFACTION_VERY_SATISFIED = 5
+
+    SATISFACTION_CHOICES = (
+        (SATISFACTION_VERY_DISSATISFIED, "Very Dissatisfied"),
+        (SATISFACTION_DISSATISFIED, "Dissatisfied"),
+        (SATISFACTION_NEUTRAL, "Neutral"),
+        (SATISFACTION_SATISFIED, "Satisfied"),
+        (SATISFACTION_VERY_SATISFIED, "Very Satisfied")
+    )
+
+    DIFFICULTY_SIMPLE = 1
+    DIFFICULTY_EASY = 2
+    DIFFICULTY_MEDIUM = 3
+    DIFFICULTY_HARD = 4
+    DIFFICULTY_ADVANCED = 5
+
+    DIFFICULTY_CHOICES = (
+        (DIFFICULTY_SIMPLE, "Simple"),
+        (DIFFICULTY_EASY, "Easy"),
+        (DIFFICULTY_MEDIUM, "Medium"),
+        (DIFFICULTY_HARD, "Hard"),
+        (DIFFICULTY_ADVANCED, "Advanced")
+    )
+
     contacts = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, null=True)
     author = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="author", blank=False, null=False)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="owner", blank=True, null=True)
@@ -81,11 +109,22 @@ class Ticket(models.Model):
     service = models.ForeignKey(Service, blank=True, null=True)
     queue = models.ForeignKey(Queue, null=False, blank=False)
     due_date = models.DateTimeField(default=datetime.now, blank=True)
+    staff_summary = models.TextField(blank=True, null=True)
+    satisfaction_rating = models.IntegerField(choices=SATISFACTION_CHOICES, blank=True, default=0)
+    difficulty_rating = models.IntegerField(choices=DIFFICULTY_CHOICES, blank=True, default=0)
+
 
     def __unicode__(self):
         return "%s" % self.description
 
     def dump_to_dict(self, full=False, admin=False):
+        if self.priority == 1:
+            priority = "Low"
+        elif self.priority == 2:
+            priority = "Normal"
+        else:
+            priority = "Urgent"
+
         response = {
             'id': self.pk,
             'description': self.description,
@@ -93,60 +132,85 @@ class Ticket(models.Model):
             'owner': self.owner.get_full_name(),
             'flagged': self.flagged,
             'queue': self.queue.title,
-            'status': self.status,
-            'priority': self.priority,
+            'status': ("Closed", "Open")[bool(self.status)],
+            'priority': priority,
             'date': defaultfilters.date(self.date, "SHORT_DATETIME_FORMAT"),
             'due_date': defaultfilters.date(self.due_date, "SHORT_DATETIME_FORMAT"),
             'lastupdate': timesince(self.date),
         }
 
         if full:
-            posts = []
-            for post in Post.objects.filter(ticket=self.id):
-                if admin is True or post.visible is True:
-                    posts.append(post.dump_to_dict())
+            if admin:
+                response.update({
+                    'staff_summary': (0, self.staff_summary)[bool(self.staff_summary)],
+                    'difficulty_rating': ("Not Rated", self.difficulty_rating)[bool(self.difficulty_rating)]
+                })
 
             response.update({
+                'satisfaction_rating': (0, self.satisfaction_rating)[bool(self.satisfaction_rating)],
                 'cc_list': get_ticket_contacts_list(self.id, self.author.company_id),
-                'posts': posts,
-                'service': ("Other", self.service.name)[self.service]
+                'service': ("Other", self.service.name)[bool(self.service) and hasattr(self.service, 'name')]
             })
 
         return response
 
 
 class Post(models.Model):
+    def validate_file_extension(filename):
+        import os
+        ext = os.path.splitext(filename.name)[1]
+        valid_extensions = ['.pdf','.jpg', '.png', '.txt']
+        if not ext in valid_extensions:
+            raise ValidationError('File not supported!')
+
     ticket = models.ForeignKey(Ticket, blank=False, null=False)
     author = models.ForeignKey(settings.AUTH_USER_MODEL, blank=False, null=False)
     contents = models.TextField(blank=False, null=False)
     date = models.DateTimeField(auto_now_add=True, blank=True)
-    flagged = models.BooleanField(default=False, blank=True)
     visible = models.BooleanField(default=True, blank=True)
-    attachment = models.FileField(upload_to="attachments/%Y/%m/%d", blank=True, null=True)
+    attachment = models.FileField(upload_to="attachments/%Y/%m/%d", validators=[validate_file_extension], blank=True, null=True)
 
     def __unicode__(self):
         return "%s" % self.contents
 
     def dump_to_dict(self):
+        attachment = 0
+        if self.attachment and hasattr(self.attachment, 'name'):
+            attachment = {"url": self.attachment.url, "size": self.attachment.size, "name": self.attachment.name}
+
         return {
             "id": self.pk,
             "author": self.author.get_full_name(),
             "contents": self.contents,
             "date": defaultfilters.date(self.date, "SHORT_DATETIME_FORMAT"),
-            "attachment": (0, {"url": self.attachment.url, "size": self.attachment.size, "name": self.attachment.name})[self.attachment],
-            'flagged': self.flagged,
+            "attachment": attachment,
             'visible': self.visible
         }
 
 
-class Post_Macro(models.Model):
-    queues = models.ManyToManyField(Queue, blank=True, null=True)
+class Macro(models.Model):
     name = models.CharField(max_length=128, blank=False, null=False)
     body = models.TextField(blank=False, null=False)
+    date = models.DateTimeField(default=datetime.now, blank=True)
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, blank=False, null=False)
 
     def __unicode__(self):
         return "%s" % self.name
 
+    def dump_to_dict(self):
+        return {
+            'id': self.pk,
+            'name': self.name,
+            'body': self.body
+        }
+
+
+
+
+
+
+import logging
+logger = logging.getLogger(__name__)
 
 def get_tickets_summary(user_id, company_id):
     """Get Ticket summary
@@ -171,14 +235,13 @@ def get_tickets_summary(user_id, company_id):
         num_total_company = Ticket.objects.filter(owner_id__company_id=company_id)
         num_open_company = num_total_company.filter(status="Open")
 
-        result = {
+        return {
             "user": {"open": len(num_open_user), "total": len(num_total_user)},
             "company": {"open": len(num_open_company), "total": len(num_total_company)}
         }
-    except:
-        result = False
-
-    return result
+    except Exception as ex:
+        logger.error("Failed to get_tickets_summary: %s" % ex)
+        return False
 
 
 def get_ticket_contacts_list(ticket_id, company_id):
@@ -205,14 +268,14 @@ def get_ticket_contacts_list(ticket_id, company_id):
         for contact in Contact.objects.exclude(pk=ticket.author.id).filter(is_active=1).exclude(id__in=ticket.contacts.all()):
             potential_list.append({"id": contact.pk, "name": contact.get_full_name(), "email": contact.email})
 
-        result = {
+        return {
             "current_contacts": current_list,
             "potential_contacts": potential_list
         }
-    except:
-        result = False
+    except Exception as ex:
+        logger.error("Failed to get_ticket_contacts_list: %s" % ex)
+        return False
 
-    return result
 
 def set_ticket_contacts_list(ticket_id, contacts):
     """Get current and potential contacts for a Ticket
@@ -231,16 +294,16 @@ def set_ticket_contacts_list(ticket_id, contacts):
         ticket = Ticket.objects.get(pk=ticket_id)
         ticket.contacts.clear()
 
-        if all(x.isdigit() for x in contacts):
-            for contact in Contact.objects.filter(pk__in=contacts):
-                if ticket.author.company_id == contact.company_id:
-                    ticket.contacts.add(contact)
+        for contact in Contact.objects.filter(pk__in=contacts):
+            logger.error(contact)
+            if ticket.author.company_id == contact.company_id:
+                ticket.contacts.add(contact)
 
-        result = True
-    except:
-        result = False
+        return True
+    except Exception as ex:
+        logger.error("Failed to set_ticket_contacts_list: %s" % ex)
+        return False
 
-    return result
 
 def get_companies_active_contacts(company_id, exclude_contact_id=None):
     """Get list of Company contacts
@@ -255,8 +318,10 @@ def get_companies_active_contacts(company_id, exclude_contact_id=None):
     """
     try:
         return Contact.objects.filter(company=company_id).exclude(pk=exclude_contact_id)
-    except:
+    except Exception as ex:
+        logger.error("Failed to get_companies_active_contacts: %s" % ex)
         return False
+
 
 def search(query_str):
     """Search Tickets for keyword

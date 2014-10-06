@@ -16,7 +16,7 @@
     <script type="text/javascript">
         function getCompanies() {
             function onSuccessCallback(result) {
-                if(!jQuery.isEmptyObject(result)) {
+                if(!jQuery.isEmptyObject(result)  && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
                     if(result.success == 1) {
                         for(x in result.data.companies) {
                             $("#id_company").append('<OPTION value="'+result.data.companies[x].id+'">'+result.data.companies[x].name+'</OPTION>');
@@ -37,7 +37,7 @@
             $("#id_author").html("");
 
             function onSuccessCallback(result) {
-                if(!jQuery.isEmptyObject(result)) {
+                if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
                     if(result.success == 1) {
                         for(x in result.data.contacts) {
                             $("#id_author").append(' \
@@ -58,7 +58,7 @@
 
         function getQueues() {
             function onSuccessCallback(result) {
-                if(!jQuery.isEmptyObject(result)) {
+                if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
                     if(result.success == 1) {
                         for(x in result.data.queues) {
                             $("#id_queue").append('<OPTION value="'+result.data.queues[x].id+'">'+result.data.queues[x].title+'</OPTION>');
@@ -81,10 +81,15 @@
     getCompanies();
     getQueues();
 
-    // Contacts table click bindings
     $('#id_company').on('change', function () {
         getCompanyContacts($(this).val());
     });
+
+    $(document)
+        .on('click', 'a.reset-form', function (e) {
+            e.preventDefault();
+            $("#create-ticket-form").trigger('reset');
+        });
 {% endblock %}
 
 {% block content %}
@@ -102,90 +107,44 @@
             {{ form_errors }}
         {% endif %}
         <!-- BEGIN NEW TICKET FORM -->
-        <form role="form" id="new_ticket_form" name="new_ticket_form" class="col-md-12 form form-horizontal" enctype="multipart/form-data" method="POST" action="{% url 'tickets:create_ticket' %}">
+        <form role="form" id="create-ticket-form" class="form form-vertical" enctype="multipart/form-data" method="POST" action="{% url 'tickets:create_ticket' %}">
             {% csrf_token %}
-            <div class="form-group">
-                <label class="control-label col-md-3">Summary</label>
-                <div class="controls col-md-6">
-                    <input type="text" maxlength="64" class="form-control" id="id_ticket_summary" name="description" />
-                    <span class="help-block"></span>
-                </div>
-            </div>
-            {% if user.is_staff %}
-                <div class="form-group">
-                    <label class="control-label col-md-3">Company</label>
-                    <div class="controls col-md-6">
-                        <select class="form-control" id="id_company" name="company" autocomplete="off"><OPTION>----</OPTION></select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="control-label col-md-3">Author</label>
-                    <div class="controls col-md-6">
-                        <select class="form-control" id="id_author" name="author" autocomplete="off"></select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="control-label col-md-3">Queue</label>
-                    <div class="controls col-md-6">
-                        <select class="form-control" id="id_queue" name="queue" autocomplete="off"></select>
-                    </div>
-                </div>
-            {% endif %}
-            <div class="form-group">
-                <label class="control-label col-md-3">Priority</label>
-                <div class="controls col-md-6">
-                    <select class="form-control" id="id_priority" name="priority" autocomplete="off">
-                        <OPTION value="Low">Low</OPTION>
-                        <OPTION value="Normal">Normal</OPTION>
-                        <OPTION value="Urgent">Urgent</OPTION>
-                    </select>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="control-label col-md-3">Service</label>
-                <div class="controls col-md-6">
-                    <select class="form-control" id="id_service" name="service" autocomplete="off">
-                        {% for service in user.get_services %}
-                            <OPTION value='{{ service.id }}' {% if service.id == service_id %}SELECTED{% endif %}>{{ service.name }}</OPTION>
-                        {% endfor %}
-                        <OPTION value="0">Other</OPTION>
-                    </select>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="control-label col-md-3">Contacts</label>
-                <div class="controls col-md-6">
-                    <select multiple="multiple" class="form-control" id="id_ticket_contacts" name="contacts" >
-                        {% for contact in fellow_contacts %}
-                            <option value="{{ contact.id }}">{{ contact.get_full_name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-            <div class="form-group {% if new_post_form.contents.errors %}error{% endif %}">
-                <label class="control-label col-md-3">Description</label>
-                <div class="controls col-md-9">
-                    <textarea class="form-control" id="id_contents" name="contents" rows="6"></textarea>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="control-label col-md-3 {% if new_post_form.attachment.errors %}error{% endif %}">Attachment</label>
-                <div class="controls col-md-6">
-                    <div class="fileupload fileupload-new" data-provides="fileupload">
-                        <input type="file" name="attachment" />
-                    </div>
-                </div>
-            </div>
-            <div class="form-actions fluid">
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="col-md-offset-3 col-md-9">
-                            <button type="submit" class="btn"><i class="fa fa-check"></i> Submit</button>
-                            <button type="button" class="btn" onclick="window.location='{% url 'tickets:index' %}';">Cancel</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <table class="table table-hover" id="company-profile-form-table">
+                {% for field in ticketform %}
+                    <tr class="form-group">
+                        <td><label class="control-label">{{ field.label_tag }}</label></td>
+                        <td>
+                            <div class="controls">
+                                {{ field|addcss:"form-control" }}
+                                <span id="{{ field.html_name }}-help" class="help-inline"></span>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+                {% for field in postform %}
+                    <tr class="form-group">
+                        <td><label class="control-label">{{ field.label_tag }}</label></td>
+                        <td>
+                            <div class="controls">
+                                {% if field.html_name != "attachment" %}
+                                    {{ field|addcss:"form-control" }}
+                                {% else %}
+                                    {{ field }}
+                                {% endif %}
+                                <span id="{{ field.html_name }}-help" class="help-inline"></span>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+
+                <tr style="background-color: #f5f5f5">
+                    <td>&nbsp;</td>
+                    <td>
+                        <a type="submit" class="btn btn-primary" role="button" style="text-decoration: none"><i class="fa fa-check"></i>&nbsp;Submit</a>
+                        <a type="button" class="btn btn-danger reset-form" role="button" style="text-decoration: none"><i class="fa fa-refresh"></i>&nbsp;Reset</a>
+                    </td>
+                </tr>
+            </table>
         </form>
         <!-- END NEW TICKET FORM -->
     </div>

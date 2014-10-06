@@ -18,8 +18,8 @@
         <div class="navbar navbar-default navbar-fixed-top">
             <div class="container">
                 <!-- BEGIN LOGO -->
-                <div style="padding-top: 10px; float: left">
-                    <span style="font-size: 24px; color: #ffffff">Company Name</span>
+                <div class="pull-left" style="padding-top: 10px">
+                    <span style="font-size: 24px; color: #ffffff;">Company Name</span>
                 </div>
                 <!-- END LOGO -->
               </div>
@@ -32,17 +32,18 @@
             {% if form.errors %}
                 <!-- BEGIN FORM ERRORS -->
                 <div class="row">
-                    <div class="col-md-offset-4 col-md-4 col-md-offset-4 alert alert-danger" style="text-align: center;">
+                    <div class="col-md-offset-4 col-md-4 col-md-offset-4 alert alert-danger text-center">
                         {{ form.errors }}
                     </div>
                 </div>
                 <!-- END FORM ERRORS -->
             {% endif %}
 
-            <!-- BEGIN LOGIN -->
+            <!-- BEGIN LOGIN CONTAINER -->
             <div class="row">
                 <!-- BEGIN LOGIN FORM -->
-                <form class="col-md-4 col-md-offset-4 form form-vertical" id="login-form" action="{% url 'django.contrib.auth.views.login' %}" method="POST">{% csrf_token %}
+                <form class="col-md-4 col-md-offset-4 form form-vertical" id="login-form" action="{% url 'django.contrib.auth.views.login' %}" method="POST">
+                    {% csrf_token %}
                     <div class="form-group">
                         <div class="controls">
                             <div class="input-group">
@@ -58,25 +59,21 @@
                             <div class="input-group">
                                 <input type="password" class="form-control" placeholder="Password" name="password" />
                                 <span class="input-group-addon">
-                                    <i class="fa fa-lock"></i>
+                                    <i class="fa fa-key"></i>
                                 </span>
                             </div>
                         </div>
                     </div>
                     <div class="form-actions">
-                        <div class="forget-password pull-right">
-                            <span>
-                                <a href="#" onclick="$('#forgot-password-modal').modal('show');" data-toggle="modal" id="forget-password">Forgot Password</a>
-                            </span>
-                        </div>
-                        <div style="text-indent: 2px">
-                            <span><a href="#" onclick="$('#login-form').submit();" role="button">Login</a></span>
+                        <div class="pull-right" id="login-controls-container">
+                            <a href="#" class="btn btn-primary login-submit" role="button">Login</a>
+                            <a href="#" class="btn btn-danger forgot-password" role="button">Forgot Password</a>
                         </div>
                     </div>
                 </form>
                 <!-- END LOGIN FORM -->
             </div>
-            <!-- END LOGIN -->
+            <!-- END LOGIN CONTAINER -->
         </div>
         <!-- END MAIN CONTENT -->
 
@@ -94,15 +91,15 @@
                 <div class="modal-content">
                     <!-- BEGIN MODAL HEADER -->
                     <div class="modal-header">
-                        <h3 id="mlabel">Forget Password</h3>
+                        <h3>Forget Password</h3>
                     </div>
                     <!-- END MODAL HEADER -->
                     <!-- BEGIN MODAL BODY -->
                     <div class="modal-body">
                         <div id="flash-message"></div>
-                        <div id="mbody" class="well">
+                        <div class="well">
                             <!-- BEGIN FORGOT PASSWORD FORM -->
-                            <form class="form">
+                            <form class="form" role="form" id="reset-password-form">
                                 <p>Enter your e-mail address below to reset your password.</p>
                                 <div class="control-group">
                                     <div class="controls">
@@ -120,9 +117,9 @@
                     </div>
                     <!-- END MODAL BODY -->
                     <!-- BEGIN MODAL FOOTER -->
-                    <div class="modal-footer" id="modalfooter">
+                    <div class="modal-footer">
                         <button class="btn btn-default" data-dismiss="modal">Close</button>
-                        <button id="msave" class="btn btn-primary">Ok</button>
+                        <button id="reset-password-modal-save" class="btn btn-primary">Ok</button>
                     </div>
                     <!-- END MODAL FOOTER -->
                 </div>
@@ -140,6 +137,16 @@
                         $('#login-form').submit();
                     }
                 });
+
+                $(document)
+                    .on('click', 'a.login-submit', function (e) {
+                        e.preventDefault();
+                        $('#login-form').submit();
+                    })
+                    .on('click', 'a.forgot-password', function (e) {
+                        e.preventDefault();
+                        $('#forgot-password-modal').modal('show');
+                    });
             });
         </script>
         <!-- END JAVASCRIPTS -->

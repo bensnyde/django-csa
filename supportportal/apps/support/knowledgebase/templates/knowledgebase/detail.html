@@ -14,7 +14,7 @@
 			$("#article-stats").html("");
 
 			function onSuccessCallback(result) {
-				if(!jQuery.isEmptyObject(result)) {
+				if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success') && result.hasOwnProperty('data')) {
 					if(result.success == 1) {
 						$("#article-title").html(result.data.article.title);
 						$("#article-content").html(result.data.article.contents);
@@ -38,7 +38,7 @@
 						);
 					}
 					else {
-						$("#article-content").html(result.message);
+						$("#article-content").html('<div class="alert alert-danger">'+result.message+'</div>');
 					}
 				}
 			}
@@ -61,7 +61,9 @@
  <!-- BEGIN KNOWLEDGEBASE DETAIL CONTENT -->
     <!-- BEGIN CONTAINER HEAD -->
     <div class="row page-head">
-        <div class="col-md-12"><h3 id="article-title"></h3></div>
+        <div class="col-md-12">
+        	<h3 id="article-title"></h3>
+        </div>
     </div>
     <!-- END CONTAINER HEAD -->
     <!-- BEGIN CONTAINER BODY -->
@@ -74,9 +76,7 @@
 		<!-- BEGIN RIGHT COLUMN -->
 		<div class="col-md-4">
 			<!-- BEGIN ARTICLE STATS -->
-			<div>
-				<dl id="article-stats"></dl>
-			</div>
+			<dl id="article-stats"></dl>
 			<!-- END ARTICLE STATS -->
 		</div>
 		<!-- END RIGHT COLUMN -->

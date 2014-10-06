@@ -1,277 +1,768 @@
 {% extends "base.html" %}
+
 {% load staticfiles %}
+{% load common_tags %}
 
 {% block sitetitle %}| Support{% endblock %}
 {% block heading %}Support <small>Trouble Tickets</small>{% endblock %}
 
 {% block breadcrumbs %}
-	<li><a>Support</a></li>
-	<li><a href="{% url 'tickets:index' %}">Tickets</a></li>
-	<li id="ticket_id">#{{ ticket_id }}</li>
+    <li><a>Support</a></li>
+    <li><a href="{% url 'tickets:index' %}">Tickets</a></li>
+    <li id="ticket_id">#{{ ticket_id }}</li>
+{% endblock %}
+
+{% block css %}
+    <style type="text/css">
+        .highlight {
+            padding:9px 14px;
+            margin-bottom:14px;
+            background-color:#f7f7f9;
+            border:1px solid #e1e1e8;
+            border-radius:4px;
+        }
+        .rating {
+          unicode-bidi: bidi-override;
+          direction: rtl;
+          font-size: 30px;
+        }
+        .rating a.star {
+          font-family: FontAwesome;
+          font-weight: normal;
+          font-style: normal;
+          display: inline-block;
+        }
+        .rating a.star:hover {
+          cursor: pointer;
+        }
+        .rating a.star:before {
+          content: "\f006";
+          padding-right: 5px;
+          color: #777777;
+        }
+        .rating a.star:hover:before,
+        .rating a.star:hover ~ a.star:before {
+          content: "\f005";
+          color: #e3cf7a;
+        }
+    </style>
 {% endblock %}
 
 {% block js %}
-	<script type="text/javascript">
-		function setContacts() {
-			function onSuccessCallback(result) {
-				if(!jQuery.isEmptyObject(result)) {
-					$('#flash-message').fadeIn();
-					if(result.success == 1) {
-						// AJAX call returned successful
-						;$('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>')
-						$('#flash-message').fadeOut()
-						$('#modify-cc-list').fadeOut();
-						setTimeout(getTicket(), 1000);
-						$('.modal.in').modal('hide');
-					}
-					else {
-						// AJAX call returned failed
-						$('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
-					}
-				}
-			}
+    <script type="text/javascript">
+        function setContacts() {
+            function onSuccessCallback(result) {
+                if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
+                    $('.modal-alert').fadeIn();
+                    $('.modal-alert').html(result.message);
 
-			$.ajax({
-                url: "{% url 'tickets:set_contacts' %}",
-                data: {"contacts[]": $("#id_ticket_contacts").val(), "ticket_id": "{{ ticket_id }}"},
+                    if(result.success == 1) {
+                        $('.modal-alert').addClass("alert-success");
+                        getTicket();
+                        setTimeout("$('#set-contacts-modal').modal('hide')",500);
+                    }
+                    else {
+                        $('.modal-alert').addClass("alert-danger");
+                    }
+
+                    setTimeout("$('.modal-alert').fadeOut()",2000);
+                    $('.modal-alert').removeClass().addClass('modal-alert');
+                }
+            }
+
+            $.ajax({
+                url: "{% url 'tickets:set_contacts' ticket_id %}",
+                data: $("#set-contacts-form").serialize(),
                 type: "POST",
                 success: onSuccessCallback,
                 error: defaultErrorCallback
             });
-		}
+        }
 
-		function getTicket() {
-			$("#posts-list").html("");
-			$("#contacts-list").html("");
-			$("#id_ticket_contacts").html("");
+        function setSatisfactionRating(satisfaction_rating) {
+            function onSuccessCallback(result) {
+                if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
+                    if(result.success == 1) {
+                        $('#satisfaction-response-alert').fadeIn()
+                        $('#satisfaction-response-alert').html("<h5><em>Thank you for your feedback!</em></h5>");
+                    }
 
-			function onSuccessCallback(result) {
-				if(!jQuery.isEmptyObject(result)) {
-					if(result.success == 1) {
-						// AJAX call returned successful
-						$("#ticket-description").html(result.data.ticket.description);
-						$("#ticket-status").html(result.data.ticket.status);
-						$("#ticket-priority").html(result.data.ticket.priority);
-						$("#ticket-author").html(result.data.ticket.author);
-						$("#ticket-service").html(result.data.ticket.service);
+                    setTimeout("$('#satisfaction-response-alert').fadeOut()",5000);
+                }
+            }
 
-						// Ticket contacts
-						for(x in result.data.ticket.cc_list.current_contacts) {
-							$("#id_ticket_contacts").append('<option value="'+result.data.ticket.cc_list.current_contacts[x].id+'" selected="selected">'+result.data.ticket.cc_list.current_contacts[x].name+'</option>');
-							$("#contacts-list").append(result.data.ticket.cc_list.current_contacts[x].email+'<br />');
-						}
-						for(x in result.data.ticket.cc_list.potential_contacts) {
-							$("#id_ticket_contacts").append('<option value="'+result.data.ticket.cc_list.potential_contacts[x].id+'">'+result.data.ticket.cc_list.potential_contacts[x].name+'</option>');
-						}
+            $.ajax({
+                url: "{% url 'tickets:setsatisfaction' ticket_id %}",
+                data: {"satisfaction_rating": satisfaction_rating},
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });
+        }
 
-						// Posts
-						for(x in result.data.ticket.posts) {
-							var attachment = '<div class="pull-right">';
-							if(result.data.ticket.posts[x].attachment) {
-								attachment = '<small>Attachment: <a href="'+result.data.ticket.posts[x].attachment.url+'">'+result.data.ticket.posts[x].attachment.name+' ('+result.data.ticket.posts[x].attachment.size+'b)</a></small>';
-							}
-							{% if user.is_staff %}
-								attachment = attachment + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#" class="toggle-flag"><i class="fa fa-flag"></i></a> | <a href="#" class="toggle-visibility"><i class="fa fa-eye"></i></a>';
-							{% endif %}
-							attachment = attachment + '</div>';
+        function getPosts() {
+            $("#posts-list").html("");
 
-							var flag = "";
-							var visibility = "";
-							{% if user.is_staff %}
-								if(result.data.ticket.posts[x].flagged==1) {
-									flag = '<i class="fa fa-flag"></i>&nbsp;';
-								}
-								if(result.data.ticket.posts[x].visible==0) {
-									visibility = '<i class="fa fa-eye"></i>&nbsp;';
-								}
-							{% endif %}
+            function onSuccessCallback(result) {
+                if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
+                    if(result.success == 1) {
+                        for(x in result.data.posts) {
+                            var attachment = '<div class="col-md-6 pull-right text-right">';
+                            if(result.data.posts[x].attachment) {
+                                attachment = attachment + '<small>Attachment: <a href="'+result.data.posts[x].attachment.url+'">'+result.data.posts[x].attachment.name+' ('+result.data.posts[x].attachment.size+'b)</a></small>';
+                            }
+                            {% if user.is_staff %}
+                                attachment = attachment + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#" class="toggle-visibility"><i class="fa fa-eye"></i></a>';
+                            {% endif %}
+                            attachment = attachment + '</div>';
 
-							$("#posts-list").append(' \
-								<li data-id="'+result.data.ticket.posts[x].id+'"> \
-									<div class="panel"> \
-										<div class="panel-heading" style="border-bottom: 1px solid #ddd"> \
-											'+attachment+visibility+flag+' \
-											<h3 style="display: inline" class="panel-title"><a href="#" class="name">'+result.data.ticket.posts[x].author+'</a></h3> \
-											<small>@ '+result.data.ticket.posts[x].date+'</small> \
-										</div> \
-										<div class="panel-body" style="margin: 0 10px 0 10px; font-size: 12px">'+result.data.ticket.posts[x].contents+'</div> \
-									</div> \
-								</li>'
-							);
-						}
-					}
-				}
-			}
+                            var visibility = "";
+                            {% if user.is_staff %}
+                                if(result.data.posts[x].visible==0) {
+                                    visibility = '<i class="fa fa-eye"></i>&nbsp;';
+                                }
+                            {% endif %}
 
-			$.ajax({
+                            $("#posts-list").append(' \
+                                <li data-id="'+result.data.posts[x].id+'"> \
+                                    <div class="panel"> \
+                                        <div class="panel-heading row" style="border-bottom: 1px solid #ddd"> \
+                                            '+attachment+visibility+' \
+                                            <div class="col-md-6"><h3 style="display: inline" class="panel-title"><a href="#" class="name">'+result.data.posts[x].author+'</a></h3> \
+                                            <small>@ '+result.data.posts[x].date+'</small></div> \
+                                        </div> \
+                                        <div class="panel-body" style="margin: 0 10px 0 10px; font-size: 12px">'+result.data.posts[x].contents+'</div> \
+                                    </div> \
+                                </li>'
+                            );
+                        }
+                    }
+                }
+            }
+
+            $.ajax({
+                url: "{% url 'tickets:getposts' ticket_id %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });
+        }
+
+        function getTicket() {
+            $("#contacts-list").html("");
+            $("#id_ticket_contacts").html("");
+
+            function onSuccessCallback(result) {
+                if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
+                    if(result.success == 1) {
+                        $("#ticket-description").html(result.data.ticket.description);
+                        $("#ticket-status").html(result.data.ticket.status);
+                        $("#ticket-priority").html(result.data.ticket.priority);
+                        $("#ticket-queue").html(result.data.ticket.queue);
+                        $("#ticket-service").html(result.data.ticket.service);
+
+                        {% if user.is_staff %}
+                            $("#ticket-difficulty").html(result.data.ticket.difficulty_rating);
+                            if(result.data.ticket.staff_summary) {
+                                $("#ticket-summary-container").removeClass('hidden');
+                                $("#ticket-summary").html(result.data.ticket.staff_summary);
+                            }
+                        {% endif %}
+
+                        // ticket contacts
+                        for(x in result.data.ticket.cc_list.current_contacts) {
+                            $("#id_ticket_contacts").append('<option value="'+result.data.ticket.cc_list.current_contacts[x].id+'" selected="selected">'+result.data.ticket.cc_list.current_contacts[x].name+'</option>');
+                            $("#contacts-list").append(result.data.ticket.cc_list.current_contacts[x].email+'<br />');
+                        }
+                        for(x in result.data.ticket.cc_list.potential_contacts) {
+                            $("#id_ticket_contacts").append('<option value="'+result.data.ticket.cc_list.potential_contacts[x].id+'">'+result.data.ticket.cc_list.potential_contacts[x].name+'</option>');
+                        }
+                    }
+                }
+            }
+
+            $.ajax({
                 url: "{% url 'tickets:getticket' ticket_id %}",
                 type: "POST",
                 success: onSuccessCallback,
                 error: defaultErrorCallback
             });
-		}
+        }
 
-		{% if user.is_staff %}
-			function togglePost(item, post_id) {
-				function onSuccessCallback(result) {
-					if(!jQuery.isEmptyObject(result)) {
-						if(result.success == 1) {
-							$('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
-							getTicket();
-							$('#flash-message').fadeOut();
-						}
-					}
-				}
+        {% if user.is_staff %}
+            function togglePostVisibility(post_id) {
+                function onSuccessCallback(result) {
+                    if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
+                        $('.modal-alert').fadeIn();
+                        $('.modal-alert').html(result.message);
 
-				var url="";
-				if(item=="visibility") {
-					url = "{% url 'tickets:togglevisibility' %}";
-				}
-				else if(item=="flag") {
-					url = "{% url 'tickets:toggleflag' %}";
-				}
+                        if(result.success == 1) {
+                            $('.modal-alert').addClass("alert-success");
+                            getPosts();
+                        }
+                        else {
+                            $('.modal-alert').addClass("alert-danger");
+                        }
 
-				$.ajax({
-	                url: url,
-	                data: {post_id: post_id},
-	                type: "POST",
-	                success: onSuccessCallback,
-	                error: defaultErrorCallback
-	            });
-			}
-		{% endif %}
-	</script>
+                        setTimeout("$('.modal-alert').fadeOut()",2000);
+                        $('.modal-alert').removeClass().addClass('modal-alert');
+                    }
+                }
 
+                $.ajax({
+                    url: "{% url 'tickets:togglevisibility' 0 %}".replace(0, post_id),
+                    type: "POST",
+                    success: onSuccessCallback,
+                    error: defaultErrorCallback
+                });
+            }
+
+            function setTicket() {
+                function onSuccessCallback(result) {
+                    if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
+                        $('.modal-alert').fadeIn();
+                        $('.modal-alert').html(result.message);
+
+                        if(result.success == 1) {
+                            $('.modal-alert').addClass('alert alert-success');
+                            getTicket();
+                            setTimeout("$('#set-ticket-modal').modal('hide')",500);
+                        }
+                        else {
+                            $('.modal-alert').addClass('alert alert-danger');
+                            if(result.hasOwnProperty('errors')) {
+                                $.each(result.errors, function(k,v) {
+                                    $("#id_"+k).parents('tr').addClass("has-error");
+                                    $("#"+k+"-help").html(v);
+                                });
+                            }
+                        }
+
+                        setTimeout("$('.modal-alert').fadeOut()",2000);
+                        $('.modal-alert').removeClass().addClass('modal-alert');
+                    }
+                }
+
+                $.ajax({
+                    url: "{% url 'tickets:setticket' ticket_id %}",
+                    data: $("#set-ticket-form").serialize(),
+                    type: "POST",
+                    success: onSuccessCallback,
+                    error: defaultErrorCallback
+                });
+            }
+
+            function setMacro() {
+                function onSuccessCallback(result) {
+                    if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
+                        $('.modal-alert').fadeIn();
+                        $('.modal-alert').html(result.message);
+
+                        if(result.success == 1) {
+                            $('.modal-alert').addClass("alert alert-success");
+                            getMacros();
+                            setTimeout("$('#set-macro-modal').modal('hide')",500);
+                        }
+                        else {
+                            $('.modal-alert').addClass("alert alert-danger");
+                            if(result.hasOwnProperty('errors')) {
+                                $.each(result.errors, function(k,v) {
+                                    $("#id_"+k).parents('tr').addClass("has-error");
+                                    $("#"+k+"-help").html(v);
+                                });
+                            }
+                        }
+
+                        setTimeout("$('.modal-alert').fadeOut()",2000);
+                        $('.modal-alert').removeClass().addClass('modal-alert');
+                    }
+                }
+
+                $.ajax({
+                    url: "{% url 'tickets:setmacro' %}",
+                    data: $("#set-macro-form").serialize(),
+                    type: "POST",
+                    success: onSuccessCallback,
+                    error: defaultErrorCallback
+                });
+            }
+
+            var macros;
+            function getMacros() {
+                $("#reply-macro-select").html("");
+
+                function onSuccessCallback(result) {
+                    if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
+                        if(result.success == 1) {
+                            macros = result.data.macros;
+                            for(x in result.data.macros) {
+                                $("#reply-macro-select").append('<OPTION value="'+result.data.macros[x].id+'">'+result.data.macros[x].name+'</OPTION>')
+                            }
+                        }
+                    }
+                }
+
+                $.ajax({
+                    url: "{% url 'tickets:getmacros' %}",
+                    type: "POST",
+                    success: onSuccessCallback,
+                    error: defaultErrorCallback
+                });
+            }
+
+            // Appends selected Macro body to ticket reply textarea
+            function useMacro() {
+                for(x in macros) {
+                      if($('#reply-macro-select').val()==macros[x].id) {
+                          $("#id_contents").val($("#id_contents").val() + macros[x].body);
+                          break;
+                      }
+                }
+            }
+
+            function setMacro() {
+                createMacro();
+                for(x in macros) {
+                      if($('#reply-macro-select').val()==macros[x].id) {
+                          $("#set-macro-form #macro_id").val(macros[x].id);
+                          $("#set-macro-form #id_name").val(macros[x].name);
+                          $("#set-macro-form #id_body").val(macros[x].body);
+                          return true;
+                      }
+                }
+
+                return false;
+            }
+
+            function deleteMacro() {
+                $("#del-macro-form #macro_id").val($('#reply-macro-select').val());
+
+                function onSuccessCallback(result) {
+                    if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
+                        $('.modal-alert').fadeIn();
+                        $('.modal-alert').html(result.message);
+
+                        if(result.success == 1) {
+                            $('.modal-alert').addClass('alert alert-success');
+                            getMacros();
+                            setTimeout("$('#del-macro-modal').modal('hide')",500);
+                        }
+                        else {
+                            $('.modal-alert').addClass('alert alert-danger');
+                        }
+
+                        setTimeout("$('.modal-alert').fadeOut()",2000);
+                        $('.modal-alert').removeClass().addClass('modal-alert');
+                    }
+                }
+
+                $.ajax({
+                    url: "{% url 'tickets:delmacro' %}",
+                    data: $("#del-macro-form").serialize(),
+                    type: "POST",
+                    success: onSuccessCallback,
+                    error: defaultErrorCallback
+                });
+            }
+
+            function createMacro() {
+                $("#set-macro-form").trigger('reset');
+                $("#set-macro-modal").modal('show');
+            }
+        {% endif %}
+    </script>
 {% endblock %}
 
 {% block jquery_document_ready %}
-	getTicket();
-    $('#posts-list')
-        .on('click', 'a.toggle-flag', function (e) {
-            e.preventDefault();
-            togglePost("flag", $(this).closest('li').data('id'));
-        })
-        .on('click', 'a.toggle-visibility', function (e) {
-            e.preventDefault();
-            togglePost("visibility", $(this).closest('li').data('id'));
-        });
+    getTicket();
+    getPosts();
+
+    {% if user.is_staff %}
+        getMacros();
+
+        $(document)
+            .on('click', 'a.star', function (e) {
+                e.preventDefault();
+                setSatisfactionRating($(this).data('value'));
+            })
+            .on('click', 'a.toggle-visibility', function (e) {
+                e.preventDefault();
+                togglePostVisibility($(this).closest('li').data('id'));
+            })
+            .on('click', 'a.set-ticket-modal-submit', function (e) {
+                e.preventDefault();
+                console.log('test');
+                setTicket();
+            })
+            .on('click', 'a.del-macro-modal-submit', function (e) {
+                e.preventDefault();
+                deleteMacro();
+            })
+            .on('click', 'a.set-macro-modal-submit', function (e) {
+                e.preventDefault();
+                setMacro();
+            })
+            .on('click', 'a.set-contacts-modal-submit', function (e) {
+                e.preventDefault();
+                setContacts();
+            })
+            .on('click', 'a.edit-ticket', function (e) {
+                e.preventDefault();
+                $("#set-ticket-modal").modal('show');
+            })
+            .on('click', 'a.reply-reset', function (e) {
+                e.preventDefault();
+                $('#reply-form').trigger('reset');
+            })
+            .on('click', 'a.toggle-ticket-contacts', function (e) {
+                e.preventDefault();
+                $('#set-contacts-modal').modal('show');
+            })
+            .on('click', 'a.macro-use', function (e) {
+                e.preventDefault();
+                useMacro();
+            })
+            .on('click', 'a.macro-set', function (e) {
+                e.preventDefault();
+                setMacro();
+            })
+            .on('click', 'a.macro-delete', function (e) {
+                e.preventDefault();
+                $('#del-macro-modal').modal('show');
+            })
+            .on('click', 'a.macro-create', function (e) {
+                e.preventDefault();
+                createMacro();
+            });
+    {% endif %}
 {% endblock %}
 
 {% block content %}
  <!-- BEGIN TICKETS DETAIL CONTENT -->
 
- 	<div id="flash-message"></div>
+     <div id="flash-message" class="alert" role="alert"></div>
 
- 	<!-- BEGIN CONTENT HEADER -->
+     <!-- BEGIN CONTENT HEADER -->
     <div class="row page-head">
-        <div class="col-md-12"><h3>Ticket #{{ ticket_id }}</h3></div>
+        <div class="col-md-6"><h3>Ticket #{{ ticket_id }}</h3></div>
+        <div class="col-md-6 text-right">
+            <div class="btn-group">
+                <a href="#" class="edit-ticket"><i class="fa fa-edit" style="color:green"></i></a>
+            </div>
+        </div>
     </div>
     <!-- END CONTENT HEADER -->
 
-	<!-- BEGIN TICKET DETAILS CONTAINER -->
-    <div class="well">
-    	<div class="row">
-    		<!-- BEGIN LEFT COL -->
-    		<div class="col-md-8">
-				<h3 id="ticket-description"></h3>
-				<div class="row">
-					<label class="col-md-4" style="text-indent: 20px"><a onclick="$('#mmodal').modal('show');">+&nbsp;Contacts</a></label>
-					<div class="col-md-6 col-offset-md-2" id="contacts-list"></div>
-				</div>
-			</div>
-			<!-- END LEFT COL -->
+    <!-- BEGIN TICKET DETAILS CONTAINER -->
+    <div class="well" style="border-radius: 4px">
+        <div class="row">
+            <!-- BEGIN LEFT COL -->
+            <div class="col-md-8">
+                <h3 id="ticket-description"></h3>
+                <div class="row">
+                    <label class="col-md-4" style="text-indent: 20px">
+                        <a class="toggle-ticket-contacts">+&nbsp;Contacts</a>
+                    </label>
+                    <div class="col-md-6 col-offset-md-2" id="contacts-list"></div>
+                </div>
+            </div>
+            <!-- END LEFT COL -->
 
-			<!-- BEGIN RIGHT COL -->
-	    	<div class="col-md-4">
-	    		<div class="row">
-					<label class="col-md-4 control-label">Status</label>
-					<div class="col-md-8 controls" id="ticket-status"></div>
-				</div>
-				<div class="row">
-					<label class="col-md-4 control-label">Priority</label>
-					<div class="col-md-8 controls" id="ticket-priority"></div>
-				</div>
-				<div class="row">
-					<label class="control-label col-md-4">Author</label>
-					<div class="controls col-md-8" id="ticket-author"></div>
-				</div>
-				<div class="row">
-					<label class="control-label col-md-4">Service</label>
-					<div class="controls col-md-8" id="ticket-service"></div>
-				</div>
-			</div>
-			<!-- END RIGHT COL -->
-		</div>
+            <!-- BEGIN RIGHT COL -->
+            <div class="col-md-4">
+                <div class="row">
+                    <label class="col-md-4 control-label">Status</label>
+                    <div class="col-md-8 controls" id="ticket-status"></div>
+                </div>
+                <div class="row">
+                    <label class="col-md-4 control-label">Priority</label>
+                    <div class="col-md-8 controls" id="ticket-priority"></div>
+                </div>
+                <div class="row">
+                    <label class="control-label col-md-4">Service</label>
+                    <div class="controls col-md-8" id="ticket-service"></div>
+                </div>
+                <div class="row">
+                    <label class="control-label col-md-4">Queue</label>
+                    <div class="controls col-md-8" id="ticket-queue"></div>
+                </div>
+                {% if user.is_staff %}
+                <div class="row">
+                    <label class="control-label col-md-4">Difficulty</label>
+                    <div class="controls col-md-8" id="ticket-difficulty"></div>
+                </div>
+                {% endif %}
+            </div>
+            <!-- END RIGHT COL -->
+        </div>
     </div>
     <!-- END TICKET DETAILS CONTAINER -->
 
+    {% if user.is_staff %}
+        <!-- BEGIN TICKET SUMMARY CONTAINER -->
+        <div id="ticket-summary-container" class="row hidden">
+            <div class="col-md-offset-3 col-md-6">
+                <div class="row panel" style="border-bottom: 1px solid orange; margin-bottom: 0">
+                    <div class="col-md-6">
+                        <h3 class="panel-title">Ticket Summary</h3>
+                    </div>
+                    <div class="col-md-6 text-right hidden">
+                        <a href="#"><i class="fa fa-plus" style="color:blue"></i></a>
+                    </div>
+                </div>
+                <div class="panel-body" id="ticket-summary"></div>
+            </div>
+        </div>
+        <!-- END TICKET SUMMARY CONTAINER -->
+    {% endif %}
+
     <!-- BEGIN POSTS CONTAINER -->
-    <div class="row">
-		<!-- BEGIN POSTS LISTING -->
-		<ul id="posts-list" class="list-unstyled ol-offset-md-2 col-md-12"></ul>
-		<!-- END POSTS LISTING -->
+    <div id="posts-container">
+           <div class="row">
+            <!-- BEGIN POSTS LIST -->
+            <ul id="posts-list" class="list-unstyled ol-offset-md-2 col-md-12"></ul>
+            <!-- END POSTS LIST -->
+        </div>
 
-		<!-- BEGIN TICKET REPLY FORM -->
-		<form role="form" class="form-horizontal" id="fileupload" action="{% url 'tickets:setpost' %}" method="POST" enctype="multipart/form-data">
-			{% csrf_token %}
-			<input type="hidden" name="ticket_id" value="{{ ticket_id }}" />
+        {% if not user.is_staff %}
+            <!-- BEGIN CUSTOMER SATISFACTION -->
+            <div class="row">
+                <div class="highlight col-md-offset-2 col-md-8 col-md-offset-2">
+                    <label class="">How satisfied are you with the support you are receiving?</label>
+                    <span class="rating pull-right">
+                      <a data-value=1 class="star" style="text-decoration:none"></a>
+                      <a data-value=2 class="star" style="text-decoration:none"></a>
+                      <a data-value=3 class="star" style="text-decoration:none"></a>
+                      <a data-value=4 class="star" style="text-decoration:none"></a>
+                      <a data-value=5 class="star" style="text-decoration:none"></a>
+                    </span>
+                    <div id="satisfaction-response-alert" class="text-center"></div>
+                </div>
+            </div>
+            <!-- END CUSTOMER SATISFACTION -->
+        {% endif %}
 
-	        <div class="form-group">
-	        	<textarea class="form-control col-md-12" id="id_contents" name="contents" rows="10"></textarea>
+        <!-- BEGIN FILE UPLOAD -->
+        <div class="row">
+            <div class="highlight col-md-offset-2 col-md-8 col-md-offset-2">
+                <div class="row">
+                    <div class="col-md-5">
+                        <label>Would you like to upload a file?</label><br />
+                        <div><em>(.png,.jpg,.pdf only)</em></div>
+                    </div>
+                    <div class="col-md-5">
+                        <!-- BEGIN FILE ATTACHMENT FORM -->
+                        <form role="form" class="form-horizontal" id="reply-form" action="{% url 'tickets:setpost' ticket_id %}" method="POST" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <div class="fileupload fileupload-new" data-provides="fileupload">
+                                <input type="file" name="attachment" />
+                            </div>
+                        </form>
+                        <!-- END FILE ATTACHMENT FORM -->
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a type="submit" class="btn-sm btn-primary" role="button"><i class="fa fa-arrow-up"></i>&nbsp;Upload</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- END FILE UPLOAD -->
 
-				<div class="col-offset-md-2 col-md-4" style="margin-top: 16px">
-					<label class="control-label col-md-6">Attachment</label>
-					<div class="controls col-md-6">
-						<div class="fileupload fileupload-new" data-provides="fileupload">
-							<input type="file" name="attachment" />
-						</div>
-					</div>
-				</div>
-	        </div>
+        {% if user.is_staff %}
+            <!-- BEGIN MACROS CONTAINER -->
+            <div class="row">
+                <div class="highlight col-md-offset-2 col-md-8 col-md-offset-2">
+                    <div class="row"  id="reply-macros-container">
+                        <div class="col-md-5">
+                            <label>How about an automated response?</label>
+                        </div>
+                        <div class="col-md-5">
+                            <select id="reply-macro-select" class="form-control" autocomplete="off"></select>
+                        </div>
+                        <div class="col-md-2 text-right">
+                            <a href="#" class="macro-use" alt="Use Macro"><i class="fa fa-arrow-down" style="color:orange"></i></a>
+                            <a href="#" class="macro-set" alt="Edit Macro"><i class="fa fa-edit" style="color:green"></i></a>
+                            <a href="#" class="macro-delete" alt="Delete Macro"><i class="fa fa-trash-o" style="color:red"></i></a>
+                            <a href="#" class="macro-create" alt="Create Macro"><i class="fa fa-plus"></i></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- END MACROS CONTAINER -->
+        {% endif %}
 
-			<div class="row form-actions">
-				<div class="col-md-offset-2 col-md-8">
-					<button type="submit" class="btn"><i class="fa fa-check"></i> Submit</button>
-					<button type="button" class="btn" onclick="window.location='{% url 'tickets:index' %}';">Cancel</button>
-				</div>
-			</div>
-		</form>
-		<!-- END TICKET REPLY FORM -->
-	</div>
-	<!-- END POSTS CONTAINER -->
+        <div class="row">
+            <!-- BEGIN TICKET REPLY FORM -->
+            <form role="form" class="form" id="reply-form">
+                <div class="form-group">
+                    <textarea class="form-control" id="id_contents" name="contents" rows="10"></textarea>
+                </div>
 
-    <!-- BEGIN MODAL -->
-    <div id="mmodal" class="modal fade in" role="dialog">
+                <div class="row form-actions">
+                    <div class="col-md-offset-2 col-md-8">
+                        <a type="submit" class="btn btn-primary" role="button"><i class="fa fa-check"></i>&nbsp;Submit</a>
+                        <a type="button" class="btn btn-danger reply-reset" role="button"><i class="fa fa-refresh"></i>&nbsp;Reset</a>
+                    </div>
+                </div>
+            </form>
+            <!-- END TICKET REPLY FORM -->
+        </div>
+    </div>
+    <!-- END POSTS CONTAINER -->
+
+    <!-- BEGIN CONTACTS MODAL -->
+    <div id="set-contacts-modal" class="modal fade in" role="dialog">
         <div class="modal-dialog">
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <h3 id="mlabel">Ticket Contacts</h3>
+                    <h3>Ticket Contacts</h3>
                 </div>
                 <!-- END MODAL HEADER -->
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
-                    <div id="mbody">
-                    	<div class="row">
-                    		<div class="col-md-7">
-                    			<div>Selected contacts will notified on updates.</div>
-                    		</div>
-                    		<div class="col-md-5">
-                    			<select multiple="multiple" class="multi-select col-md-12 form-control" id="id_ticket_contacts" name="contacts[]"></select>
-                    		</div>
+                    <div class="modal-alert"></div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <span>Selected contacts will notified on updates.</span>
+                        </div>
+                        <div class="col-md-6">
+                            <form role="form" class="form" id="set-contacts-form">
+                                <select multiple="multiple" class="multi-select col-md-12 form-control" id="id_ticket_contacts" name="contacts"></select>
+                            </form>
+                        </div>
                     </div>
                 </div>
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
-                <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="msave" class="btn btn-primary" onclick="setContacts()">Ok</button>
+                <div class="modal-footer">
+                    <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-primary set-contacts-modal-submit">Ok</a>
                 </div>
                 <!-- END MODAL FOOTER -->
             </div>
         </div>
     </div>
-    <!-- END MODAL -->
+    <!-- END CONTACTS MODAL -->
+
+    {% if user.is_staff %}
+        <!-- BEGIN SET MACRO MODAL -->
+        <div id="set-macro-modal" class="modal fade in" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <!-- BEGIN MODAL HEADER -->
+                    <div class="modal-header">
+                        <h3>Set Macro</h3>
+                    </div>
+                    <!-- END MODAL HEADER -->
+                    <!-- BEGIN MODAL BODY -->
+                    <div class="modal-body">
+                      <div class="modal-alert"></div>
+                      <!-- BEGIN SET MACRO FORM -->
+                      <form class="form" role="form form-vertical" id="set-macro-form">
+                        <input type="hidden" name="macro_id" id="macro_id" value=0 />
+                        <table class="table table-hover" id="set-macro-form-table">
+                            {% for field in macroform %}
+                                <tr class="form-group">
+                                    <td><label class="control-label">{{ field.label_tag }}</label></td>
+                                    <td>
+                                        <div class="controls">
+                                            {{ field|addcss:"form-control" }}
+                                            <span id="{{ field.html_name }}-help" class="help-inline"></span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </table>
+                      </form>
+                      <!-- END SET MACRO FORM -->
+                    </div>
+                    <!-- END MODAL BODY -->
+                    <!-- BEGIN MODAL FOOTER -->
+                    <div class="modal-footer">
+                        <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                        <a role="button" class="btn btn-primary set-macro-modal-submit">Ok</a>
+                    </div>
+                    <!-- END MODAL FOOTER -->
+                </div>
+            </div>
+        </div>
+        <!-- END SET MACRO MODAL -->
+
+        <!-- BEGIN DELETE MACRO MODAL -->
+        <div id="del-macro-modal" class="modal fade in" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <!-- BEGIN MODAL HEADER -->
+                    <div class="modal-header">
+                        <h3>Delete Macro</h3>
+                    </div>
+                    <!-- END MODAL HEADER -->
+                    <!-- BEGIN MODAL BODY -->
+                    <div class="modal-body">
+                      <div class="modal-alert"></div>
+                      <span>Are you sure you want to delete the selected macro?</span>
+                      <!-- BEGIN DELETE MACRO FORM -->
+                      <form class="form" role="form" id="del-macro-form">
+                          <input type="hidden" name="macro_id" id="macro_id" />
+                      </form>
+                      <!-- END DELETE MACRO FORM -->
+                    </div>
+                    <!-- END MODAL BODY -->
+                    <!-- BEGIN MODAL FOOTER -->
+                    <div class="modal-footer">
+                        <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                        <a role="button" class="btn btn-primary del-macro-modal-submit">Ok</a>
+                    </div>
+                    <!-- END MODAL FOOTER -->
+                </div>
+            </div>
+        </div>
+        <!-- END DELETE MACRO MODAL -->
+
+        <!-- BEGIN SET TICKET MODAL -->
+        <div id="set-ticket-modal" class="modal fade in" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <!-- BEGIN MODAL HEADER -->
+                    <div class="modal-header">
+                        <h3>Edit Ticket</h3>
+                    </div>
+                    <!-- END MODAL HEADER -->
+                    <!-- BEGIN MODAL BODY -->
+                    <div class="modal-body">
+                        <div class="modal-alert"></div>
+                        <!-- BEGIN EDIT TICKET FORM -->
+                        <form role="form" class="form form-vertical" id="set-ticket-form">
+                            <input type="hidden" name="queue_id" id="queue_id" value="" />
+                            <table class="table table-hover" id="company-profile-form-table">
+                                {% for field in ticketform %}
+                                    <tr class="form-group">
+                                        <td><label class="control-label">{{ field.label_tag }}</label></td>
+                                        <td>
+                                            <div class="controls">
+                                                {{ field|addcss:"form-control" }}
+                                                <span id="{{ field.html_name }}-help" class="help-inline"></span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </table>
+                        </form>
+                        <!-- END EDIT TICKET FORM -->
+                    </div>
+                    <!-- END MODAL BODY -->
+                    <!-- BEGIN MODAL FOOTER -->
+                    <div class="modal-footer">
+                        <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                        <a role="button" class="btn btn-primary set-ticket-modal-submit">Ok</a>
+                    </div>
+                    <!-- END MODAL FOOTER -->
+                </div>
+            </div>
+        </div>
+        <!-- END SET TICKET MODAL -->
+    {% endif %}
 
  <!-- END TICKETS DETAIL CONTENT -->
 {% endblock %}

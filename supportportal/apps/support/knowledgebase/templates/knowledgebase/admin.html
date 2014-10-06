@@ -4,7 +4,7 @@
 {% load common_tags %}
 
 {% block sitetitle %}| Administration{% endblock %}
-{% block heading %}Admin Portal <small>Knowledgebase</small>{% endblock %}
+{% block heading %}Administration <small>Knowledgebase</small>{% endblock %}
 
 {% block breadcrumbs %}
 	<li><a>Support</a></li>
@@ -26,24 +26,27 @@
 	<script type="text/javascript">
     function setTag() {
       function onSuccessCallback(result) {
-        if(!jQuery.isEmptyObject(result)) {
-          $('#flash-message').fadeIn();
+        if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success')) {
+          $('.modal-alert').html(result.message);
+          $('.modal-alert').fadeIn();
+
           if(result.success == 1) {
-            $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
-            $("#kb-tag-title").val("");
+            $('.modal-alert').addClass('alert alert-success');
             getTags();
-            $('.modal.in').modal('hide');
+            setTimeout("$('.modal.in').modal('hide')",500);
           }
           else {
-            $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+            $('.modal-alert').addClass('alert alert-danger');
             if(result.hasOwnProperty('errors')) {
               $.each(result.errors, function(k,v) {
-                $("#"+k+"-help").closest('div').addClass("has-error");
+                $("#"+k+"-help").closest('tr').addClass("has-error");
                 $("#"+k+"-help").html(v);
               });
             }
           }
-          setTimeout("$('#flash-message').fadeOut()",2000);
+
+          setTimeout("$('.modal-alert').fadeOut()",2000);
+          $('.modal-alert').removeClass().addClass('modal-alert');
         }
       }
 
@@ -62,8 +65,7 @@
       $("#tags-table-tbody").html("");
 
       function onSuccessCallback(result) {
-        if(!jQuery.isEmptyObject(result)) {
-          $('#flash-message').fadeIn();
+        if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success') && result.hasOwnProperty('data')) {
           if(result.success == 1) {
             if(result.data.tags.length) {
               for(x in result.data.tags) {
@@ -81,11 +83,11 @@
               }
             }
             else {
-              $("#tags-table-tbody").html('<tr><td colspan=3 style="font-style: italic">No tags defined.</td></tr>');
+              $("#tags-table-tbody").html('<tr><td colspan=3><em>No tags defined.</em></td></tr>');
             }
           }
           else {
-            $("#tags-table-tbody").html('<tr><td colspan=3 style="font-style: italic">'+result.message+'</td></tr>');
+            $("#tags-table-tbody").html('<tr class="has-error"><td colspan=3><em>'+result.message+'</em></td></tr>');
           }
         }
       }
@@ -100,17 +102,21 @@
 
     function deleteTag() {
       function onSuccessCallback(result) {
-        if(!jQuery.isEmptyObject(result)) {
-          $('#flash-message').fadeIn();
+        if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success')) {
+          $('.modal-alert').html(result.message);
+          $('.modal-alert').fadeIn();
+
           if(result.success == 1) {
-            $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+            $('.modal-alert').addClass('alert alert-success');
             getTags();
-            $('.modal.in').modal('hide');
+            setTimeout("$('.modal.in').modal('hide')",500);
           }
           else {
-            $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+            $('.modal-alert').addClass('alert alert-danger');
           }
-          setTimeout("$('#flash-message').fadeOut()",2000);
+
+          setTimeout("$('.modal-alert').fadeOut()",2000);
+          $('.modal-alert').removeClass().addClass('modal-alert');
         }
       }
 
@@ -128,8 +134,7 @@
       $("#categories-table-tbody").html("");
 
       function onSuccessCallback(result) {
-        if(!jQuery.isEmptyObject(result)) {
-          $('#flash-message').fadeIn();
+        if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success') && result.hasOwnProperty('data')) {
           if(result.success == 1) {
             if(result.data.categories.length) {
               for(x in result.data.categories) {
@@ -138,7 +143,7 @@
                   <tr data-id="'+result.data.categories[x].id+'"> \
                     <td>'+result.data.categories[x].id+'</td> \
                     <td>'+result.data.categories[x].title+'</td> \
-                    <td style="text-align: right"> \
+                    <td class="text-right"> \
                       <a href="#" role="button" class="edit-category"><i class="fa fa-edit" style="color: green"></i></a> \
                       <a href="#" role="button" class="del-category"><i class="fa fa-trash-o" style="color: red"></i></a> \
                     </td> \
@@ -147,11 +152,11 @@
               }
             }
             else {
-              $("#categories-table-tbody").html('<tr><td colspan=3 style="font-style: italic">No categories defined.</td></tr>');
+              $("#categories-table-tbody").html('<tr><td colspan=3><em>No categories defined.</em></td></tr>');
             }
           }
           else {
-            $("#categories-table-tbody").html('<tr><td colspan=3 style="font-style: italic">'+result.message+'</td></tr>');
+            $("#categories-table-tbody").html('<tr class="has-error"><td colspan=3><em>'+result.message+'</em></td></tr>');
           }
         }
       }
@@ -166,16 +171,17 @@
 
     function setCategory() {
       function onSuccessCallback(result) {
-        if(!jQuery.isEmptyObject(result)) {
-          $('#flash-message').fadeIn();
+        if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success')) {
+          $('.modal-alert').html(result.message);
+          $('.modal-alert').fadeIn();
+
           if(result.success == 1) {
-            $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
-            $("#kb-category-title").val("");
+            $('.modal-alert').addClass('alert alert-success');
             getCategories();
-            $('.modal.in').modal('hide');
+            setTimeout("$('.modal.in').modal('hide')",500);
           }
           else {
-            $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+            $('.modal-alert').addClass('alert alert-danger');
             if(result.hasOwnProperty('errors')) {
               $.each(result.errors, function(k,v) {
                 $("#"+k+"-help").closest('div').addClass("has-error");
@@ -183,7 +189,9 @@
               });
             }
           }
-          setTimeout("$('#flash-message').fadeOut()",2000);
+
+          setTimeout("$('.modal-alert').fadeOut()",2000);
+          $('.modal-alert').removeClass().addClass('modal-alert');
         }
       }
 
@@ -198,17 +206,21 @@
 
     function deleteCategory() {
       function onSuccessCallback(result) {
-        if(!jQuery.isEmptyObject(result)) {
-          $('#flash-message').fadeIn();
+        if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success')) {
+          $('.modal-alert').html(result.message);
+          $('.modal-alert').fadeIn();
+
           if(result.success == 1) {
-            $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+            $('.modal-alert').addClass('alert alert-success');
             getCategories();
-            $('.modal.in').modal('hide');
+            setTimeout("$('.modal.in').modal('hide')",500);
           }
           else {
-            $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+            $('.modal-alert').addClass('alert alert-danger');
           }
-          setTimeout("$('#flash-message').fadeOut()",2000);
+
+          setTimeout("$('.modal-alert').fadeOut()",2000);
+          $('.modal-alert').removeClass().addClass('modal-alert');
         }
       }
 
@@ -226,8 +238,7 @@
       $("#articles-table-tbody").html("");
 
       function onSuccessCallback(result) {
-        if(!jQuery.isEmptyObject(result)) {
-          $('#flash-message').fadeIn();
+        if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success') && result.hasOwnProperty('data')) {
           if(result.success == 1) {
             if(result.data.articles.length) {
               for(x in result.data.articles) {
@@ -247,14 +258,20 @@
                   </tr>'
                 );
               }
-              $("#articles-table").dataTable({"aoColumnDefs": [],"aaSorting": [[0, 'asc']]});
+              $("#articles-table").dataTable({
+                                    "aaSorting": [[0, 'desc']],
+                                    "aoColumnDefs": [
+                                        {'bSortable': false, 'aTargets': [6]},
+                                        {'bSearchable': false, 'aTargets': [6]}
+                                    ]
+                                });
             }
             else {
-              $("#articles-table-tbody").html('<tr><td colspan=7 style="font-style: italic">No Articles defined.</td></tr>')
+              $("#articles-table-tbody").html('<tr><td colspan=7><em>No Articles defined.</em></td></tr>')
             }
           }
           else {
-            $("#articles-table-tbody").html('<tr><td colspan=7>'+result.message+'</td></tr>')
+            $("#articles-table-tbody").html('<tr class="has-error"><td colspan=7><em>'+result.message+'</em></td></tr>')
           }
         }
       }
@@ -269,7 +286,7 @@
 
     function getArticle(article_id) {
       function onSuccessCallback(result) {
-        if(!jQuery.isEmptyObject(result)) {
+        if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success') && result.hasOwnProperty('data')) {
           if(result.success == 1) {
             $("#kb-article-form #article_id").val(result.data.article.id);
             $("#kb-article-form #id_title").val(result.data.article.title);
@@ -293,15 +310,17 @@
 
     function setArticle() {
       function onSuccessCallback(result) {
-        if(!jQuery.isEmptyObject(result)) {
-          $('#flash-message').fadeIn();
+        if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success')) {
+          $('.modal-alert').html(result.message);
+          $('.modal-alert').fadeIn();
+
           if(result.success == 1) {
-            $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+            $('.modal-alert').addClass('alert alert-success');
             getArticles();
-            $('.modal.in').modal('hide');
+            setTimeout("$('.modal.in').modal('hide')",500);
           }
           else {
-            $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+            $('.modal-alert').addClass('alert alert-danger');
             if(result.hasOwnProperty('errors')) {
               $.each(result.errors, function(k,v) {
                 $("#"+k+"-help").closest('div').addClass("has-error");
@@ -309,7 +328,9 @@
               });
             }
           }
-          setTimeout("$('#flash-message').fadeOut()",2000);
+
+          setTimeout("$('.modal-alert').fadeOut()",2000);
+          $('.modal-alert').removeClass().addClass('modal-alert');
         }
       }
 
@@ -324,18 +345,22 @@
 
     function deleteArticle() {
       function onSuccessCallback(result) {
-        if(!jQuery.isEmptyObject(result)) {
-          $('#flash-message').fadeIn();
+        if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success')) {
+          $('.modal-alert').html(result.message);
+          $('.modal-alert').fadeIn();
+
           if(result.success == 1) {
-            $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+            $('.modal-alert').addClass('alert alert-success');
             getArticles();
-            $('.modal.in').modal('hide');
+            setTimeout("$('.modal.in').modal('hide')",500);
           }
           else {
-            $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+            $('.modal-alert').addClass('alert alert-danger');
           }
         }
-        setTimeout("$('#flash-message').fadeOut()",2000);
+
+        setTimeout("$('.modal-alert').fadeOut()",2000);
+        $('.modal-alert').removeClass().addClass('modal-alert');
       }
 
       $.ajax({
@@ -369,7 +394,55 @@
 	getCategories();
   getArticles();
 
-  $('#categories-table-tbody')
+  $(document)
+      .on('click', 'a.set-article-form-submit', function (e) {
+          e.preventDefault();
+          setArticle();
+      })
+      .on('click', 'a.set-tag-form-submit', function (e) {
+          e.preventDefault();
+          setTag();
+      })
+      .on('click', 'a.set-category-form-submit', function (e) {
+          e.preventDefault();
+          setCategory();
+      })
+      .on('click', 'a.delete-category-form-submit', function (e) {
+          e.preventDefault();
+          deleteCategory();
+      })
+      .on('click', 'a.delete-tag-form-submit', function (e) {
+          e.preventDefault();
+          deleteTag();
+      })
+      .on('click', 'a.delete-article-form-submit', function (e) {
+          e.preventDefault();
+          deleteArticle();
+      })
+      .on('click', 'a.show-set-category-modal', function (e) {
+          e.preventDefault();
+          resetCategoryForm();
+      })
+      .on('click', 'a.refresh-categories', function (e) {
+          e.preventDefault();
+          getCategories();
+      })
+      .on('click', 'a.show-set-tag-modal', function (e) {
+          e.preventDefault();
+          resetTagForm();
+      })
+      .on('click', 'a.refresh-tags', function (e) {
+          e.preventDefault();
+          getTags();
+      })
+      .on('click', 'a.show-set-article-modal', function (e) {
+          e.preventDefault();
+          resetArticleForm();
+      })
+      .on('click', 'a.get-articles', function (e) {
+          e.preventDefault();
+          getArticles();
+      })
       .on('click', 'a.del-category', function (e) {
           e.preventDefault();
           if($(this).closest('tr').data('id')) {
@@ -385,8 +458,6 @@
             $("#kb-category-set-form #category_id").val($(this).closest('tr').data('id'))
           }
       })
-
-  $('#tags-table-tbody')
       .on('click', 'a.del-tag', function (e) {
           e.preventDefault();
           if($(this).closest('tr').data('id')) {
@@ -402,8 +473,6 @@
             $("#kb-tag-set-form #tag_id").val($(this).closest('tr').data('id'))
           }
       })
-
-  $('#articles-table-tbody')
       .on('click', 'a.del-article', function (e) {
           e.preventDefault();
           if($(this).closest('tr').data('id')) {
@@ -418,7 +487,7 @@
             getArticle($(this).closest('tr').data('id'));
             $("#kb-article-form #article_id").val($(this).closest('tr').data('id'));
           }
-      })
+      });
 {% endblock %}
 
 {% block content %}
@@ -428,32 +497,29 @@
         <div class="col-md-6"><h3>Knowledgebase</h3></div>
         <div class="col-md-6 text-right">
             <div class="btn-group">
-                <a href="#" role="button" onclick="getArticles()"><i class="fa fa-refresh"></i></a>
-                <a href="#" role="button" onclick="resetArticleForm()"><i class="fa fa-plus"></i></a>
+                <a href="#" role="button" class="get-articles"><i class="fa fa-refresh"></i></a>
+                <a href="#" role="button" class="show-set-article-modal"><i class="fa fa-plus"></i></a>
             </div>
         </div>
     </div>
     <!-- END CONTAINER HEAD -->
     <!-- BEGIN CONTAINER BODY -->
-		<div class="row">
-        <!-- BEGIN VLAN TABLE -->
-        <table id="articles-table" class="table table-hover col-md-12">
-            <thead class="row">
-                <tr>
-                  <th class="col-md-3">Title</th>
-                  <th class="col-md-1">Category</th>
-                  <th class="col-md-2">Author</th>
-                  <th class="col-md-1">Views</th>
-                  <th class="col-md-2">Created</th>
-                  <th class="col-md-2">Modified</th>
-                  <th class="col-md-1">&nbsp;</th>
-                </tr>
-            </thead>
-            <tbody id="articles-table-tbody">
-            </tbody>
-        </table>
-        <!-- END VLAN TABLE -->
-		</div>
+      <!-- BEGIN VLAN TABLE -->
+      <table id="articles-table" class="table table-hover">
+          <thead class="row">
+              <tr>
+                <th class="col-md-3">Title</th>
+                <th class="col-md-1">Category</th>
+                <th class="col-md-2">Author</th>
+                <th class="col-md-1">Views</th>
+                <th class="col-md-2">Created</th>
+                <th class="col-md-2">Modified</th>
+                <th class="col-md-1">&nbsp;</th>
+              </tr>
+          </thead>
+          <tbody id="articles-table-tbody"></tbody>
+      </table>
+      <!-- END VLAN TABLE -->
     <!-- END CONTAINER BODY -->
 
     <!-- BEGIN BOTTOM ROW -->
@@ -464,8 +530,8 @@
             <div class="col-md-6"><h3 id="article-title">Categories</h3></div>
             <div class="col-md-6 text-right">
                 <div class="btn-group">
-                    <a href="#" role="button" onclick="getCategories()"><i class="fa fa-refresh"></i></a>
-                    <a href="#" role="button" onclick="resetCategoryForm()"><i class="fa fa-plus"></i></a>
+                    <a href="#" role="button" class="refresh-categories"><i class="fa fa-refresh"></i></a>
+                    <a href="#" role="button" class="show-set-category-modal"><i class="fa fa-plus"></i></a>
                 </div>
             </div>
         </div>
@@ -481,8 +547,7 @@
                       <th class="col-md-2">&nbsp;</th>
                     </tr>
                 </thead>
-                <tbody id="categories-table-tbody">
-                </tbody>
+                <tbody id="categories-table-tbody"></tbody>
             </table>
             <!-- END VLAN TABLE -->
         </div>
@@ -494,8 +559,8 @@
             <div class="col-md-6"><h3 id="article-title">Tags</h3></div>
             <div class="col-md-6 text-right">
                 <div class="btn-group">
-                    <a href="#" role="button" onclick="getTags()"><i class="fa fa-refresh"></i></a>
-                    <a href="#" role="button" onclick="resetTagForm()"><i class="fa fa-plus"></i></a>
+                    <a href="#" role="button" class="refresh-tags"><i class="fa fa-refresh"></i></a>
+                    <a href="#" role="button" class="show-set-tag-modal"><i class="fa fa-plus"></i></a>
                 </div>
             </div>
         </div>
@@ -511,8 +576,7 @@
                       <th class="col-md-2">&nbsp;</th>
                     </tr>
                 </thead>
-                <tbody id="tags-table-tbody">
-                </tbody>
+                <tbody id="tags-table-tbody"></tbody>
             </table>
             <!-- END VLAN TABLE -->
         </div>
@@ -527,38 +591,36 @@
         <div class="modal-content">
           <!-- BEGIN MODAL HEADER -->
           <div class="modal-header">
-            <h3 id="mlabel">Knowledgebase Tag</h3>
+            <h3>Knowledgebase Tag</h3>
           </div>
           <!-- END MODAL HEADER -->
           <!-- BEGIN MODAL BODY -->
           <div class="modal-body">
-            <div id="flash-message"></div>
-            <div class="well" id="mbody">
-              <!-- BEGIN KB TAG FORM -->
-              <form id="kb-tag-set-form" class="form" role="form">
-                <input type="hidden" name="tag_id" id="tag_id" value="" />
-                <table class="table table-bordered table-hover" id="kb-tag-set-form-table">
-                  {% for field in tagform %}
-                    <tr class="form-group">
-                      <td><label class="control-label">{{ field.label_tag }}</label></td>
-                      <td>
-                        <div class="controls">
-                          {{ field|addcss:"form-control" }}
-                          <span id="{{ field.html_name }}-help" class="help-inline"></span>
-                        </div>
-                      </td>
-                    </tr>
-                  {% endfor %}
-                </table>
-              </form>
-              <!-- END KB TAG FORM -->
-            </div>
+            <div class="modal-alert"><span></span></div>
+            <!-- BEGIN KB TAG FORM -->
+            <form id="kb-tag-set-form" class="form form-vertical" role="form">
+              <input type="hidden" name="tag_id" id="tag_id" value="" />
+              <table class="table table-hover" id="kb-tag-set-form-table">
+                {% for field in tagform %}
+                  <tr class="form-group">
+                    <td><label class="control-label">{{ field.label_tag }}</label></td>
+                    <td>
+                      <div class="controls">
+                        {{ field|addcss:"form-control" }}
+                        <span id="{{ field.html_name }}-help" class="help-inline"></span>
+                      </div>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </table>
+            </form>
+            <!-- END KB TAG FORM -->
           </div>
           <!-- END MODAL BODY -->
           <!-- BEGIN MODAL FOOTER -->
-          <div class="modal-footer" id="modalfooter">
-            <button class="btn btn-default" data-dismiss="modal">Close</button>
-            <button id="msave" class="btn btn-primary" onclick="setTag()">Ok</button>
+          <div class="modal-footer">
+            <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+            <a role="button" class="btn btn-primary set-tag-form-submit">Ok</a>
           </div>
           <!-- END MODAL FOOTER -->
         </div>
@@ -572,38 +634,36 @@
         <div class="modal-content">
           <!-- BEGIN MODAL HEADER -->
           <div class="modal-header">
-            <h3 id="mlabel">Knowledgebase Category</h3>
+            <h3>Knowledgebase Category</h3>
           </div>
           <!-- END MODAL HEADER -->
           <!-- BEGIN MODAL BODY -->
           <div class="modal-body">
-            <div id="flash-message"></div>
-            <div class="well" id="mbody">
-              <!-- BEGIN KB CATEGORY FORM -->
-              <form id="kb-category-set-form" class="form" role="form">
-                <input type="hidden" name="category_id" id="category_id" value=""/>
-                <table class="table table-bordered table-hover" id="kb-category-set-form-table">
-                  {% for field in categoryform %}
-                    <tr class="form-group">
-                      <td><label class="control-label">{{ field.label_tag }}</label></td>
-                      <td>
-                        <div class="controls">
-                          {{ field|addcss:"form-control" }}
-                          <span id="{{ field.html_name }}-help" class="help-inline"></span>
-                        </div>
-                      </td>
-                    </tr>
-                  {% endfor %}
-                </table>
-              </form>
-              <!-- END KB CATEGORY FORM -->
-            </div>
+            <div class="modal-alert"></div>
+            <!-- BEGIN KB CATEGORY FORM -->
+            <form id="kb-category-set-form" class="form form-vertical" role="form">
+              <input type="hidden" name="category_id" id="category_id" value=""/>
+              <table class="table table-hover" id="kb-category-set-form-table">
+                {% for field in categoryform %}
+                  <tr class="form-group">
+                    <td><label class="control-label">{{ field.label_tag }}</label></td>
+                    <td>
+                      <div class="controls">
+                        {{ field|addcss:"form-control" }}
+                        <span id="{{ field.html_name }}-help" class="help-inline"></span>
+                      </div>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </table>
+            </form>
+            <!-- END KB CATEGORY FORM -->
           </div>
           <!-- END MODAL BODY -->
           <!-- BEGIN MODAL FOOTER -->
-          <div class="modal-footer" id="modalfooter">
-            <button class="btn btn-default" data-dismiss="modal">Close</button>
-            <button id="msave" class="btn btn-primary" onclick="setCategory()">Ok</button>
+          <div class="modal-footer">
+            <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+            <a role="button" class="btn btn-primary set-category-form-submit">Ok</a>
           </div>
           <!-- END MODAL FOOTER -->
         </div>
@@ -617,26 +677,24 @@
         <div class="modal-content">
           <!-- BEGIN MODAL HEADER -->
           <div class="modal-header">
-            <h3 id="mlabel">Knowledgebase Category</h3>
+            <h3>Knowledgebase Category</h3>
           </div>
           <!-- END MODAL HEADER -->
           <!-- BEGIN MODAL BODY -->
           <div class="modal-body">
-            <div id="flash-message"></div>
-            <div class="well" id="mbody">
-              <!-- BEGIN KB CATEGORY FORM -->
-              <span>Are you sure you want to delete the selected Knowledgebase Category?</span>
-              <form id="kb-category-del-form" class="form hidden" role="form">
-                <input type="hidden" name='category_id' id="category_id" value="0" />
-              </form>
-              <!-- END KB CATEGORY FORM -->
-            </div>
+            <div class="modal-alert"></div>
+            <!-- BEGIN KB CATEGORY FORM -->
+            <span>Are you sure you want to delete the selected Knowledgebase Category?</span>
+            <form id="kb-category-del-form" class="form" role="form">
+              <input type="hidden" name='category_id' id="category_id" value="0" />
+            </form>
+            <!-- END KB CATEGORY FORM -->
           </div>
           <!-- END MODAL BODY -->
           <!-- BEGIN MODAL FOOTER -->
-          <div class="modal-footer" id="modalfooter">
-            <button class="btn btn-default" data-dismiss="modal">Close</button>
-            <button id="msave" class="btn btn-primary" onclick="deleteCategory()">Ok</button>
+          <div class="modal-footer">
+            <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+            <a role="button" class="btn btn-primary delete-category-form-submit">Ok</a>
           </div>
           <!-- END MODAL FOOTER -->
         </div>
@@ -650,26 +708,24 @@
         <div class="modal-content">
           <!-- BEGIN MODAL HEADER -->
           <div class="modal-header">
-            <h3 id="mlabel">Knowledgebase Tag</h3>
+            <h3>Knowledgebase Tag</h3>
           </div>
           <!-- END MODAL HEADER -->
           <!-- BEGIN MODAL BODY -->
           <div class="modal-body">
-            <div id="flash-message"></div>
-            <div class="well" id="mbody">
-              <!-- BEGIN KB CATEGORY FORM -->
-              <span>Are you sure you want to delete the selected Knowledgebase Tag?</span>
-              <form id="kb-tag-del-form" class="form hidden" role="form">
-                <input type='hidden' name="tag_id" id="tag_id" value="0" />
-              </form>
-              <!-- END KB CATEGORY FORM -->
-            </div>
+            <div class="modal-alert"></div>
+            <!-- BEGIN KB CATEGORY FORM -->
+            <span>Are you sure you want to delete the selected Knowledgebase Tag?</span>
+            <form id="kb-tag-del-form" class="form" role="form">
+              <input type='hidden' name="tag_id" id="tag_id" value="0" />
+            </form>
+            <!-- END KB CATEGORY FORM -->
           </div>
           <!-- END MODAL BODY -->
           <!-- BEGIN MODAL FOOTER -->
-          <div class="modal-footer" id="modalfooter">
-            <button class="btn btn-default" data-dismiss="modal">Close</button>
-            <button id="msave" class="btn btn-primary" onclick="deleteTag()">Ok</button>
+          <div class="modal-footer">
+            <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+            <a role="button" class="btn btn-primary delete-tag-form-submit">Ok</a>
           </div>
           <!-- END MODAL FOOTER -->
         </div>
@@ -683,26 +739,24 @@
         <div class="modal-content">
           <!-- BEGIN MODAL HEADER -->
           <div class="modal-header">
-            <h3 id="mlabel">Delete Article</h3>
+            <h3>Delete Article</h3>
           </div>
           <!-- END MODAL HEADER -->
           <!-- BEGIN MODAL BODY -->
           <div class="modal-body">
-            <div id="flash-message"></div>
-            <div class="well" id="mbody">
-              <!-- BEGIN KB CATEGORY FORM -->
-              <span>Are you sure you want to delete the selected Knowledgebase Article?</span>
-              <form class="hidden" id='kb-article-del-form'>
-                <input class="form hidden" role="form" name="article_id" id="article_id" value="0" />
-              </form>
-              <!-- END KB CATEGORY FORM -->
-            </div>
+            <div class="modal-alert"></div>
+            <!-- BEGIN KB CATEGORY FORM -->
+            <span>Are you sure you want to delete the selected Knowledgebase Article?</span>
+            <form class="form" role="form" id='kb-article-del-form'>
+              <input type="hidden" name="article_id" id="article_id" value="0" />
+            </form>
+            <!-- END KB CATEGORY FORM -->
           </div>
           <!-- END MODAL BODY -->
           <!-- BEGIN MODAL FOOTER -->
-          <div class="modal-footer" id="modalfooter">
-            <button class="btn btn-default" data-dismiss="modal">Close</button>
-            <button id="msave" class="btn btn-primary" onclick="deleteArticle()">Ok</button>
+          <div class="modal-footer">
+            <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+            <a role="button" class="btn btn-primary delete-article-form-submit">Ok</a>
           </div>
           <!-- END MODAL FOOTER -->
         </div>
@@ -716,38 +770,36 @@
         <div class="modal-content">
           <!-- BEGIN MODAL HEADER -->
           <div class="modal-header">
-            <h3 id="mlabel">Set Article</h3>
+            <h3>Set Article</h3>
           </div>
           <!-- END MODAL HEADER -->
           <!-- BEGIN MODAL BODY -->
           <div class="modal-body">
-            <div id="flash-message"></div>
-            <div class="well" id="mbody">
-              <!-- BEGIN KB ARTICLE FORM -->
-              <form role="form" class="form" id="kb-article-form">
-                  <input type="hidden" name="article_id" id="article_id" value="0" />
-                  <table class="table table-bordered table-hover" id="kb-article-form-table">
-                      {% for field in articleform %}
-                          <tr class="form-group">
-                              <td><label class="control-label">{{ field.label_tag }}</label></td>
-                              <td>
-                                  <div class="controls">
-                                      {{ field|addcss:"form-control" }}
-                                      <span id="{{ field.html_name }}-help" class="help-inline"></span>
-                                  </div>
-                              </td>
-                          </tr>
-                      {% endfor %}
-                  </table>
-              </form>
-              <!-- END KB ARTICLE FORM -->
-            </div>
+            <div class="modal-alert"></div>
+            <!-- BEGIN KB ARTICLE FORM -->
+            <form role="form" class="form form-vertical" id="kb-article-form">
+              <input type="hidden" name="article_id" id="article_id" value="0" />
+              <table class="table table-hover" id="kb-article-form-table">
+                {% for field in articleform %}
+                  <tr class="form-group">
+                    <td><label class="control-label">{{ field.label_tag }}</label></td>
+                    <td>
+                      <div class="controls">
+                        {{ field|addcss:"form-control" }}
+                        <span id="{{ field.html_name }}-help" class="help-inline"></span>
+                      </div>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </table>
+            </form>
+            <!-- END KB ARTICLE FORM -->
           </div>
           <!-- END MODAL BODY -->
           <!-- BEGIN MODAL FOOTER -->
-          <div class="modal-footer" id="modalfooter">
-            <button class="btn btn-default" data-dismiss="modal">Close</button>
-            <button id="msave" class="btn btn-primary" onclick="setArticle()">Ok</button>
+          <div class="modal-footer">
+            <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+            <a role="button" class="btn btn-primary set-article-form-submit">Ok</a>
           </div>
           <!-- END MODAL FOOTER -->
         </div>
@@ -757,4 +809,3 @@
 
  <!-- END KNOWLEDGEBASE ADMINISTRATION CONTENT -->
 {% endblock %}
-

@@ -24,9 +24,8 @@
             $("#tickets-tbody").html("");
 
             function onSuccessCallback(result) {
-                if(!jQuery.isEmptyObject(result)) {
+                if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
                     if(result.success == 1) {
-                    	// AJAX call returned successful
                         for(x in result.data.tickets) {
                             var flagged = "";
                             if(result.data.tickets[x].flagged) {
@@ -45,12 +44,10 @@
                             );
                         }
 
-                        // Initialize Datatable object
-                        $("#tickets-table").dataTable({"aoColumnDefs": [],"aaSorting": [[4, 'desc']]});
+                        $("#tickets-table").dataTable({"aaSorting": [[4, 'desc']]});
                     }
                     else {
-                    	// AJAX call returned failed
-                        $("#tickets-tbody").html("<tr><td colspan=5>"+result.message+"</td></tr>");
+                        $("#tickets-tbody").html("<tr class='has-error'><td colspan=5>"+result.message+"</td></tr>");
                     }
                 }
             }
@@ -83,7 +80,7 @@
         <div class="col-md-6"><h3>Trouble Tickets</h3></div>
         <div class="col-md-6 text-right">
             <div class="btn-group">
-                <a href="{% url 'tickets:create_ticket' %}" id="create-ticket-button" class="badge">Create Ticket <i class="fa fa-plus"></i></a>
+                <a href="{% url 'tickets:create_ticket' %}" role="button" class="badge">Create Ticket <i class="fa fa-plus"></i></a>
             </div>
         </div>
     </div>
@@ -93,14 +90,14 @@
     <div class="row">
         <!-- BEING TICKETS TABLE -->
         <table class="table table-hover col-md-12" id="tickets-table">
-            <thead>
+            <thead class="row">
                 <tr>
-                    <th>ID</th>
-                    <th>Description</th>
-                    <th>Queue</th>
-                    <th>Author</th>
-                    <th>Date</th>
-                    <th>Priority</th>
+                    <th class="col-md-1">ID</th>
+                    <th class="col-md-3">Description</th>
+                    <th class="col-md-2">Queue</th>
+                    <th class="col-md-2">Author</th>
+                    <th class="col-md-2">Date</th>
+                    <th class="col-md-1">Priority</th>
                 </tr>
             </thead>
             <tbody id="tickets-tbody"></tbody>

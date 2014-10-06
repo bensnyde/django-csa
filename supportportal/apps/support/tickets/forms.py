@@ -1,12 +1,31 @@
 from django import forms
 from django.forms import ModelForm
-from .models import Queue, Ticket, Post
+from .models import Queue, Ticket, Post, Macro
 
-class TicketIDForm(forms.Form):
-    ticket_id = forms.IntegerField()
 
-class PostIDForm(forms.Form):
-    post_id = forms.IntegerField()
+class QueueForm(ModelForm):
+    class Meta:
+        model = Queue
+
+class TicketForm(ModelForm):
+    class Meta:
+        model = Ticket
+        fields = ['contacts', 'queue', 'priority', 'service', 'due_date', 'description']
+
+class TicketContactsForm(ModelForm):
+    class Meta:
+        model = Ticket
+        fields = ['contacts']
+
+class TicketSatisfactionForm(ModelForm):
+    class Meta:
+        model = Ticket
+        fields = ['satisfaction_rating']
+
+class AdminTicketForm(ModelForm):
+    class Meta:
+        model = Ticket
+        fields = ['contacts', 'description', 'queue', 'priority', 'service', 'author', 'due_date', 'staff_summary', 'difficulty_rating']
 
 class PostForm(ModelForm):
     class Meta:
@@ -14,16 +33,17 @@ class PostForm(ModelForm):
         fields = ['contents', 'attachment']
         ordering = ['date']
 
-class TicketForm(ModelForm):
+class PostAttachmentForm(ModelForm):
     class Meta:
-        model = Ticket
-        fields = ['contacts', 'description', 'queue', 'priority', 'service', 'due_date']
+        model = Post
+        fields = ['attachment']
 
-class AdminTicketForm(ModelForm):
+class PostVisibilityForm(ModelForm):
     class Meta:
-        model = Ticket
-        fields = ['contacts', 'description', 'queue', 'priority', 'service', 'author', 'due_date']
+        model = Post
+        fields = ['visible']
 
-class QueueForm(ModelForm):
+class MacroForm(ModelForm):
     class Meta:
-        model = Queue
+        model = Macro
+        exclude = ['date', 'author']

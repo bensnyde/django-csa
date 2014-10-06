@@ -5,13 +5,10 @@
 
 {% block js %}
     <script type="text/javascript">
-        // Fetch Support Tickets summary via AJAX
         function getNews() {
-            // onSuccess callback function
             function onSuccessCallback(result) {
-                 if(!jQuery.isEmptyObject(result)) {
+                 if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
                     if(result.success==1) {
-                        // AJAX call returned successful
                         if(result.data.news.length > 0) {
                             for(x in result.data.news) {
                                 $("#news-postings").append(' \
@@ -29,18 +26,15 @@
                             }
                         }
                         else {
-                            // No articles returned
                             $("#news-postings").html('<div class="alert text-center">No News</div>');
                         }
                     }
                  }
                  else {
-                    // AJAX call returned failed
                     $("#news-postings").html('<div class="alert alert-danger text-center">'+result.message+'.</div>');
                  }
             }
 
-            // Make the AJAX call
             $.ajax({
                 url: "{% url 'announcements:getall' %}",
                 type: "POST",
@@ -49,26 +43,18 @@
             });
         }
 
-        // Fetch Support Tickets summary via AJAX
         function getTicketsSummary() {
-            // onSuccess callback function
             function onSuccessCallback(result) {
-                 if(!jQuery.isEmptyObject(result)) {
+                 if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
                      if(result.success==1) {
-                        // AJAX call returned successful
                          $("#tickets-user-open").html(result.data.summary.user.open);
                          $("#tickets-user-total").html(result.data.summary.user.total);
                          $("#tickets-company-open").html(result.data.summary.company.open);
                          $("#tickets-company-total").html(result.data.summary.company.total);
                      }
                  }
-                 else {
-                    // AJAX call returned failed
-                    // ********************** FIX ME ***************************
-                 }
             }
 
-            // Make the AJAX call
             $.ajax({
                 url: "{% url 'tickets:summary' %}",
                 type: "POST",
@@ -78,11 +64,9 @@
         }
 
         function checkDomainAvailability() {
-            // onSuccess callback function
             function onSuccessCallback(result) {
                 if(!jQuery.isEmptyObject(result)) {
                     if(result.is_success == 1) {
-                        // AJAX call returned success
                         if(result.attributes.lookup.items[0].status == "available") {
                             $("#domain-reg-result").html("<div class='alert alert-success'>Domain is available! Place order <a target='_blank' href='http://www.cybercon.com/domain-name-registration-service.html'>here</a>.</div>");
                         }
@@ -91,15 +75,12 @@
                         }
                     }
                     else {
-                        // AJAX call returned failed
                         $("#domain-reg-result").html("<div class='alert alert-danger'>"+result.message+"</div>");
                     }
                 }
             }
 
-            // Only process if there is a value in the input box
             if($("#domainreg").val()!="") {
-                // Make the AJAX call
                 $.ajax({
                     url: "{% url 'domain:suggest' %}",
                     data: {'domain': $("#domainreg").val()},
@@ -122,6 +103,12 @@
             checkDomainAvailability();
         }
     });
+
+    $(document)
+        .on('click', 'a.check-domain-availibility-submit', function (e) {
+            e.preventDefault();
+            checkDomainAvailability();
+        })
 {% endblock %}
 
 {% block content %}
@@ -146,7 +133,7 @@
                         <div class="input-group text-left">
                             <input type="text" class="form-control" name="domainreg" id="domainreg" />
                             <span class="input-group-btn">
-                                <a id="domainregsubmit" class="btn btn-primary" onclick="checkDomainAvailability();"><i class="fa fa-check"></i> Check</a>
+                                <a role="button" class="btn btn-primary check-domain-availibility-submit"><i class="fa fa-check"></i> Check</a>
                             </span>
                         </div>
                       </div>

@@ -21,20 +21,19 @@
 	<script type="text/javascript" src="{% static '/assets/plugins/data-tables/DT_bootstrap.js' %}"></script>
 
 	<script type="text/javascript">
-		// Makes AJAX call to supplied resource with supplied data
 		function sendPost(url, data) {
 			function onSuccessCallback(result) {
-				if(!jQuery.isEmptyObject(result)) {
-					$('#flash-message').fadeIn();
+				if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
+					$('.modal-alert').html(result.message);
+					$('.modal-alert').fadeIn();
+
 					if(result.success == 1) {
-						// AJAX call returned successful
-						$('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+						$('.modal-alert').addClass('alert alert-success');
 						setTimeout(null,1000);
 						window.location = "{% url 'companies:detail' company_detail.id %}";
 					}
 					else {
-						// AJAX call returned failed
-						$('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+						$('.modal-alert').addClass('alert alert-danger');
 						$.each(result.errors, function(k,v) {
                             $("#id_"+k).parents('tr').addClass("has-error");
                             $("#"+k+"-help").html(v);
@@ -43,7 +42,6 @@
 				}
 			}
 
-			// Make the AJAX call
 			$.ajax({
                 url: url,
                 data: data,
@@ -53,35 +51,30 @@
             });
 		}
 
-		// Fetches Feeds listings via AJAX
 		function getFeeds() {
-			// Destroy existing
 			$("#activity-feed").html("");
 			$("#recent-users-feed").html("");
 
-			// onSuccess callback function
 			function onSuccessCallback(result) {
-				if(!jQuery.isEmptyObject(result)) {
+				if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
 					if(result.success == 1) {
-						// AJAX call returned successful
 						if(result.data.feeds.activities.length == 0) {
-							$("#activity-feed").append("<li style='font-style: italic'>No recent actions.</li>");
+							$("#activity-feed").append("<li><em>No recent actions.</em></li>");
 						}
 						else {
 							for(x in result.data.feeds.activities) {
 								var url = "{% url 'contacts:detail' 0 %}".replace('0', result.data.feeds.activities[x].actor_id);
 								$("#activity-feed").append(' \
 									<li> \
-										<div style="float: right">'+result.data.feeds.activities[x].timestamp+'</div> \
+										<div class="pull-right">'+result.data.feeds.activities[x].timestamp+'</div> \
 										<div><a href="'+url+'">'+result.data.feeds.activities[x].actor+'</a>&nbsp;'+result.data.feeds.activities[x].action+'</div> \
 									</li>'
 								);
 							}
 						}
 
-						// AJAX call returned successful
 						if(result.data.feeds.recent_users.length == 0) {
-							$("#recent-users-feed").append("<li style='font-style: italic'>No recent users.</li>");
+							$("#recent-users-feed").append("<li><em>No recent users.</em></li>");
 						}
 						else {
 							// Process recent_users feed
@@ -89,7 +82,7 @@
 								var url = "{% url 'contacts:detail' 0 %}".replace('0', result.data.feeds.recent_users[x].id);
 								$("#recent-users-feed").append(' \
 									<li> \
-										<div style="float: right">'+result.data.feeds.recent_users[x].timesince+'</div> \
+										<div class="pull-right">'+result.data.feeds.recent_users[x].timesince+'</div> \
 										<div>'+result.data.feeds.recent_users[x].name+'&nbsp;&lt;<a href="'+url+'">'+result.data.feeds.recent_users[x].email+'</a>&gt;</div> \
 									</li>'
 								);
@@ -97,13 +90,11 @@
 						}
 					}
 					else {
-						// AJAX call returned failed
 						$("#feeds-portlet-body").html(result.message);
 					}
 				}
 			}
 
-			// Make the AJAX call
 			$.ajax({
                 url: "{% url 'companies:getfeeds' company_detail.id %}",
                 type: "POST",
@@ -112,13 +103,10 @@
             });
 		}
 
-		// Fetch company profile via AJAX
 		function getProfile() {
-			// onSuccess callback function
 			function onSuccessCallback(result) {
-				if(!jQuery.isEmptyObject(result)) {
+				if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
 					if(result.success == 1) {
-						// AJAX call returned successful
 						$("#company-profile-status").html(result.data.company.status);
 						$("#company-profile-since").html(result.data.company.created);
 						$("#company-profile-title").html(result.data.company.name);
@@ -141,13 +129,11 @@
 						}
 					}
 					else {
-						// AJAX call returned failed
 						$("#company-address").html(result.message);
 					}
 				}
 			}
 
-			// Make the AJAX call
 			$.ajax({
                 url: "{% url 'companies:get' company_detail.id %}",
                 type: "POST",
@@ -156,17 +142,13 @@
             });
 		}
 
-		// Fetch company contacts via AJAX
 		function getContacts() {
-			// Destroy existing
 			$("#company-contacts-table").dataTable().fnDestroy();
 			$("#company-contacts-tbody").html("");
 
-			// onSuccess callback function
 			function onSuccessCallback(result) {
-				if(!jQuery.isEmptyObject(result)) {
+				if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
 					if(result.success == 1) {
-						// AJAX call returned successful
 						for(x in result.data.contacts) {
 							$("#company-contacts-tbody").append(' \
 						        <tr data-id="'+result.data.contacts[x].id+'"> \
@@ -178,17 +160,14 @@
 						    );
 						}
 
-						// Initialize datatable
 						$("#company-contacts-table").dataTable({"aoColumnDefs": [], "aaSorting": [[0, 'asc']]});
 					}
 					else {
-						// AJAX call returned failed
 						$("#contacts-listing").html(result.message)
 					}
 				}
 			}
 
-			// Make the AJAX call
 			$.ajax({
                 url: "{% url 'companies:getcontacts' company_detail.id %}",
                 type: "POST",
@@ -219,6 +198,24 @@
 	    // redirect to user profile, swap in selected contact's ID with placeholder ID of 0
 		window.location = "{% url 'contacts:detail' 0 %}".replace('/0/', '/'+$(this).data('id')+'/');
 	});
+
+	$(document)
+        .on('click', 'a.show-set-contact-modal', function (e) {
+            e.preventDefault();
+            showContactModal();
+        })
+        .on('click', 'a.show-set-company-modal', function (e) {
+            e.preventDefault();
+            showCompanyModal();
+        })
+        .on('click', 'a.set-contact-form-submit', function (e) {
+            e.preventDefault();
+            sendPost("{% url 'contacts:create' %}", $("#create-contact-form").serialize());
+        })
+        .on('click', 'a.set-company-form-submit', function (e) {
+            e.preventDefault();
+            sendPost('{% url 'companies:set' company_detail.id %}', $('#company-edit-form').serialize());
+        });
 {% endblock %}
 
 {% block content %}
@@ -231,7 +228,7 @@
 	        {% if user.is_admin %}
 		        <div class="col-md-6 text-right">
 		            <div class="btn-group">
-		                <a onclick="showCompanyModal();" role="button" class="badge" data-toggle="modal">Edit Profile <i class="fa fa-plus"></i></a>
+		                <a role="button" class="badge show-set-company-modal" data-toggle="modal">Edit Profile <i class="fa fa-plus"></i></a>
 		            </div>
 		        </div>
 	        {% endif %}
@@ -244,26 +241,29 @@
 					<address id="company-address">
 						<h4 id="company-profile-title">Acme Testing Company, LLC</h4>
 						<div style="margin: 10px 0 10px 20px">
-							<h5 style="font-weight: bold">Address</h5>
+							<label>Address</label>
 							<div id="company-profile-address" style="padding-left: 20px"></div>
 
-							<h5 style="font-weight: bold">Contact</h5>
+							<label>Contact</label>
 							<div id="company-profile-contact" style="padding-left: 20px"></div>
 
-							<h5 style="font-weight: bold">Website</h5>
+							<label>Website</label>
 							<div id="company-profile-website" style="padding-left: 20px"></div>
 						</div>
 					</address>
 				</div>
 				<div class="col-md-7">
 					<div class="row">
-						<label class="control-label col-md-3">Status:</label> <span class="col-md-9" id="company-profile-status"></span>
+						<label class="control-label col-md-3">Status:</label>
+						<span class="col-md-9" id="company-profile-status"></span>
 					</div>
 					<div class="row">
-						<label class="control-label col-md-3">Since:</label> <span class="col-md-9" id="company-profile-since"></span>
+						<label class="control-label col-md-3">Since:</label>
+						<span class="col-md-9" id="company-profile-since"></span>
 					</div>
 					<div class="row">
-						<label class="control-label col-md-3">Notes:</label> <span class="col-md-9" style="text-align: justify; height: auto; max-height: 225px; overflow-y: auto" id="company-profile-notes"></span>
+						<label class="control-label col-md-3">Notes:</label>
+						<span class="col-md-9 text-justify" style="height: auto; max-height: 225px; overflow-y: auto" id="company-profile-notes"></span>
 					</div>
 				</div>
 			</div>
@@ -279,21 +279,21 @@
 	        {% if user.is_admin %}
 		        <div class="col-md-6 text-right">
 		            <div class="btn-group">
-		                <a onclick="showContactModal();" role="button" class="badge" data-toggle="modal">Add Contact <i class="fa fa-plus"></i></a>
+		                <a role="button" class="badge show-set-contact-modal" data-toggle="modal">Add Contact <i class="fa fa-plus"></i></a>
 		            </div>
 		        </div>
 	        {% endif %}
 	    </div>
 	    <!-- END CONTAINER HEAD -->
 	    <!-- BEGIN CONTAINER BODY -->
-		<div class="row" id="contacts-listing">
+		<div id="contacts-listing">
 			<table class="table table-striped table-bordered table-hover" id="company-contacts-table">
-				<thead>
+				<thead class="row">
 					<tr>
-						<th>First Name</th>
-						<th>Last Name</th>
-						<th>Email Address</th>
-						<th>Role</th>
+						<th class="col-md-3">First Name</th>
+						<th class="col-md-3">Last Name</th>
+						<th class="col-md-3">Email Address</th>
+						<th class="col-md-3">Role</th>
 					</tr>
 				</thead>
 				<tbody id="company-contacts-tbody"></tbody>
@@ -305,28 +305,28 @@
 	<!-- BEING COMPANY HISTORY CONTAINER -->
 	     <!-- BEGIN CONTAINER HEAD -->
 	    <div class="row page-head">
-	        <div class="col-md-12"><h3>History</h3></div>
+	        <div class="col-md-12">
+	        	<h3>History</h3>
+	        </div>
 	    </div>
 	    <!-- END CONTAINER HEAD -->
 	    <!-- BEGIN CONTAINER BODY -->
 	    <div class="row">
-			<div>
-				<ul class="nav nav-tabs">
-					<li class="active"><a href="#activites-tab" data-toggle="tab">Activities</a></li>
-					<li><a href="#recent-users-tab" data-toggle="tab">Recent Users</a></li>
-				</ul>
-				<div class="tab-content" style="height: 200px; overflow: auto; border-left: 1px solid #ddd; border-right: 1px solid #ddd; border-bottom: 1px solid #ddd; padding: 10px 20px 0 20px">
-					<!-- BEGIN ACTIVITIES TAB -->
-					<div class="tab-pane active" id="activites-tab">
-						<ul class="feeds list-unstyled" id="activity-feed"></ul>
-					</div>
-					<!-- END ACTIVITIES TAB -->
-					<!-- BEGIN RECENT USERS TAB -->
-					<div class="tab-pane" id="recent-users-tab">
-						<ul class="feeds list-unstyled" id="recent-users-feed"></ul>
-					</div>
-					<!-- END RECENT USERS TAB -->
+			<ul class="nav nav-tabs">
+				<li class="active"><a href="#activites-tab" data-toggle="tab">Activities</a></li>
+				<li><a href="#recent-users-tab" data-toggle="tab">Recent Users</a></li>
+			</ul>
+			<div class="tab-content" style="height: 200px; overflow: auto; border-left: 1px solid #ddd; border-right: 1px solid #ddd; border-bottom: 1px solid #ddd; padding: 10px 20px 0 20px">
+				<!-- BEGIN ACTIVITIES TAB -->
+				<div class="tab-pane active" id="activites-tab">
+					<ul class="feeds list-unstyled" id="activity-feed"></ul>
 				</div>
+				<!-- END ACTIVITIES TAB -->
+				<!-- BEGIN RECENT USERS TAB -->
+				<div class="tab-pane" id="recent-users-tab">
+					<ul class="feeds list-unstyled" id="recent-users-feed"></ul>
+				</div>
+				<!-- END RECENT USERS TAB -->
 			</div>
 	    </div>
 	    <!-- END CONTAINER BODY -->
@@ -337,36 +337,32 @@
 		<div class="modal-dialog">
 			<div class="modal-content">
 				<div class="modal-header">
-					<h3 id="mlabel">Company Profile</h3>
+					<h3>Company Profile</h3>
 				</div>
-				<div class="modal-body form">
-					<!-- BEGIN MODAL BODY -->
-					<div id="flash-message"></div>
-					<div id="mbody" class="well">
-						<!-- BEGIN COMPANY PROFILE FORM-->
-						<form action="{% url 'companies:set' company_detail.id %}" method="POST" role="form" class="form-horizontal form-bordered" id="company-edit-form">
-							{% csrf_token %}
-							<table class="table table-striped table-bordered table-hover" id="company-profile-form-table">
-								{% for field in company_form %}
-									<tr class="form-group">
-										<td><label class="control-label">{{ field.label_tag }}</label></td>
-										<td>
-											<div class="controls">
-												{{ field|addcss:"form-control" }}
-												<span id="{{ field.html_name }}-help" class="help-inline"></span>
-											</div>
-										</td>
-							        </tr>
-							    {% endfor %}
-						    </table>
-						</form>
-						<!--END COMPANY PROFILE FORM -->
-					</div>
-					<!-- END MODAL BODY -->
+				<div class="modal-body">
+					<div class="modal-alert"></div>
+					<!-- BEGIN COMPANY PROFILE FORM-->
+					<form role="form" class="form form-vertical" id="company-edit-form">
+						{% csrf_token %}
+						<table class="table table-hover" id="company-profile-form-table">
+							{% for field in company_form %}
+								<tr class="form-group">
+									<td><label class="control-label">{{ field.label_tag }}</label></td>
+									<td>
+										<div class="controls">
+											{{ field|addcss:"form-control" }}
+											<span id="{{ field.html_name }}-help" class="help-inline"></span>
+										</div>
+									</td>
+						        </tr>
+						    {% endfor %}
+					    </table>
+					</form>
+					<!--END COMPANY PROFILE FORM -->
 				</div>
-				<div class="modal-footer" id="modalfooter">
+				<div class="modal-footer">
 					<button class="btn btn-default" data-dismiss="modal">Close</button>
-					<button id="msave" class="btn btn-primary" onclick="sendPost('{% url 'companies:set' company_detail.id %}', $('#company-edit-form').serialize())">Ok</button>
+					<button class="btn btn-primary set-company-form-submit">Ok</button>
 				</div>
 			</div>
 		</div>
@@ -378,40 +374,34 @@
 		<div class="modal-dialog">
 			<div class="modal-content">
 				<div class="modal-header">
-					<h3 id="mlabel">Create Contact</h3>
+					<h3>Create Contact</h3>
 				</div>
-				<div class="modal-body form">
-					<!-- BEGIN MODAL BODY -->
-					<div id="flash-message"></div>
-					<div id="mbody" class="well">
-						<!-- BEGIN CREATE CONTACT FORM-->
-						<form action="{% url 'companies:set' company_detail.id %}" method="POST" role="form" class="form-horizontal form-bordered" id="create-contact-form">
-							{% csrf_token %}
-							<input type="hidden" name="company" value="{{ company_detail.id }}" />
-							<div id="form-error-container"></div>
-							<table class="table table-striped table-bordered table-hover" id="create-contact-form-table">
-								{% for field in contact_form %}
-									{% if field.label_tag != "Company" %}
-									<tr class="form-group">
-										<td><label class="control-label">{{ field.label_tag }}</label></td>
-										<td>
-											<div class="controls">
-												{{ field|addcss:"form-control" }}
-												<span id="{{ field.html_name }}-help" class="help-inline">{{ field.errors }}</span>
-											</div>
-							        	</td>
-							        </tr>
-							        {% endif %}
-							    {% endfor %}
-							</table>
-						</form>
-						<!--END CREATE CONTACT FORM -->
-					</div>
-					<!-- END MODAL BODY -->
+				<div class="modal-body">
+					<div class="modal-alert"></div>
+					<!-- BEGIN CREATE CONTACT FORM-->
+					<form role="form" class="form form-vertical" id="create-contact-form">
+						<input type="hidden" name="company" value="{{ company_detail.id }}" />
+						<table class="table table-hover" id="create-contact-form-table">
+							{% for field in contact_form %}
+								{% if field.label_tag != "Company" %}
+								<tr class="form-group">
+									<td><label class="control-label">{{ field.label_tag }}</label></td>
+									<td>
+										<div class="controls">
+											{{ field|addcss:"form-control" }}
+											<span id="{{ field.html_name }}-help" class="help-inline">{{ field.errors }}</span>
+										</div>
+						        	</td>
+						        </tr>
+						        {% endif %}
+						    {% endfor %}
+						</table>
+					</form>
+					<!--END CREATE CONTACT FORM -->
 				</div>
-				<div class="modal-footer" id="modalfooter">
+				<div class="modal-footer">
 					<button class="btn btn-default" data-dismiss="modal">Close</button>
-					<button id="msave" class="btn btn-primary" onclick='sendPost("{% url 'contacts:create' %}", $("#create-contact-form").serialize())'>Ok</button>
+					<button class="btn btn-primary set-contact-form-submit">Ok</button>
 				</div>
 			</div>
 		</div>

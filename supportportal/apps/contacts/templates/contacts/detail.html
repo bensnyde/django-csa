@@ -14,22 +14,20 @@
 
 {% block js %}
 	<script type="text/javascript">
-		// Makes AJAX call to supplied resource with supplied data
 		function sendPost(url, data) {
-			// onSuccess callback function
 			function onSuccessCallback(result) {
-				if(!jQuery.isEmptyObject(result)) {
-					$('#flash-message').fadeIn();
+				if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
+					$('.modal-alert').html(result.message);
+					$('.modal-alert').fadeIn();
+
 					if(result.success == 1) {
-						// AJAX call returned successful
-						$('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+						$('.modal-alert').addClass('alert alert-success');
 						getLogs();
 						getProfile();
-						setTimeout("$('.modal.in').modal('hide')",2000);
+						setTimeout("$('.modal.in').modal('hide')",500);
 					}
 					else {
-						// AJAX call returned failed
-						$('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+						$('.modal-alert').addClass('alert alert-danger');
 						$.each(result.errors, function(k,v) {
                             $("#id_"+k).closest('div').addClass("has-error");
                             $("#"+k+"-help").html(v);
@@ -38,7 +36,6 @@
 				}
 			}
 
-			// Make the AJAX call
 			$.ajax({
                 url: url,
                 data: data,
@@ -54,19 +51,17 @@
 			}
 			else {
 				// Password's don't match
-				$('#flash-message').fadeIn();
-				$('#flash-message').html('<div class="alert alert-danger">Passwords do not match.</div>');
+				$('.modal-alert').fadeIn();
+				$('.modal-alert').addClass('alert alert-danger');
+				$('.modal-alert').html('Passwords do not match.');
 			}
 			return false;
 		}
 
-		// Fetch User profile via AJAX
 		function getProfile() {
-			// onSuccess callback function
 			function onSuccessCallback(result) {
-				if(!jQuery.isEmptyObject(result)) {
+				if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
 					if(result.success == 1) {
-						// AJAX call returned successful
 						$("#user-profile-name").html(result.data.contact.first_name+' '+result.data.contact.last_name);
 						$("#user-profile-email").html(result.data.contact.email);
 						$("#user-profile-title").html(result.data.contact.title);
@@ -100,14 +95,12 @@
 						$("#id_role").val(result.data.contact.role);
 					}
 					else {
-						// AJAX call returned failed
-						$('#flash-message').fadeIn();
-						$('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+						$('.modal-alert').fadeIn();
+						$('.modal-alert').html('<div class="alert alert-danger">'+result.message+'</div>');
 					}
 				}
 			}
 
-			// Make the AJAX call
 			$.ajax({
                 url: "{% url 'contacts:get' user_details.id %}",
                 type: "POST",
@@ -116,25 +109,21 @@
             });
 		}
 
-		// Fetch User logs via AJAX
 		function getLogs() {
-			// Destroy existing
 			$("#auth-feed").html("");
 			$("#action-feed").html("");
 
-			// onSuccess callback function
 			function onSuccessCallback(result) {
-				if(!jQuery.isEmptyObject(result)) {
+				if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
 					if(result.success == 1) {
-						// AJAX call returned successful
 						if(result.data.authentication.length == 0) {
-							$("#auth-feed").html("<li style='font-style: italic'>Contact has yet to login.</li>");
+							$("#auth-feed").html("<li><em>Contact has yet to login.</em></li>");
 						}
 						else {
 							for(x in result.data.authentication) {
 								$("#auth-feed").append(' \
 									<li> \
-										<div style="float: right">'+result.data.authentication[x].timestamp+'</div> \
+										<div class="pull-right">'+result.data.authentication[x].timestamp+'</div> \
 										<div>'+result.data.authentication[x].user+' '+result.data.authentication[x].category+' from '+result.data.authentication[x].ip+'</div> \
 									</li>'
 								);
@@ -142,26 +131,22 @@
 						}
 
 						if(result.data.action.length == 0) {
-							$("#action-feed").html("<li style='font-style: italic'>No actions to report.</li>");
+							$("#action-feed").html("<li><em>No actions to report.</em></li>");
 						}
 						else {
 							for(x in result.data.action) {
 								$("#action-feed").append(' \
 									<li> \
-										<div style="float: right">'+result.data.action[x].timestamp+'</div> \
+										<div class="pull-right">'+result.data.action[x].timestamp+'</div> \
 										<div>'+result.data.action[x].actor + ' ' + result.data.action[x].action+'</div> \
 									</li>'
 								);
 							}
 						}
 					}
-					else {
-						// AJAX call returned failed
-					}
 				}
 			}
 
-			// Make the AJAX call
 			$.ajax({
                 url: "{% url 'contacts:getlogs' user_details.id %}",
                 type: "POST",
@@ -175,6 +160,17 @@
 {% block jquery_document_ready %}
 	getProfile();
 	getLogs();
+
+	$(document)
+        .on('click', 'a.set-contact-form-submit', function (e) {
+            e.preventDefault();
+            sendPost('{% url 'contacts:set' %}', $('#user-id_form').serializeArray());
+        })
+        .on('click', 'a.show-set-contact-modal', function (e) {
+            e.preventDefault();
+            $('.modal-alert').html('');
+            $('#set-contact-modal').modal('show');
+        });
 {% endblock %}
 
 {% block content %}
@@ -187,7 +183,7 @@
 		        {% if user.id == user_details.id or user.is_admin %}
 			        <div class="col-md-6 text-right">
 			            <div class="btn-group">
-			                <a onclick="$('#flash-message').html('');$('#mmodal').modal('show')" role="button" class="badge" data-toggle="modal">Edit Profile <i class="fa fa-plus"></i></a>
+			                <a role="button" class="badge show-set-contact-modal" data-toggle="modal">Edit Profile <i class="fa fa-plus"></i></a>
 			            </div>
 			        </div>
 		        {% endif %}
@@ -203,32 +199,40 @@
 				<!-- BEGIN CONTACT PROFILE -->
 				<div style="padding-left: 40px; margin-bottom: 20px">
 					<div class="row">
-						<label class="control-label col-md-6">Title</label> <span class="col-md-6" id="user-profile-title"></span>
+						<label class="control-label col-md-6">Title</label>
+						<span class="col-md-6" id="user-profile-title"></span>
 					</div>
 					<div class="row">
-						<label class="control-label col-md-6">Email Address</label> <span class="col-md-6" id="user-profile-email"></span>
+						<label class="control-label col-md-6">Email Address</label>
+						<span class="col-md-6" id="user-profile-email"></span>
 					</div>
 					<div class="row">
-						<label class="control-label col-md-6">Personal Phone Number</label> <span class="col-md-6" id="user-profile-personal-phone"></span>
+						<label class="control-label col-md-6">Personal Phone Number</label>
+						<span class="col-md-6" id="user-profile-personal-phone"></span>
 					</div>
 					<div class="row">
-						<label class="control-label col-md-6">Office Phone Number</label> <span class="col-md-6" id="user-profile-office-phone"></span>
+						<label class="control-label col-md-6">Office Phone Number</label>
+						<span class="col-md-6" id="user-profile-office-phone"></span>
 					</div>
 					<div class="row">
-						<label class="control-label col-md-6">Fax Number</label> <span class="col-md-6" id="user-profile-fax"></span>
+						<label class="control-label col-md-6">Fax Number</label>
+						<span class="col-md-6" id="user-profile-fax"></span>
 					</div>
 				</div>
 				<!-- END CONTACT PROFILE -->
 			</div>
 			<div class="col-md-4">
 				<div class="row">
-					<label class="control-label col-md-6">Status:</label> <span class="col-md-6" id="user-profile-status"></span>
+					<label class="control-label col-md-6">Status:</label>
+					<span class="col-md-6" id="user-profile-status"></span>
 				</div>
 				<div class="row">
-					<label class="control-label col-md-6">Access</label> <span class="col-md-6" id="user-profile-role"></span>
+					<label class="control-label col-md-6">Access</label>
+					<span class="col-md-6" id="user-profile-role"></span>
 				</div>
 				<div class="row">
-					<label class="control-label col-md-6">Notifications:</label> <span class="col-md-6" id="user-profile-notifications"></span>
+					<label class="control-label col-md-6">Notifications:</label>
+					<span class="col-md-6" id="user-profile-notifications"></span>
 				</div>
 			</div>
 	    </div>
@@ -238,7 +242,9 @@
 	<!-- BEING CONTACT HISTORY CONTAINER -->
 	     <!-- BEGIN CONTAINER HEAD -->
 	    <div class="row page-head">
-	        <div class="col-md-12"><h3>History</h3></div>
+	        <div class="col-md-12">
+	        	<h3>History</h3>
+	        </div>
 	    </div>
 	    <!-- END CONTAINER HEAD -->
 
@@ -267,41 +273,36 @@
     <!-- END CONTACT HISTORY CONTAINER -->
 
 	<!-- BEGIN MODAL -->
-	<div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label">
+	<div id="set-contact-modal" class="modal fade in" role="dialog">
 		<div class="modal-dialog">
 			<div class="modal-content">
 				<div class="modal-header">
-					<h3 id="mlabel">Contact Profile</h3>
+					<h3>Contact Profile</h3>
 				</div>
-				<div class="modal-body form">
-					<!-- BEGIN MODAL BODY -->
-					<div id="flash-message"></div>
-					<div id="mbody" class="well">
-						<div class="hidden" id="flash-message"></div>
-						<!-- BEGIN CONTACT FORM -->
-						<form id="user-id_form" class="form-horizontal form-bordered">{% csrf_token %}
-						    <input type="hidden" name="user_id" id="id_user_id" value="{{ user_details.id }}" />
-                        	<table class="table table-bordered table-hover" id="contact-form-table">
-                          		{% for field in contactform %}
-		                            <tr class="form-group">
-		                              <td><label class="control-label">{{ field.label_tag }}</label></td>
-		                              <td>
-		                                <div class="controls{% if field.errors %} error{% endif %}">
-		                                  {{ field|addcss:"form-control" }}
-		                                  <span class="help-inline" id="{{ field.html_name }}-help"></span>
-		                                </div>
-		                              </td>
-		                            </tr>
-                            	{% endfor %}
-                            </table>
-						</form>
-						<!-- END CONTACT FORM -->
-					</div>
-					<!-- END MODAL BODY -->
+				<div class="modal-body">
+					<div class="modal-alert"></div>
+					<!-- BEGIN CONTACT FORM -->
+					<form id="user-id_form" class="form form-vertical" role="form">
+					    <input type="hidden" name="user_id" id="id_user_id" value="{{ user_details.id }}" />
+                    	<table class="table table-hover" id="contact-form-table">
+                      		{% for field in contactform %}
+	                            <tr class="form-group">
+	                              <td><label class="control-label">{{ field.label_tag }}</label></td>
+	                              <td>
+	                                <div class="controls{% if field.errors %} error{% endif %}">
+	                                  {{ field|addcss:"form-control" }}
+	                                  <span class="help-inline" id="{{ field.html_name }}-help"></span>
+	                                </div>
+	                              </td>
+	                            </tr>
+                        	{% endfor %}
+                        </table>
+					</form>
+					<!-- END CONTACT FORM -->
 				</div>
-				<div class="modal-footer" id="modalfooter">
-					<button class="btn btn-default" data-dismiss="modal">Close</button>
-					<button id="msave" class="btn btn-primary" onclick="sendPost('{% url 'contacts:set' %}', $('#user-id_form').serializeArray())">Ok</button>
+				<div class="modal-footer">
+					<a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+					<a role="button" class="btn btn-primary set-contact-form-submit">Ok</a>
 				</div>
 			</div>
 		</div>

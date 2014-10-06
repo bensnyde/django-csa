@@ -16,7 +16,7 @@
 			$("#newest-articles").html("");
 
 			function onSuccessCallback(result) {
-				if(!jQuery.isEmptyObject(result)) {
+				if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success') && result.hasOwnProperty('data')) {
 					if(result.success == 1) {
 						// Categories
 						if(result.data.categories.length) {
@@ -37,7 +37,7 @@
 							}
 						}
 						else {
-							$("#kb-categories").html('<span style="font-style: italic">No articles defined.</span>');
+							$("#kb-categories").html('<span><em>No articles defined.</em></span>');
 							return false;
 						}
 
@@ -64,7 +64,7 @@
 						}
 					}
 					else {
-						$("#kb-categories").html(result.message);
+						$("#kb-categories").html('<div class="alert alert-danger">'+result.message+'</div>');
 					}
 				}
 			}
@@ -95,7 +95,9 @@
 	<!-- BEING KNOWLEDGEBASE CONTAINER -->
 	     <!-- BEGIN CONTAINER HEAD -->
 	    <div class="row page-head">
-	        <div class="col-md-12"><h3>Knowledgebase</h3></div>
+	        <div class="col-md-12">
+	        	<h3>Knowledgebase</h3>
+	        </div>
 	    </div>
 	    <!-- END CONTAINER HEAD -->
 	    <!-- BEGIN CONTAINER BODY -->

@@ -4,7 +4,7 @@
 {% load common_tags %}
 
 {% block sitetitle %}| Companies{% endblock %}
-{% block heading %}Admin Portal <small>Companies</small>{% endblock %}
+{% block heading %}Administration <small>Companies</small>{% endblock %}
 
 {% block breadcrumbs %}
     <li>Companies</a></li>
@@ -23,7 +23,7 @@
             $("#companies-index-tbody").html("");
 
             function onSuccessCallback(result) {
-                if(!jQuery.isEmptyObject(result)) {
+                if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
                     if(result.success == 1) {
                         for(x in result.data.companies) {
                             $("#companies-index-tbody").append(' \
@@ -55,26 +55,26 @@
 
       function addCompany() {
           function onSuccessCallback(result) {
-              if(!jQuery.isEmptyObject(result)) {
-                  $('#flash-message').fadeIn();
+              if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
+                  $('.modal-alert').html(result.message);
+                  ('.modal-alert').fadeIn();
+
                   if(result.success == 1) {
-                    // AJAX call returned successful
-                    $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+                    $('.modal-alert').addClass('alert alert-success');
                     getCompanies();
-                    setTimeout("$('.modal.in').modal('hide')",2000);
+                    setTimeout("$('.modal.in').modal('hide')",500);
                   }
                   else {
-                      // AJAX call returned failed
-                      $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+                      $('.modal-alert').addClass('alert alert-danger');
                       if(result.hasOwnProperty('errors')) {
-                          // iterate through and display form validation errors
                           $.each(result.errors, function(k,v) {
                               $("#id_"+k).closest('tr').addClass("has-error");
                               $("#"+k+"-help").html(v);
                           });
                       }
                   }
-                  setTimeout("$('#flash-message').fadeOut()",2000);
+
+                  setTimeout("$('.modal-alert').fadeOut()",2000);
               }
           }
 
@@ -97,6 +97,21 @@
             window.location = "{% url 'companies:detail' 0 %}".replace('0', $(this).data('id'));
 	      }
     });
+
+  $(document)
+        .on('click', 'a.refresh-companies', function (e) {
+            e.preventDefault();
+            getCompanies();
+        })
+        .on('click', 'a.show-set-company-modal', function (e) {
+            e.preventDefault();
+            $('#company-add-form').trigger('reset');
+            $('#set-company-modal').modal('show');
+        })
+        .on('click', 'a.set-company-form-submit', function (e) {
+            e.preventDefault();
+            addCompany();
+        });
 {% endblock %}
 
 {% block content %}
@@ -107,47 +122,43 @@
         <div class="col-md-6"><h3>Companies</h3></div>
         <div class="col-md-6 text-right">
             <div class="btn-group">
-                <a href="#" role="button" onclick="getCompanies()"><i class="fa fa-refresh"></i></a>
-                <a onclick="$('#mmodal').modal('show')" href="#" role="button" id="create-ticket-button" data-toggle="mmodal"><i class="fa fa-plus"></i></a>
+                <a href="#" role="button" class="refresh-companies"><i class="fa fa-refresh"></i></a>
+                <a href="#" role="button" class="show-create-company-modal" data-toggle="modal"><i class="fa fa-plus"></i></a>
             </div>
         </div>
     </div>
     <!-- END CONTENT HEAD -->
 
     <!-- BEGIN CONTENT BODY -->
-    <div class="row">
-        <!-- BEING COMPANIES TABLE -->
-        <table class="table table-hover col-md-12" id="companies-index-table">
-            <thead class="row">
-                <tr>
-                    <th class="col-md-1">ID</th>
-                    <th class="col-md-3">Name</th>
-                    <th class="col-md-2">Status</th>
-                    <th class="col-md-3">Created</th>
-                    <th class="col-md-3">Last Update</th>
-                </tr>
-            </thead>
-            <tbody id="companies-index-tbody"></tbody>
-        </table>
-        <!-- END COMPANIES TABLE -->
-    </div>
+      <!-- BEING COMPANIES TABLE -->
+      <table class="table table-hover" id="companies-index-table">
+          <thead class="row">
+              <tr>
+                  <th class="col-md-1">ID</th>
+                  <th class="col-md-3">Name</th>
+                  <th class="col-md-2">Status</th>
+                  <th class="col-md-3">Created</th>
+                  <th class="col-md-3">Last Update</th>
+              </tr>
+          </thead>
+          <tbody id="companies-index-tbody"></tbody>
+      </table>
+      <!-- END COMPANIES TABLE -->
     <!-- END CONTENT BODY -->
 
     <!-- BEGIN MODAL -->
-    <div id="mmodal" class="modal fade in" role="dialog">
+    <div id="set-company-modal" class="modal fade in" role="dialog">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3 id="mlabel">Add Company</h3>
+                    <h3>Add Company</h3>
                 </div>
-                <div class="modal-body form">
+                <div class="modal-body">
                     <!-- BEGIN MODAL BODY -->
-                    <div id="flash-message"></div>
-                    <div id="mbody" class="well">
+                    <div class="modal-alert"></div>
                       <!-- BEGIN COMPANY FORM -->
-                      <form class="form-horizontal form-bordered" role="form" id="company-add-form">
-                        {% csrf_token %}
-                        <table class="table table-bordered table-hover" id="company-profile-form-table">
+                      <form class="form form-vertical" role="form" id="company-add-form">
+                        <table class="table table-hover" id="company-profile-form-table">
                           {% for field in companyform %}
                             <tr class="form-group">
                               <td><label class="control-label">{{ field.label_tag }}</label></td>
@@ -162,12 +173,11 @@
                           </table>
                       </form>
                       <!-- END COMPANY FORM -->
-                    </div>
                     <!-- END MODAL BODY -->
                 </div>
-                <div class="modal-footer" id="modalfooter">
+                <div class="modal-footer">
                     <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="msave" class="btn btn-primary" onclick="addCompany()">Ok</button>
+                    <button class="btn btn-primary set-company-form-submit">Ok</button>
                 </div>
             </div>
         </div>

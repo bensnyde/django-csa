@@ -5,7 +5,7 @@ class Coupler(models.Model):
 	uri = models.SlugField(max_length=128, blank=False, null=False)
 
 	def __unicode__(self):
-		return self.name	
+		return self.name
 
 class Service(models.Model):
 	name = models.CharField(max_length=64, blank=False, null=False)
@@ -14,3 +14,11 @@ class Service(models.Model):
 
 	def __unicode__(self):
 		return self.name
+
+	def dump_to_dict(self):
+		return {
+			"pk": self.pk,
+			"name": self.name,
+			"coupler": self.coupler.name,
+			"vars": self.vars
+		}

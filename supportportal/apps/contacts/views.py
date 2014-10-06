@@ -54,8 +54,8 @@ def detail(request, user_id):
     user = get_object_or_404(Contact, pk=user_id)
 
     try:
-        if user.company is not request.user.company:
-            logger.error("Forbidden: requesting user doesn't have permission to specified Company's Contacts.")
+        if user.company != request.user.company:
+            logger.error("Forbidden: requesting user doesn't have permission to specified Company's Contacts. %s - %s" % (user.company, request.user.company))
             return HttpResponseForbidden()
     except Company.DoesNotExist:
         if not request.user.is_staff:
@@ -92,7 +92,7 @@ def get(request, user_id):
         contact = Contact.objects.get(pk=user_id)
 
         try:
-            if contact.company is not request.user.company:
+            if contact.company != request.user.company:
                 raise Exception("Forbidden: requesting user doesn't have permission to specified Company's Contacts.")
         except Company.DoesNotExist:
             if not request.user.is_staff:
