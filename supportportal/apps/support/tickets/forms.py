@@ -22,10 +22,15 @@ class TicketSatisfactionForm(ModelForm):
         model = Ticket
         fields = ['satisfaction_rating']
 
-class AdminTicketForm(ModelForm):
+class AdminSetTicketForm(ModelForm):
     class Meta:
         model = Ticket
-        fields = ['contacts', 'description', 'queue', 'priority', 'service', 'author', 'due_date', 'staff_summary', 'difficulty_rating']
+        fields = ['contacts', 'description', 'queue', 'priority', 'service', 'author', 'due_date', 'staff_summary', 'difficulty_rating', 'status']
+
+class AdminCreateTicketForm(ModelForm):
+    class Meta:
+        model = Ticket
+        fields = ['description', 'queue', 'priority', 'service', 'author', 'due_date']
 
 class PostForm(ModelForm):
     class Meta:
@@ -42,6 +47,11 @@ class PostVisibilityForm(ModelForm):
     class Meta:
         model = Post
         fields = ['visible']
+
+class PostRatingForm(ModelForm):
+    class Meta:
+        model = Post
+        fields = ['rating']
 
 class MacroForm(ModelForm):
     class Meta:

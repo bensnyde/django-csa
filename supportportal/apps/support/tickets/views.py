@@ -10,7 +10,7 @@ from common.decorators import validated_request, validated_staff
 from common.helpers import format_ajax_response
 # App
 from .models import Queue, Ticket, Post, Macro, get_ticket_contacts_list, set_ticket_contacts_list, get_tickets_summary, get_companies_active_contacts
-from .forms import QueueForm, TicketForm, TicketContactsForm, TicketSatisfactionForm, AdminTicketForm, PostForm, PostAttachmentForm, PostVisibilityForm, MacroForm
+from .forms import QueueForm, TicketForm, TicketContactsForm, TicketSatisfactionForm, AdminSetTicketForm, AdminCreateTicketForm, PostForm, PostAttachmentForm, PostRatingForm, PostVisibilityForm, MacroForm
 
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ def detail(request, ticket_id):
     if request.user.is_staff:
         response.update({
             'macroform': MacroForm(),
-            'ticketform': AdminTicketForm(instance=ticket),
+            'ticketform': AdminSetTicketForm(instance=ticket),
         })
 
     return render(request, 'tickets/detail.html', response)
@@ -204,7 +204,9 @@ def get_ticket(request, ticket_id):
     try:
         ticket = Ticket.objects.get(pk=ticket_id)
 
-        if ticket.author.company_id != request.user.company_id:
+        logger.error(request.user.is_staff)
+
+        if not request.user.is_staff and ticket.author.company_id != request.user.company_id:
             raise Exception("Requesting user does not have permission to access specified ticket.")
 
         response = {
@@ -280,7 +282,7 @@ def set_contacts(request, ticket_id):
     """
     try:
         ticket = Ticket.objects.get(pk=ticket_id)
-        if ticket.owner.company_id != request.user.company_id:
+        if not request.user.is_staff and ticket.author.company_id != request.user.company_id:
             raise Exception("Forbidden: requesting user doesn't have permission to specified Company's resources.")
 
         contacts = request.POST.getlist('contacts')
@@ -301,7 +303,7 @@ def set_contacts(request, ticket_id):
         return format_ajax_response(False, "There wasn an error setting thet ticket's contacts.")
 
 
-@validated_request(PostForm)
+@validated_request(PostForm, 'POST', True, False)
 def create_post(request, ticket_id):
     """Create Post
 
@@ -324,30 +326,39 @@ def create_post(request, ticket_id):
     """
     ticket = get_object_or_404(Ticket, pk=ticket_id)
 
-    if ticket.owner.company_id != request.user.company_id:
-        logger.error("Forbidden: requesting user doesn't have permission to specified Company's resources.")
-        return HttpResponseForbidden()
+    try:
+        if not request.user.is_staff and ticket.author.company_id != request.user.company_id:
+            raise Exception("Forbidden: requesting user doesn't have permission to specified Company's resources.")
 
-    post_form = PostForm(request.POST)
-    if post_form.is_valid():
-        # Create new post object under specified ticket object
-        post = post_form.save(commit=False)
-        post.author_id = request.user.id
-        post.ticket = ticket
-        post.save()
-        post_form.save_m2m()
+        post_form = PostForm(request.POST, request.FILES)
+        if post_form.is_valid():
+            # Create new post object under specified ticket object
+            post = post_form.save(commit=False)
+            post.author_id = request.user.id
+            post.ticket = ticket
+            post.save()
+            post_form.save_m2m()
 
-        ActionLogger().log(request.user, "created", "Post %s" % post.id, "Ticket %s" % ticket.id)
+            ActionLogger().log(request.user, "created", "Post %s" % post.id, "Ticket %s" % ticket.id)
+
+            if request.is_ajax():
+                return format_ajax_response(True, "Ticket post created successfully.")
+            else:
+                return HttpResponseRedirect(reverse('tickets:detail', kwargs=({'ticket_id':ticket_id})))
+        else:
+            raise Exception("Form data failed validation.")
+
+    except Exception as ex:
+        logger.error("Failed to create_post: %s" % ex)
+
+    if request.is_ajax():
+        return format_ajax_response(False, "There was an error creating the ticket post.")
     else:
-        # Form validation failed
-        pass
-
-    # Redirect to ticket
-    return HttpResponseRedirect(reverse('tickets:detail', kwargs=({'ticket_id':request.form.cleaned_data['ticket_id']})))
+        return HttpResponseRedirect(reverse('tickets:detail', kwargs=({'ticket_id':ticket_id})))
 
 
 @validated_staff
-@validated_request(AdminTicketForm)
+@validated_request(AdminSetTicketForm)
 def set_ticket(request, ticket_id):
     """Create Post
 
@@ -357,7 +368,7 @@ def set_ticket(request, ticket_id):
         See SETTINGS for active Middleware.
     Decorators
         @validated_request
-            request.POST must validate against AdminTicketForm
+            request.POST must validate against AdminSetTicketForm
             request.method must be POST
             request.is_ajax() must be False
             request.user.is_authenticated() must be True
@@ -379,6 +390,7 @@ def set_ticket(request, ticket_id):
         ticket.author = request.form.cleaned_data['author']
         ticket.due_date = request.form.cleaned_data['due_date']
         ticket.staff_summary = request.form.cleaned_data['staff_summary']
+        ticket.status = request.form.cleaned_data['status']
         if request.form.cleaned_data['difficulty_rating']:
             ticket.difficulty_rating = request.form.cleaned_data['difficulty_rating']
         ticket.save()
@@ -478,10 +490,12 @@ def create_ticket(request, service_id=0):
         new_post_form = PostForm(request.POST, request.FILES)
         if new_ticket_form.is_valid():
             if new_post_form.is_valid():
-                # Create Ticket
                 new_ticket = new_ticket_form.save(commit=False)
-                new_ticket.author_id = request.user.id
-                new_ticket.owner_id = request.user.id
+
+                if request.user.is_staff:
+                    new_ticket.author_id = int(request.POST['author'])
+                else:
+                    new_ticket.author_id = request.user.id
 
                 try:
                     if "service" in request.POST and int(request.POST['service']) is not 0:
@@ -497,7 +511,12 @@ def create_ticket(request, service_id=0):
                 # Create Post
                 new_post = new_post_form.save(commit=False)
                 new_post.ticket = new_ticket
-                new_post.author_id = request.user.id
+
+                if request.user.is_staff:
+                    new_post.author_id = int(request.POST['author'])
+                else:
+                    new_post.author_id = request.user.id
+
                 new_post.save()
 
                 # Log results
@@ -518,7 +537,7 @@ def create_ticket(request, service_id=0):
                 form_errors = new_ticket_form.errors
 
     if request.user.is_staff:
-        ticketform = AdminTicketForm()
+        ticketform = AdminCreateTicketForm()
     else:
         ticketform = TicketForm()
 
@@ -564,6 +583,40 @@ def toggle_visibility(request, post_id):
     except Exception as ex:
         logger.error("Failed to toggle_visibility: %s" % ex)
         return format_ajax_response(False, "There was an error toggling the post's visibility.")
+
+
+@validated_staff
+@validated_request(PostRatingForm)
+def set_post_rating(request, post_id):
+    """Create Post
+
+        Creates a Post reply under specified Ticket.
+
+    Middleware
+        See SETTINGS for active Middleware.
+    Decorators
+        @validated_request
+            request.method must be POST
+            request.is_ajax() must be False
+            request.user.is_authenticated() must be True
+    Paremeters
+        request: HttpRequest
+            visible: bool post visibility
+        post_id: int post id
+    Returns
+        HttpResponse (JSON)
+            success: int status response of request
+            message: str status response of request
+    """
+    try:
+        post = Post.objects.get(pk=post_id)
+        post.rating = request.form.cleaned_data['rating']
+        post.save()
+
+        return format_ajax_response(True, "Post rating set successfully.")
+    except Exception as ex:
+        logger.error("Failed to set_post_rating: %s" % ex)
+        return format_ajax_response(False, "There was an error setting the post's rating.")
 
 
 @validated_staff

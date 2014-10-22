@@ -33,7 +33,7 @@ class Queue(models.Model):
             'id': self.pk,
             'title': self.title,
             'allow_email_submission': self.allow_email_submission,
-            'email_address': (self.email_address, "")[self.email_address is None]
+            'email_address': self.email_address if self.email_address else ""
         }
 
         if full:
@@ -122,17 +122,17 @@ class Ticket(models.Model):
             priority = "Low"
         elif self.priority == 2:
             priority = "Normal"
-        else:
+        elif self.priority == 3:
             priority = "Urgent"
 
         response = {
             'id': self.pk,
             'description': self.description,
             'author': self.author.get_full_name(),
-            'owner': self.owner.get_full_name(),
+            'owner': self.owner.get_full_name() if self.owner else "Unassigned",
             'flagged': self.flagged,
             'queue': self.queue.title,
-            'status': ("Closed", "Open")[bool(self.status)],
+            'status': "Open" if self.status else "Closed",
             'priority': priority,
             'date': defaultfilters.date(self.date, "SHORT_DATETIME_FORMAT"),
             'due_date': defaultfilters.date(self.due_date, "SHORT_DATETIME_FORMAT"),
@@ -141,27 +141,48 @@ class Ticket(models.Model):
 
         if full:
             if admin:
+                if self.difficulty_rating == 0:
+                    difficulty_rating = "Not Rated"
+                elif self.difficulty_rating == 1:
+                    difficulty_rating = "Simple"
+                elif self.difficulty_rating == 2:
+                    difficulty_rating = "Easy"
+                elif self.difficulty_rating == 3:
+                    difficulty_rating = "Medium"
+                elif self.difficulty_rating == 4:
+                    difficulty_rating = "Hard"
+                elif self.difficulty_rating == 5:
+                    difficulty_rating == "Advanced"
+
                 response.update({
-                    'staff_summary': (0, self.staff_summary)[bool(self.staff_summary)],
-                    'difficulty_rating': ("Not Rated", self.difficulty_rating)[bool(self.difficulty_rating)]
+                    'staff_summary': self.staff_summary if self.staff_summary else 0,
+                    'difficulty_rating': difficulty_rating
                 })
 
             response.update({
-                'satisfaction_rating': (0, self.satisfaction_rating)[bool(self.satisfaction_rating)],
+                'satisfaction_rating': self.satisfaction_rating if self.satisfaction_rating else 0,
                 'cc_list': get_ticket_contacts_list(self.id, self.author.company_id),
-                'service': ("Other", self.service.name)[bool(self.service) and hasattr(self.service, 'name')]
+                'service': self.service.name if self.service else "Other",
             })
 
         return response
 
 
 class Post(models.Model):
+    RATING_BAD = 1
+    RATING_GOOD = 2
+
+    RATING_CHOICES = (
+        (RATING_BAD, 'Needs improvement'),
+        (RATING_GOOD, 'Exemplary'),
+    )
+
     def validate_file_extension(filename):
         import os
         ext = os.path.splitext(filename.name)[1]
         valid_extensions = ['.pdf','.jpg', '.png', '.txt']
         if not ext in valid_extensions:
-            raise ValidationError('File not supported!')
+            raise Exception('File extension not supported!')
 
     ticket = models.ForeignKey(Ticket, blank=False, null=False)
     author = models.ForeignKey(settings.AUTH_USER_MODEL, blank=False, null=False)
@@ -169,6 +190,7 @@ class Post(models.Model):
     date = models.DateTimeField(auto_now_add=True, blank=True)
     visible = models.BooleanField(default=True, blank=True)
     attachment = models.FileField(upload_to="attachments/%Y/%m/%d", validators=[validate_file_extension], blank=True, null=True)
+    rating = models.IntegerField(choices=RATING_CHOICES, blank=True, null=True)
 
     def __unicode__(self):
         return "%s" % self.contents
@@ -181,10 +203,13 @@ class Post(models.Model):
         return {
             "id": self.pk,
             "author": self.author.get_full_name(),
+            "author_id": self.author.pk,
+            "author_is_staff": self.author.is_staff,
             "contents": self.contents,
             "date": defaultfilters.date(self.date, "SHORT_DATETIME_FORMAT"),
             "attachment": attachment,
-            'visible': self.visible
+            'visible': self.visible,
+            "rating": self.rating
         }
 
 
@@ -201,7 +226,8 @@ class Macro(models.Model):
         return {
             'id': self.pk,
             'name': self.name,
-            'body': self.body
+            'body': self.body,
+            'author': self.author.get_full_name()
         }
 
 
@@ -211,6 +237,55 @@ class Macro(models.Model):
 
 import logging
 logger = logging.getLogger(__name__)
+
+
+def get_ticket_count(owner_id=0, startdate=0, enddate=0, difficulty_rating=0, satisfaction_rating=0):
+    try:
+        filters = dict()
+
+        if owner_id:
+            filters.update({'owner_id': owner_id})
+
+        if startdate and enddate:
+            filters.update({'date__range': [startdate, enddate]})
+        elif startdate:
+            filters.update({'date__gt': startdate})
+        elif enddate:
+            filters.update({'date__lt': enddate})
+
+        if difficulty_rating:
+            filters.update({'difficulty_rating': difficulty_rating})
+
+        if satisfaction_rating:
+            filters.update({'satisfaction_rating': satisfaction_rating})
+
+        return Ticket.objects.filter(**filters).count()
+    except Exception as ex:
+        logger.error("Failed to get_post_count: %s" % ex)
+        return False
+
+def get_post_count(author_id=0, rating=0, startdate=0, enddate=0):
+    try:
+        filters = dict()
+
+        if author_id:
+            filters.update({'author_id': author_id})
+
+        if rating:
+            filters.update({'rating': rating})
+
+        if startdate and enddate:
+            filters.update({'date__range': [startdate, enddate]})
+        elif startdate:
+            filters.update({'date__gt': startdate})
+        elif enddate:
+            filters.update({'date__lt': enddate})
+
+        return Post.objects.filter(**filters).count()
+    except Exception as ex:
+        logger.error("Failed to get_post_count: %s" % ex)
+        return False
+
 
 def get_tickets_summary(user_id, company_id):
     """Get Ticket summary

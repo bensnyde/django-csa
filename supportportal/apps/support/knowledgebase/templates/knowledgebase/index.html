@@ -5,12 +5,81 @@
 
 {% block breadcrumbs %}
 	<li><a>Support</a></li>
-	<li>Knowledgebase</li>
+	{% if category_id %}
+		<li><a href="{% url 'knowledgebase:index' %}">Knowledgebase</a></li>
+		<li>{{ category }}</li>
+	{% elif tag_id %}
+		<li><a href="{% url 'knowledgebase:index' %}">Knowledgebase</a></li>
+		<li>#{{ tag }}</li>
+	{% else %}
+		<li>Knowledgebase</li>
+	{% endif %}
 {% endblock %}
 
 {% block js %}
 	<script type="text/javascript">
-		function getSummary() {
+		// Fetch Knowledgebase Articles
+		function getArticles(category_id=0, tag_id=0) {
+			$("#kb-articles").html("");
+
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success') && result.hasOwnProperty('data')) {
+					if(result.success == 1) {
+						for(x in result.data.articles) {
+							var articleContent = ' \
+								<li class="list-group-item" data-id="'+result.data.articles[x].id+'"> \
+									<a href="'+"{% url 'knowledgebase:detail' 0 %}".replace(0, result.data.articles[x].id)+'">'+result.data.articles[x].title+'</a> \
+								</li>';
+
+							{% if tag_id or category_id %}
+								$("#kb-articles").append(articleContent);
+							{% else %}
+								$("#kb-categories li").each(function() {
+									if($(this).data('id')==result.data.articles[x].category_id) {
+										$("#kb-articles").append(articleContent);
+									}
+								})
+							{% endif %}
+						}
+					}
+				}
+			}
+
+			$.ajax({
+                url: "{%url 'knowledgebase:getarticles' %}",
+                data: {'category_id': category_id, 'tag_id': tag_id},
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });
+		}
+
+		// Fetch Knowledgebase Categories
+		function getCategories() {
+			function onSuccessCallback(result) {
+				if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success') && result.hasOwnProperty('data')) {
+					if(result.success == 1) {
+						for(x in result.data.categories) {
+							$("#kb-categories").append(' \
+								<li class="list-group-item" data-id="'+result.data.categories[x].id+'"> \
+									<a class="toggle-child">'+result.data.categories[x].title+'</a> \
+								</li>'
+							);
+						}
+					}
+				}
+			}
+
+			$.ajax({
+                url: "{%url 'knowledgebase:getcategories' %}",
+                type: "POST",
+                success: onSuccessCallback,
+                error: defaultErrorCallback
+            });
+		}
+
+		// Fetch Knowledgebase Featured Articles
+		function getFeaturedArticles() {
 			$("#kb-categories").html("");
 			$("#popular-articles").html("");
 			$("#newest-articles").html("");
@@ -18,45 +87,20 @@
 			function onSuccessCallback(result) {
 				if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success') && result.hasOwnProperty('data')) {
 					if(result.success == 1) {
-						// Categories
-						if(result.data.categories.length) {
-							for(x in result.data.categories) {
-								var articles = "";
-								for(y in result.data.categories[x].articles) {
-									articles += '<p><a href="{%url 'knowledgebase:index' %}'+result.data.categories[x].articles[y].id+'">'+result.data.categories[x].articles[y].title+'</a></p>';
-								}
-
-								$("#kb-categories").append(' \
-									<li class="list-group-item row"> \
-										<div class="col-md-10"> \
-											<a class="toggle-child">'+result.data.categories[x].category+'</a> \
-											<div style="display: none; margin: 10px">'+articles+'</div> \
-										</div><div class="col-md-2 text-right"><span class="badge">'+result.data.categories[x].articles.length+'</span></div> \
-									</li>'
-								);
-							}
-						}
-						else {
-							$("#kb-categories").html('<span><em>No articles defined.</em></span>');
-							return false;
-						}
-
-						// Newest articles
 						for(x in result.data.newest) {
 							$("#newest-articles").append(' \
 								<li style="text-indent: 10px"> \
-									<a href="{%url 'knowledgebase:index' %}'+result.data.newest[x].id+'"> \
+									<a href="'+"{%url 'knowledgebase:detail' 0 %}".replace(0, result.data.newest[x].id)+'"> \
 										<em>'+result.data.newest[x].title+'</em> \
 									</a> \
 								</li>'
 							);
 						}
 
-						// Most popular articles
 						for(x in result.data.popular) {
 							$("#popular-articles").append(' \
 								<li style="text-indent: 10px"> \
-									<a href="{%url 'knowledgebase:index' %}'+result.data.popular[x].id+'"> \
+									<a href="'+"{%url 'knowledgebase:detail' 0 %}".replace(0, result.data.popular[x].id)+'"> \
 										<em>'+result.data.popular[x].title+'</em> \
 									</a> \
 								</li>'
@@ -70,7 +114,8 @@
 			}
 
 			$.ajax({
-                url: "{%url 'knowledgebase:getsummary' %}",
+                url: "{%url 'knowledgebase:getfeatured' %}",
+                data: {'count': 1},
                 type: "POST",
                 success: onSuccessCallback,
                 error: defaultErrorCallback
@@ -80,13 +125,23 @@
 {% endblock %}
 
 {% block jquery_document_ready %}
-	getSummary();
+	getFeaturedArticles();
 
-  $('#kb-categories')
-      .on('click', 'a.toggle-child', function (e) {
-          e.preventDefault();
-          $(this).next('div').toggle();
-      })
+	{% if category_id %}
+		getArticles({{ category_id }});
+	{% elif tag_id %}
+		getArticles(0, {{ tag_id }});
+	{% else %}
+		getCategories();
+
+		$("#kb-categories")
+	        .on('click', 'li', function (e) {
+	        	if($(this).data('id')) {
+		            e.preventDefault();
+		            getArticles($(this).data('id'));
+	            }
+	        });
+	{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -96,7 +151,13 @@
 	     <!-- BEGIN CONTAINER HEAD -->
 	    <div class="row page-head">
 	        <div class="col-md-12">
-	        	<h3>Knowledgebase</h3>
+	        	<h3>Knowledgebase
+	        		{% if category_id %}
+	        			:{{ category }}
+	        		{% elif tag_id %}
+	        			:#{{ tag }}
+	        		{% endif %}
+	        	</h3>
 	        </div>
 	    </div>
 	    <!-- END CONTAINER HEAD -->
@@ -104,7 +165,8 @@
 		<div class="row">
 			<!-- BEGIN LEFT COLUMN -->
 			<div class="col-md-8 ">
-				<div id="kb-categories" class="list-group list-unstyled"></div>
+				<div id="kb-categories" class="list-group list-unstyled" {% if category_id or tag_id %}style="display: none"{% endif %}></div>
+				<div id="kb-articles" class="list-group list-unstyled"></div>
 			</div>
 			<!-- END LEFT COLUMN -->
 			<!-- BEGIN RIGHT COLUMN -->

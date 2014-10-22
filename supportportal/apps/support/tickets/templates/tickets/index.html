@@ -19,6 +19,7 @@
     <script type="text/javascript" src="{% static '/assets/plugins/data-tables/jquery.dataTables.js' %}"></script>
     <script type="text/javascript" src="{% static '/assets/plugins/data-tables/DT_bootstrap.js' %}"></script>
     <script type="text/javascript">
+        // Fetch Tickets
         function getTickets() {
             $("#tickets-table").dataTable().fnDestroy();
             $("#tickets-tbody").html("");

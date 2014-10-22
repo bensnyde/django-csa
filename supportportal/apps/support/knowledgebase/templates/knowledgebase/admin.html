@@ -24,6 +24,7 @@
   <script type="text/javascript" src="{% static '/assets/plugins/data-tables/jquery.dataTables.js' %}"></script>
   <script type="text/javascript" src="{% static '/assets/plugins/data-tables/DT_bootstrap.js' %}"></script>
 	<script type="text/javascript">
+    // Set Knowledgebase Tag
     function setTag() {
       function onSuccessCallback(result) {
         if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success')) {
@@ -59,7 +60,7 @@
       });
     }
 
-
+    // Fetch Knowledgebase Tags
     function getTags() {
       $("#id_tags").html("");
       $("#tags-table-tbody").html("");
@@ -100,6 +101,7 @@
       });
     }
 
+    // Delete Knowledgebase Tag
     function deleteTag() {
       function onSuccessCallback(result) {
         if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success')) {
@@ -129,6 +131,7 @@
       });
     }
 
+    // Fetch Knowledgebase Categories
     function getCategories() {
       $("#id_category").html("");
       $("#categories-table-tbody").html("");
@@ -169,6 +172,7 @@
       });
     }
 
+    // Set Knowledgebase Category
     function setCategory() {
       function onSuccessCallback(result) {
         if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success')) {
@@ -204,6 +208,7 @@
       });
     }
 
+    // Delete Knowledgebase Category
     function deleteCategory() {
       function onSuccessCallback(result) {
         if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success')) {
@@ -233,6 +238,7 @@
       });
     }
 
+    // Fetch Knowledgebase Articles
     function getArticles() {
       $("#articles-table").dataTable().fnDestroy();
       $("#articles-table-tbody").html("");
@@ -284,6 +290,7 @@
       });
     }
 
+    // Fetch Knowledgebase Article
     function getArticle(article_id) {
       function onSuccessCallback(result) {
         if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success') && result.hasOwnProperty('data')) {
@@ -308,6 +315,7 @@
       });
     }
 
+    // Set Knowledgebase Article
     function setArticle() {
       function onSuccessCallback(result) {
         if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success')) {
@@ -343,6 +351,7 @@
       });
     }
 
+    // Delete Knowledgebase Article
     function deleteArticle() {
       function onSuccessCallback(result) {
         if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success')) {
@@ -372,16 +381,19 @@
       });
     }
 
+    // Reset and Show Knowledgebase Tag Modal
     function resetTagForm() {
       $("#kb-tag-set-form").trigger('reset');
       $("#kb-tag-set-modal").modal('show');
     }
 
+    // Reset and Show Knowledgebase Category Modal
     function resetCategoryForm() {
       $("#kb-category-set-form").trigger('reset');
       $("#kb-category-set-modal").modal('show');
     }
 
+    // Reset and Show Knowledgebase Article Modal
     function resetArticleForm() {
       $("#kb-article-form").trigger('reset');
       $("#kb-article-set-modal").modal('show');

@@ -13,20 +13,23 @@
 		var vnc_pass;		// local variable to hold vnc server's password
 
         function defaultSuccessCallback(result) {
-            if(!jQuery.isEmptyObject(result)) {
+            if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success')) {
+                $('#flash-message').html(result.message);
                 $('#flash-message').fadeIn();
+
                 if(result.success == 1) {
-                    $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+                    $('#flash-message').addClass('alert alert-success');
                     getSolusStats();
                 }
                 else {
-                    $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+                    $('#flash-message').addClass('alert alert-danger');
                 }
-                $('#flash-message').delay(3000).fadeOut();
+
+                setTimeout("$('#flash-message').fadeOut()",2000);
+                $('#flash-message').removeClass();
             }
         }
 
-	    // Makes AJAX call to supplied resource with supplied data
 	    function sendPost(url, data) {
             $.ajax({
                 url: url,
@@ -37,7 +40,6 @@
             });
 	    }
 
-	    // Loads VNC applet into DOM
 	    function start_vnc_applet() {
 	    	$("#vnc_applet_placeholder").append(' \
 			    <applet archive="http://184.175.99.17/tightvnc-jviewer.jar" code="com.glavsoft.viewer.Viewer" width="1" height="1"> \
@@ -63,7 +65,7 @@
 
 		function getSolusStats() {
 			function onSuccessCallback(result) {
-		        if(!jQuery.isEmptyObject(result)) {
+		        if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success') && result.hasOwnProperty('data')) {
 		            if(result.success == 1) {
 		            	$("#stats-type").html(result.data.statistics.type);
 		            	$("#stats-node").html(result.data.state.node);
@@ -91,10 +93,9 @@
             });
 		}
 
-		// Fetch ISO list from SolusVM via AJAX
 		function getIsoList() {
 			function onSuccessCallback(result) {
-		        if(!jQuery.isEmptyObject(result)) {
+		        if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success') && result.hasOwnProperty('data')) {
 		            if(result.success == 1) {
 		            	for(iso in result.data.isos) {
 		            		$("#iso-select").append('<OPTION>'+result.data.isos[iso]+'</OPTION>');
@@ -114,6 +115,32 @@
 		jQuery(document).ready(function() {
 			getSolusStats();
 			getIsoList();
+
+		    $(document)
+		        .on('click', 'a.set-bootorder-form-submit', function (e) {
+		            e.preventDefault();
+		            sendPost("{% url 'solusvm:set_bootorder' service_id server.id %}", {"bootorder": $("#bootorder").val()});
+		        })
+		        .on('click', 'a.set-iso-form-submit', function (e) {
+		            e.preventDefault();
+		            sendPost("{% url 'solusvm:mount' service_id server.id %}", {"iso": $("#iso-select").val()});
+		        })
+		        .on('click', 'a.open-console', function (e) {
+		            e.preventDefault();
+		            start_vnc_applet();
+		        })
+		        .on('click', 'a.boot-server', function (e) {
+		            e.preventDefault();
+		            sendPost("{% url 'solusvm:boot' service_id server.id %}", {});
+		        })
+		        .on('click', 'a.reboot-server', function (e) {
+		            e.preventDefault();
+		            sendPost("{% url 'solusvm:reboot' service_id server.id %}", {});
+		        })
+		        .on('click', 'a.shutdown-server', function (e) {
+		            e.preventDefault();
+		            sendPost("{% url 'solusvm:shutdown' service_id server.id %}", {});
+		        });
 		});
 	</script>
 {% endblock %}
@@ -122,7 +149,7 @@
  <!-- BEGIN SOLUSVM CONTENT -->
 
  	<div id="vnc_applet_placeholder"></div>
-	<div id="flash-message hidden"></div>
+	<div id="flash-message"></div>
 
     <!-- BEGIN SOLUSVM CONTENT HEADER -->
     <div class="row page-head">
@@ -143,11 +170,11 @@
 
             <!-- BEGIN VSERVER CONTROLS CONTAINER -->
 			<div class="control-group text-center">
-				<button type="button" class="btn btn-success" onclick='sendPost("{% url 'solusvm:boot' service_id server.id %}", {})'>boot</button>
-				<button type="button" class="btn btn-warning" onclick='sendPost("{% url 'solusvm:reboot' service_id server.id %}", {})'>reboot</button>
-				<button type="button" class="btn btn-danger" onclick='sendPost("{% url 'solusvm:shutdown' service_id server.id %}", {})'>shutdown</button>
+				<a role="button" type="button" class="btn btn-success boot-server">boot</a>
+				<a role="button" type="button" class="btn btn-warning reboot-server">reboot</a>
+				<a role="button" type="button" class="btn btn-danger shutdown-server">shutdown</a>
 				<br /><br />
-				<button type="button" class="btn" onclick='start_vnc_applet()'>Open Console</button>
+				<a role="button" type="button" class="btn open-console">Open Console</a>
 			</div><br />
 			<!-- END VSERVER CONTROLS CONTAINER -->
 
@@ -160,7 +187,7 @@
 							<option default value="none"></option>
 						</select>
 						<span class="input-group-btn">
-							<button type="button" class="btn btn-primary" onclick='sendPost("{% url 'solusvm:mount' service_id server.id %}", {"iso": $("#iso-select").val()})'>Set</button>
+							<a role="button" type="button" class="btn btn-primary set-iso-form-submit">Set</a>
 						</span>
 					</div>
                 </div>
@@ -175,7 +202,7 @@
 						</select>
 
                         <span class="input-group-btn">
-                        	<button type="button" class="btn btn-primary" onclick='sendPost("{% url 'solusvm:set_bootorder' service_id server.id %}", {"bootorder": $("#bootorder").val()})'>Set</button>
+                        	<a role="button" type="button" class="btn btn-primary set-bootorder-form-submit">Set</a>
                         </span>
                     </div>
                 </div>
@@ -187,7 +214,7 @@
 		<!-- BEGIN VSERVER STATS CONTAINER -->
 		<div id="solus-stats-container">
 			<!-- BEGIN VSERVER STATS TABLE -->
-			<table class="table table-striped table-bordered table-hover" id="vm-stats-table">
+			<table class="table table-hover" id="vm-stats-table">
 				<tr><td>Hypversior</td><td id="stats-type"></td></tr>
 				<tr><td>Node</td><td id="stats-node"></td></tr>
 				<tr><td>Hostname</td><td id="stats-hostname"></td></tr>

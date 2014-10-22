@@ -4,6 +4,7 @@ from datetime import datetime
 from django.forms.models import model_to_dict
 from django.template import defaultfilters
 
+
 class Category(models.Model):
     title = models.SlugField(max_length=64, null=False, blank=False, unique=True)
 
@@ -19,7 +20,7 @@ class Tag(models.Model):
 
 
 class Article(models.Model):
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, null=False, blank=False, related_name="knowledgebase_author")
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, null=False, blank=False)
     title = models.CharField(max_length=128, blank=False, null=False)
     contents = models.TextField(blank=False, null=False)
     created = models.DateTimeField(editable=False)
@@ -32,11 +33,11 @@ class Article(models.Model):
         return '%s' % (self.title)
 
     def save(self, *args, **kwargs):
-            ''' On save, update timestamps '''
-            if not self.id:
-                    self.created = datetime.today()
-            self.modified = datetime.today()
-            super(Article, self).save(*args, **kwargs)
+        ''' On save, update timestamps '''
+        if not self.id:
+                self.created = datetime.today()
+        self.modified = datetime.today()
+        super(Article, self).save(*args, **kwargs)
 
     def dump_to_dict(self):
     	tags = []
@@ -56,29 +57,23 @@ class Article(models.Model):
         	"tags": tags
         }
 
-def get_categories_annotate_articles():
-    """Get Categories annotated with Articles
 
-        Retrieves list of categories annotated with their associated articles.
+def get_article_count(author_id=0, startdate=0, enddate=0):
+    try:
+        filters = dict()
 
-    Parameters
-        None
-    Returns
-        kb_categories: queryset of Categories and Articles
-            [{"category": "Category 1", "articles": [<Article 1>, <Article 2>]}]
-    """
-    kb_categories = []
-    for category in Category.objects.annotate(count=models.Count('article')):
-        articles_list = []
-        for article in Article.objects.filter(category=category.id):
-            articles_list.append({"id": article.pk, "author": article.author.get_full_name(), "title": article.title, "views": article.views, "category": article.category.title, "updated": str(article.modified)})
+        if author_id:
+            filters.update({"author_id": author_id})
 
-        kb_categories.append({
-            "category": category.title,
-            "articles": articles_list
-        })
+        if startdate and enddate:
+            filters.update({"created__range": [startdate, enddate]})
+        elif startdate:
+            filters.update({"created__gt": startdate})
 
-    return kb_categories
+        return Article.objects.filter(**filters).count()
+    except Exception as ex:
+        return False
+
 
 def increment_articles_views(article_id):
     """Increment Article views
@@ -90,19 +85,12 @@ def increment_articles_views(article_id):
     Returns
         bool result
     """
-    return Article.objects.filter(pk=article_id).update(views=models.F('views')+1)
+    try:
+        Article.objects.filter(pk=article_id).update(views=models.F('views')+1)
+        return True
+    except Exception as ex:
+        return False
 
-def get_articles_by_tag(*tags):
-    """Get Articles by tags
-
-        Retrieves queryset of all Articles containing specified tag(s).
-
-    Parameters:
-        tags: str[] tags
-    Returns
-        queryset of matched Articles
-    """
-    return Article.objects.filter(tags__title__in=tags)
 
 def search(query):
     """Retrieves queryset of articles whose contents contains specified querystring.
@@ -113,4 +101,7 @@ def search(query):
     Returns
     :queryset: Article
     """
-    return Article.objects.filter(contents__icontains=query)
+    try:
+        return Article.objects.filter(contents__icontains=query)
+    except Exception as ex:
+        return False

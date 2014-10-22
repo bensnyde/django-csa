@@ -448,7 +448,7 @@
         })
         .on('click', 'a.show-set-vrf-modal', function (e) {
             e.preventDefault();
-            resestVrfForm();
+            resetVrfForm();
         })
         .on('click', 'a.refresh-vlans', function (e) {
             e.preventDefault();
@@ -465,7 +465,7 @@
         .on('click', 'a.show-set-network-modal', function (e) {
             e.preventDefault();
             resetSetNetworkForm();
-        })
+        });
 
     $('#vlans-table-tbody')
         .on('click', 'a.del-vlan', function (e) {
@@ -488,9 +488,11 @@
 
     $('#vrfs-table-tbody')
         .on('click', 'a.del-vrf', function (e) {
-            e.preventDefault();
-            $("#del-vrf-form #vrf_id").val($(this).closest('tr').data('id'))
-            $("#del-vrf-modal").modal('show');
+            if($(this).closest('tr').data('id')) {
+                e.preventDefault();
+                $("#del-vrf-form #vrf_id").val($(this).closest('tr').data('id'))
+                $("#del-vrf-modal").modal('show');
+            }
         })
         .on('click', 'a.edit-vrf', function (e) {
             if($(this).closest('tr').data('id')) {
@@ -551,8 +553,8 @@
         <div class="col-md-6"><h3 id="article-title">Networks</h3></div>
         <div class="col-md-6 text-right">
             <div class="btn-group">
-                <a href="#" role="button" class="refresh-networks"><i class="fa fa-refresh"></i></a>
-                <a href="#" role="button" class="show-set-network-modal"><i class="fa fa-plus"></i></a>
+                <a href="#" role="button" class="refresh-networks" alt="Refresh Networks"><i class="fa fa-refresh"></i></a>
+                <a href="#" role="button" class="show-set-network-modal" alt="Create Network"><i class="fa fa-plus"></i></a>
             </div>
         </div>
     </div>
@@ -582,8 +584,8 @@
                 <div class="col-md-6"><h3 id="article-title">VLANs</h3></div>
                 <div class="col-md-6 text-right">
                     <div class="btn-group">
-                        <a href="#" role="button" class="refresh-vlans"><i class="fa fa-refresh"></i></a>
-                        <a href="#" role="button" class="show-set-vlan-modal"><i class="fa fa-plus"></i></a>
+                        <a href="#" role="button" class="refresh-vlans" alt="Refresh VLANs"><i class="fa fa-refresh"></i></a>
+                        <a href="#" role="button" class="show-set-vlan-modal" alt="Create VLAN"><i class="fa fa-plus"></i></a>
                     </div>
                 </div>
             </div>
@@ -610,8 +612,8 @@
                 <div class="col-md-6"><h3 id="article-title">VRFs</h3></div>
                 <div class="col-md-6 text-right">
                     <div class="btn-group">
-                        <a href="#" role="button" class="refresh-vrfs"><i class="fa fa-refresh"></i></a>
-                        <a href="#" role="button" class="show-set-vrf-modal"><i class="fa fa-plus"></i></a>
+                        <a href="#" role="button" class="refresh-vrfs" alt="Refresh VRFs"><i class="fa fa-refresh"></i></a>
+                        <a href="#" role="button" class="show-set-vrf-modal" alt="Create VRF"><i class="fa fa-plus"></i></a>
                     </div>
                 </div>
             </div>
@@ -647,7 +649,7 @@
                 <div class="modal-body">
                     <div class="modal-alert"></div>
                     <span>Are you sure you want to delete the selected VRF?</span>
-                    <form id='del-vrf-form' role="form">
+                    <form id='del-vrf-form' role="form" class="form">
                         <input type='hidden' name='vrf_id' id="vrf_id" value="0" />
                     </form>
                 </div>
@@ -719,8 +721,8 @@
                 <div class="modal-body">
                     <div class="modal-alert"></div>
                     <span>Are you sure you want to delete the selected VLAN?</span>
-                    <form id='del-vlan-form' role="form">
-                        <input type='hidden' name='vlan_id' id="vlan_id" value='' />
+                    <form id='del-vlan-form' role="form" class="form">
+                        <input type='hidden' name='vlan_id' id="vlan_id" value="0" />
                     </form>
                 </div>
                 <!-- END MODAL BODY -->
@@ -750,7 +752,7 @@
                     <!-- BEGIN SET VLAN FORM -->
                     <form id="set-vlan-form" class="form form-vertical" role="form">
                         <input type="hidden" name="vlan_id" id="vlan_id" value="0" />
-                        <table class="table table-bordered table-hover" id="set-vrf-form-table">
+                        <table class="table table-hover" id="set-vrf-form-table">
                             {% for field in vlanform %}
                                 <tr class="form-group">
                                     <td><label class="control-label">{{ field.label_tag }}</label></td>
@@ -790,7 +792,11 @@
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
                     <div class="modal-alert"></div>
-                    <span>Truncating the network will purge all IPAddress objects and PTR records belonging to subnet.<br /><br />Proceed?</span>
+                    <span>
+                        Truncating the network will purge all IPAddress
+                         objects and PTR records belonging to subnet.
+                        <br /><br />Proceed?
+                    </span>
                     <form id="truncate-network-form" class="form" role="form">
                         <input type="hidden" name="networkaddress_id" id="networkaddress_id" value="0" />
                     </form>
@@ -820,11 +826,14 @@
                 <div class="modal-body">
                     <div class="modal-alert"></div>
                     <span>
-                        <em>Any IPAddress objects belonging to existing NetworkAddress must reside inside the new block or else the request will fail.</em>
+                        <em>
+                            Any IPAddress objects belonging to existing NetworkAddress
+                             must reside inside the new block or else the request will fail.
+                        </em>
                     </span>
                     <form id="resize-network-form" class="form form-vertical" role="form">
                         <input type="hidden" name="networkaddress_id" id="networkaddress_id" value="0" />
-                        <table class="table table-bordered table-hover" id="resize-network-form-table">
+                        <table class="table table-hover" id="resize-network-form-table">
                             {% for field in resizenetworkform %}
                                 <tr class="form-group">
                                     <td><label class="control-label">{{ field.label_tag }}</label></td>
@@ -954,7 +963,7 @@
                         PTR records and child NetworkAddresses.<br /><br />Proceed?
                     </span>
                     <!--BEGIN SET NETWORK FORM -->
-                    <form role="form" id="delete-network-form">
+                    <form role="form" id="delete-network-form" class="form">
                         <input type="hidden" name="networkaddress_id" id="networkaddress_id" value="0" />
                     </form>
                     <!--END SET NETWORK FORM -->

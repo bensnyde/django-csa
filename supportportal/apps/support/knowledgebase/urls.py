@@ -3,12 +3,14 @@ from apps.support.knowledgebase import views
 
 urlpatterns = patterns('',
     # Views
-    url(r'^$', views.index, name='index'),
+    url(r'^index/$', views.index, name='index'),
+    url(r'^index/(?P<category_id>\d+)/$', views.index, name='index'),
+    url(r'^index/(?P<category_id>\d+)/(?P<tag_id>\d+)/$', views.index, name='index'),
     url(r'^admin/$', views.admin, name='admin'),
     url(r'^admin/(?P<article_id>\d+)/$$', views.admin, name='admin'),
-    url(r'^(?P<article_id>\d+)/$', views.detail, name='detail'),
+    url(r'^detail/(?P<article_id>\d+)/$', views.detail, name='detail'),
     # AJAX
-    url(r'^getsummary/$', views.get_summary, name='getsummary'),
+    url(r'^getfeatured/$', views.get_featured_articles, name='getfeatured'),
     url(r'^getarticles/$', views.get_articles, name='getarticles'),
     url(r'^getarticle/(?P<article_id>\d+)/$', views.get_article, name='getarticle'),
     url(r'^setarticle/$', views.set_article, name='setarticle'),

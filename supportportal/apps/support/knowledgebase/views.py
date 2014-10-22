@@ -6,14 +6,14 @@ from apps.loggers.models import ActionLogger
 from common.decorators import validated_request, validated_staff
 from common.helpers import format_ajax_response
 # App
-from .models import Article, Tag, Category, get_categories_annotate_articles, increment_articles_views
+from .models import Article, Tag, Category, increment_articles_views
 from .forms import CategoryForm, TagForm, ArticleForm
 
 
 logger = logging.getLogger(__name__)
 
 
-def index(request):
+def index(request, category_id=0, tag_id=0):
     """Knowledgebase Index View
 
         Lists categories and popular/recently modified articles.
@@ -24,10 +24,27 @@ def index(request):
         None
     Parameters
         request: HttpRequest
+        *category_id: int category id
+        *tag_id: int tag id
     Returns
         HttpReponse (knowledgebase/index.html)
     """
-    return render(request, 'knowledgebase/index.html')
+    response = {}
+
+    if int(category_id):
+        category = get_object_or_404(Category, pk=category_id)
+        response.update({
+            'category_id': category_id,
+            'category': category.title
+        })
+    elif int(tag_id):
+        tag = get_object_or_404(Tag, pk=tag_id)
+        response.update({
+            'tag_id': tag_id,
+            'tag': tag.title
+        })
+
+    return render(request, 'knowledgebase/index.html', response)
 
 
 def detail(request, article_id):
@@ -51,7 +68,7 @@ def detail(request, article_id):
 
 @validated_staff
 def admin(request):
-    """Knowledgebase Index View
+    """Knowledgebase Admin View
 
         Lists categories and popular/recently modified articles.
 
@@ -63,28 +80,24 @@ def admin(request):
         request: HttpRequest
     Returns
         HttpReponse (knowledgebase/admin.html)
+            articleForm: modelform ArticleForm
+            categoryform: modelform CategoryForm
+            tagform: modelform TagForm
     """
-    return render(request, 'knowledgebase/admin.html', {'articleform': ArticleForm(), 'categoryform': CategoryForm(), 'tagform': TagForm()})
+    response = {
+        'articleform': ArticleForm(),
+        'categoryform': CategoryForm(),
+        'tagform': TagForm()
+    }
+
+    return render(request, 'knowledgebase/admin.html', response)
 
 
-@validated_staff
 @validated_request(None)
 def get_articles(request):
-    try:
-        articles = []
-        for article in Article.objects.all():
-            articles.append(article.dump_to_dict())
+    """Get Articles
 
-        return format_ajax_response(True, "Knowledgebase articles listing retrieving successfully.", {"articles": articles})
-    except Exception as ex:
-        logger.error("Failed to get_articles: %s" % ex)
-        return format_ajax_response(False, "There was an error retrieving knowledgebase articles listing.")
-
-@validated_request(None)
-def get_summary(request):
-    """Get Knowledgebase Summary
-
-        Retrieves a summary of knowledgebase categories and their respective articles.
+        Lists articles under optional category/tag.
 
     Middleware
         See SETTINGS for active Middleware.
@@ -95,6 +108,49 @@ def get_summary(request):
             request.user.is_authenticated() must be True
     Parameters
         request: HttpRequest
+            *category_id: int category id
+            *tag_id: int tag id
+    Returns
+        HttpResponse (JSON)
+            success: int status result
+            message: str response message
+            *data:
+                articles:
+    """
+    try:
+        if 'category_id' in request.POST and int(request.POST['category_id']):
+            queryset = Article.objects.filter(category_id=int(request.POST['category_id']))
+        elif 'tag_id' in request.POST and int(request.POST['tag_id']):
+            queryset = Article.objects.filter(tags__pk=request.POST['tag_id'])
+        else:
+            queryset = Article.objects.all()
+
+        articles = []
+        for article in queryset:
+            articles.append(article.dump_to_dict())
+
+        return format_ajax_response(True, "Knowledgebase articles listing retrieving successfully.", {"articles": articles})
+    except Exception as ex:
+        logger.error("Failed to get_articles: %s" % ex)
+        return format_ajax_response(False, "There was an error retrieving knowledgebase articles listing.")
+
+
+@validated_request(None)
+def get_featured_articles(request):
+    """Get Featured Articles
+
+        Lists most popular and newest articles.
+
+    Middleware
+        See SETTINGS for active Middleware.
+    Decorators
+        @validated_request
+            request.method must be POST
+            request.is_ajax() must be True
+            request.user.is_authenticated() must be True
+    Parameters
+        request: HttpRequest
+        *count: int featured articles length
     Returns
         HttpResponse (JSON)
             success: int status result
@@ -102,33 +158,31 @@ def get_summary(request):
             *data:
                 newest: dict of newest article(s)
                 popular: dict of most viewed article(s)
-                categories: dict of categories annotated with respective articles
     """
     try:
-        # Fetch most recent article(s)
+        count = 1
+        if 'count' in request.POST and int(request.POST['count']):
+            count = int(request.POST['count'])
+
         newest_list = []
-        for article in Article.objects.order_by('-modified')[:1]:
+        for article in Article.objects.order_by('-modified')[:count]:
             newest_list.append(article.dump_to_dict())
 
-        # Fetch most popular article(s)
         popular_list = []
-        for article in Article.objects.order_by('-views')[:1]:
+        for article in Article.objects.order_by('-views')[:count]:
             popular_list.append(article.dump_to_dict())
 
-        # Fetch entire knowledgebase overview
-        kb_categories = get_categories_annotate_articles()
-
-        return format_ajax_response(True, "Knowledgebase overview retrieved successfully.", {'newest': newest_list,'popular': popular_list,'categories': kb_categories})
+        return format_ajax_response(True, "Featured articles retrieved successfully.", {'newest': newest_list,'popular': popular_list})
     except Exception as ex:
-        logger.error("Failed to get_summary: %s" % ex)
-        return format_ajax_response(False, "There was an error retrieving the knowledgebase overview.")
+        logger.error("Failed to get_featured_articles: %s" % ex)
+        return format_ajax_response(False, "There was an error retrieving the featured articles.")
 
 
 @validated_request(None)
 def get_article(request, article_id):
-    """Get Knowledgebase Article
+    """Get Article
 
-        Retrieves specified Knowledgebase Article.
+        Retrieves specified Article.
 
     Middleware
         See SETTINGS for active Middleware.
@@ -168,9 +222,9 @@ def get_article(request, article_id):
 @validated_staff
 @validated_request(ArticleForm)
 def set_article(request):
-    """Create/Update Knowledgebase Article
+    """Set Article
 
-        Updates existing Knowledgebase Article or creates new a new Article if no PK is supplied.
+        Creates new or updates existing Article.
 
     Middleware
         See SETTINGS for active Middleware.
@@ -231,9 +285,9 @@ def set_article(request):
 @validated_staff
 @validated_request(None)
 def delete_article(request):
-    """Delete Knowledgebase Article
+    """Delete Article
 
-        Deletes the specified Knowledgebase Article.
+        Deletes the specified Article.
 
     Middleware
         See SETTINGS for active Middleware.
@@ -313,9 +367,9 @@ def set_tag(request):
 @validated_staff
 @validated_request(None)
 def delete_tag(request):
-    """Delete Knowledgebase Tag(s)
+    """Delete Tag
 
-        Deletes specified Tag(s) from Knowledgebase.
+        Deletes specified Tag.
 
     Middleware
         See SETTINGS for active Middleware.
@@ -335,21 +389,21 @@ def delete_tag(request):
             message: str response message
     """
     try:
-        tags = request.POST.getlist('tag_id')
+        tags = request.POST.getlist('tag_id', 0)
         tag = Tag.objects.filter(pk__in=tags).delete()
-        ActionLogger().log(request.user, "deleted", "Knowledgebase Tag(s) %s" % tags)
-        return format_ajax_response(True, "Knoweldgebase tag(s) deleted successfully.")
+        ActionLogger().log(request.user, "deleted", "Knowledgebase Tag %s" % tags)
+        return format_ajax_response(True, "Knoweldgebase tag deleted successfully.")
     except Exception as ex:
         logger.error("Failed to delete_tag: %s" % ex)
-        return format_ajax_response(False, "There was an error deleting the specified knowledgebase tag(s).")
+        return format_ajax_response(False, "There was an error deleting the specified knowledgebase tag.")
 
 
 @validated_staff
 @validated_request(None)
 def get_tags(request):
-    """Get Knowledgebase Tags
+    """Get Tags
 
-        Retrieves listing of all Tags defined in Knowledgebase.
+        Lists Tags.
 
     Middleware
         See SETTINGS for active Middleware.
@@ -385,9 +439,9 @@ def get_tags(request):
 @validated_staff
 @validated_request(None)
 def get_categories(request):
-    """Get Knowledgebase Categories
+    """Get Categories
 
-        Retrieves listing of all Categories defined in Knowledgebase.
+        Lists Categories.
 
     Middleware
         See SETTINGS for active Middleware.
@@ -423,9 +477,9 @@ def get_categories(request):
 @validated_staff
 @validated_request(None)
 def delete_category(request):
-    """Delete Knowledgebase Category
+    """Delete Category
 
-        Deletes the specified Knowledgebase Category.
+        Deletes Category.
 
     Middleware
         See SETTINGS for active Middleware.
@@ -445,7 +499,7 @@ def delete_category(request):
             message: str response message
     """
     try:
-        categories = request.POST.getlist('category_id')
+        categories = request.POST.getlist('category_id', 0)
         category = Category.objects.filter(pk__in=categories).delete()
         ActionLogger().log(request.user, "deleted", "Knowledgebase Category %s" % categories)
         return format_ajax_response(True, "Knowledgebase category(s) deleted successfully.")
@@ -457,10 +511,9 @@ def delete_category(request):
 @validated_staff
 @validated_request(CategoryForm)
 def set_category(request):
-    """Create/Update Knowledgebase Category
+    """Set Category
 
-        Updates the title of an existing Knowledgebase Category or
-        Creates a new Knowledgebase Category if no PK supplied.
+        Creates new or updates existing Category.
 
     Middleware
         See SETTINGS for active Middleware.

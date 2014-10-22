@@ -30,6 +30,7 @@
         font-family: "Source Sans Pro",sans-serif;
         font-size: 14px;
         line-height: 1.52857143;
+        color: #656565;
       }
 
       .breadcrumb>li+li:before {
@@ -54,6 +55,7 @@
       }
       #back-up-top {
         background-color: lightgray;
+        color: #222;
         float: right;
         display: block;
         text-decoration: none;
@@ -145,29 +147,30 @@
           }
           else {
             function onSuccessCallback(result) {
-              if(!jQuery.isEmptyObject(result)) {
-                // build output string
-                var out = '<div id="searchresults" class="list-group">';
-                for(category in result) {
-                  out = out + '<h4 class="category">'+category+'</h4>';
-                  for(record in result[category]) {
-                    out = out + ' \
-                      <div class="list-group-item">\
-                        <div class="list-group-item-heading"> \
-                          <a href="'+result[category][record]['link']+'"><strong>'+result[category][record]['title']+'</strong></a> \
-                        </div>';
-                    if(result[category][record].hasOwnProperty('preview'))
-                      out = out + '<div class="list-group-item-text">'+result[category][record]['preview']+'</div>';
-                    out = out + '</div></div>'
-                  }
-                }
+              if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
+                if(result.success == 1) {
+                  // build output string
+                  var out = '<div id="searchresults" class="list-group">';
+                  for(category in result.data.matches) {
+                    out = out + '<h4 class="category">'+category+'</h4>';
+                    for(record in result.data.matches[category]) {
+                      out += ' \
+                        <div class="list-group-item">\
+                          <div class="list-group-item-heading"> \
+                            <a href="'+result.data.matches[category][record]['link']+'"><strong>'+result.data.matches[category][record]['title']+'</strong></a> \
+                          </div>';
+                      if(result.data.matches[category][record].hasOwnProperty('preview')) {
+                        out += '<div class="list-group-item-text" style="color:black">'+result.data.matches[category][record]['preview']+'</div>';
+                      }
 
-                $('#suggestions').fadeIn();
-                $('#suggestions').html(out);
-              }
-              else {
-                // No results
-                $('#suggestions').fadeOut();
+                      out += '</div>'
+                    }
+                  }
+
+                  out += '</div>';
+                  $('#suggestions').fadeIn();
+                  $('#suggestions').html(out);
+                }
               }
             }
 
@@ -179,6 +182,11 @@
               error: defaultErrorCallback
             });
           }
+        }
+
+        function scrollToAnchor(anchor){
+            var aTag = $("a[name='"+ anchor +"']");
+            $('html,body').animate({scrollTop: aTag.offset().top},'slow');
         }
      </script>
     {% endblock base_top_js %}
@@ -197,24 +205,24 @@
         <div class="container-fluid">
           <div class="navbar-header">
             <!-- BEGIN LOGO -->
-              <a href="{% url 'apps.dashboard.views.index' %}" style="font-size: 24px; color: #ffffff">Company Name</a>
+              <a href="{% url 'apps.dashboard.views.index' %}" style="font-size: 24px; color: #ffffff" alt="Home">Company Name</a>
             <!-- END LOGO -->
           </div>
           <div class="collapse navbar-collapse">
             <!-- BEGIN LEFT NAVBAR -->
             <ul class="nav navbar-nav">
-              <li class="active"><a href="{% url 'apps.dashboard.views.index' %}">Dashboard</a></li>
+              <li class="active"><a href="{% url 'apps.dashboard.views.index' %}" alt="Dashboard">Dashboard</a></li>
 
               <!-- BEGIN ACCOUNTS DROPDOWN -->
               <li class="dropdown">
                 <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Accounts <span class="caret"></span></a>
                 <ul class="dropdown-menu" role="menu">
                   {% if user.is_staff %}
-                    <li><a href="{% url 'companies:index' %}">Companies</a></li>
-                    <li><a href="{% url 'contacts:index' %}">Contacts</a></li>
+                    <li><a href="{% url 'companies:index' %}" alt="Companies Index">Companies</a></li>
+                    <li><a href="{% url 'contacts:index' %}" alt="Contacts Index">Contacts</a></li>
                   {% else %}
-                    <li><a href="{% url 'companies:detail' user.company_id %}">Company</a></li>
-                    <li><a href="{% url 'contacts:detail' user.id %}">Contact</a></li>
+                    <li><a href="{% url 'companies:detail' user.company_id %}" alt="Company Profile">Company</a></li>
+                    <li><a href="{% url 'contacts:detail' user.id %}" alt="Contact Profile">Contact</a></li>
                   {% endif %}
                 </ul>
               </li>
@@ -225,13 +233,29 @@
                 <li class="dropdown">
                   <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Administration <span class="caret"></span></a>
                   <ul class="dropdown-menu" role="menu">
-                    <li><a href="{% url 'ip:admin' %}">IP Management</a></li>
-                    <li><a href="{% url 'knowledgebase:admin'%}">Knowledgebase</a></li>
-                    <li><a href="{% url 'tickets:admin' %}">Ticket Queues</a></li>
-                    <li><a href="{% url 'services:index' %}">Service Management</a></li>
+                    <li><a href="{% url 'ip:admin' %}" alt="IP Management">IP Management</a></li>
+                    <li><a href="{% url 'knowledgebase:admin'%}" alt="Knowledgebase Management">Knowledgebase</a></li>
+                    <li><a href="{% url 'tickets:admin' %}" alt="Tickets Management">Ticket Queues</a></li>
+                    <li><a href="{% url 'services:index' %}" alt="Service Management">Service Management</a></li>
                   </ul>
                 </li>
                 <!-- END ADMINISTRATION DROPDOWN -->
+                <!-- BEGIN AFFILIATES DROPDOWN -->
+                <li class="dropdown">
+                  <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Affiliates <span class="caret"></span></a>
+                  <ul class="dropdown-menu" role="menu">
+                    <li><a href="{% url 'affiliates:index' %}" alt="Affiliates Index">Index</a></li>
+                  </ul>
+                </li>
+                <!-- END AFFILIATES DROPDOWN -->
+                <!-- BEGIN REPORTING DROPDOWN -->
+                <li class="dropdown">
+                  <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Reporting <span class="caret"></span></a>
+                  <ul class="dropdown-menu" role="menu">
+                    <li><a href="{% url 'reports:index' %}" alt="Reporting Index">Index</a></li>
+                  </ul>
+                </li>
+                <!-- END REPORTING DROPDOWN -->
               {% else %}
                 <!-- BEGIN SERVICES DROPDOWN -->
                 <li class="dropdown">
@@ -250,9 +274,9 @@
               <li class="dropdown">
                 <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Support <span class="caret"></span></a>
                 <ul class="dropdown-menu" role="menu">
-                    <li><a href="{% url 'tickets:index' %}">Tickets</a></li>
-                    <li><a href="{% url 'knowledgebase:index'%}">Knowledgebase</a></li>
-                    <li><a href="{% url 'contact:index' %}">Contact Us</a></li>
+                    <li><a href="{% url 'tickets:index' %}" alt="Tickets">Tickets</a></li>
+                    <li><a href="{% url 'knowledgebase:index'%}" alt="Knowledgebase">Knowledgebase</a></li>
+                    <li><a href="{% url 'contact:index' %}" alt="Contact Information">Contact Us</a></li>
                 </ul>
               </li>
               <!-- END SUPPORT DROPDOWN -->
@@ -276,9 +300,9 @@
               <li class="dropdown">
                 <a href="#" class="dropdown-toggle" data-toggle="dropdown"><span>{{ user.get_full_name }}&nbsp;</span><i class="fa fa-angle-down"></i></a>
                 <ul class="dropdown-menu">
-                  <li><a href="{% url 'contacts:detail' user.id %}"><i class="fa fa-user"></i> My Profile</a></li>
+                  <li><a href="{% url 'contacts:detail' user.id %}" alt="My Profile">My Profile</a></li>
                   <li class="divider"></li>
-                  <li><a href="/logout/"><i class="fa fa-key"></i> Log Out</a></li>
+                  <li><a href="{% url 'django.contrib.auth.views.logout' %}" alt="Logout">Log Out</a></li>
                 </ul>
               </li>
               <!-- END USER LOGIN DROPDOWN -->
@@ -293,6 +317,7 @@
 
 
     <!-- BEGIN BODY CONTAINER -->
+    <a name="top"></a>
     <div class="container">
       <!-- BEGIN HEADER -->
       {% block page_header %}
@@ -301,7 +326,7 @@
 
           <h3 class="page-title">{% block heading %}Support Portal <small>Dashboard</small>{% endblock %}</h3>
           <ul class="page-breadcrumb breadcrumb" id="breadcrumbs">
-            <li><a href="{% url 'apps.dashboard.views.index' %}">Home</a></li>
+            <li><a href="{% url 'apps.dashboard.views.index' %}" alt="Home">Home</a></li>
             {% block breadcrumbs %}
               <li>Dashboard</li>
             {% endblock %}
@@ -330,8 +355,8 @@
         <div class="col-md-8">
           &copy; 2014 <a href="http://www.example.com" alt="Company Name">Company Name</a> All rights reserved.
         </div>
-        <div class="col-md-4">
-          <span id="back-up-top"><i class="fa fa-angle-up"></i></span>
+        <div class="col-md-4 text-right">
+          <a href="#" onclick="scrollToAnchor('top')"><span id="back-up-top"><i class="fa fa-angle-up"></i></span></a>
         </div>
       </div>
      </div>

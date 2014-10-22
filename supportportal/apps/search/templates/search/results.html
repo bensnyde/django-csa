@@ -12,7 +12,7 @@
 <!-- BEGIN SEARCH CONTENTS -->
 	<!-- BEGIN CONTAINER HEAD -->
     <div class="row page-head">
-        <div class="col-md-12"><i class="fa fa-edit"></i>&nbsp;<h3>Search Results</h3></div>       
+        <div class="col-md-12"><i class="fa fa-edit"></i>&nbsp;<h3>Search Results</h3></div>
     </div>
     <!-- END CONTAINER HEAD -->
 
@@ -21,13 +21,13 @@
 		<!-- BEGIN SEARCH FORM CONTAINER -->
 		<div class="col-md-12">
 			<!-- BEGIN SEARCH FORM -->
-			<form class="form-inline" id="search-form" role="form" action="{% url 'search:results' %}" method="POST">
+			<form class="form form-inline" id="search-form" role="form" action="{% url 'search:results' %}" method="POST">
 				{% csrf_token %}
 				<div class="input-group chat-form">
 					<input type="text" name="querystr" placeholder="Search..." class="form-control" />
 					<span class="input-group-btn">
-						<a onclick="$('#search-form').submit();" id="domainregsubmit" class="btn btn-primary">Search</a>
-					</span>    
+						<a type="submit" role="button" id="domainregsubmit" class="btn btn-primary">Search</a>
+					</span>
 				</div>
 			</form>
 			<!-- END SEARCH FORM -->
@@ -47,7 +47,7 @@
 					    </div>
 					{% endfor %}
 				</div>
-				
+
 				<div class="text-center">
 					<ul class="pagination">
 						<li><a href="#">Prev</a></li>
@@ -58,12 +58,12 @@
 						<li><a href="#">5</a></li>
 						<li><a href="#">Next</a></li>
 					</ul>
-				</div>			
+				</div>
 			{% else %}
 				<p class="text-center" style="padding-top: 200px">No matches for '{{ querystr }}'.</p>
-			{% endif %}	
+			{% endif %}
 		</div>
-		<!-- END SEARCH RESULTS CONTAINER -->	
+		<!-- END SEARCH RESULTS CONTAINER -->
 	</div>
 	<!-- END CONTAINER BODY -->
 <!-- END SEARCH CONTENTS -->

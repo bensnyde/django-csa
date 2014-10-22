@@ -65,7 +65,6 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.admin',
     'apps.zenoss',
     'apps.servers',
     'apps.services',
@@ -85,8 +84,10 @@ INSTALLED_APPS = (
     'apps.loggers',
     'apps.backend',
     'apps.announcements',
+    'apps.reports',
+    'apps.affiliates',
     'common',
-    'libs',
+    'libs'
 )
 
 LOGGING = {

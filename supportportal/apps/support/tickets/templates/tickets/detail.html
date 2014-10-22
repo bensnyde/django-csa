@@ -31,6 +31,7 @@
           font-weight: normal;
           font-style: normal;
           display: inline-block;
+          text-decoration:none;
         }
         .rating a.star:hover {
           cursor: pointer;
@@ -49,7 +50,17 @@
 {% endblock %}
 
 {% block js %}
+    <script src="//cdn.ckeditor.com/4.4.5/standard/ckeditor.js"></script>
     <script type="text/javascript">
+        // Validates File Extension
+        function validateFileExtension() {
+            var re = /(\.jpg|\.jpeg|\.bmp|\.gif|\.png|\.txt|\.pdf)$/i;
+            if(re.exec($("#attachment-form #attachment").val())) {
+                return true;
+            }
+        }
+
+        // Set Ticket Contacts
         function setContacts() {
             function onSuccessCallback(result) {
                 if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
@@ -59,6 +70,7 @@
                     if(result.success == 1) {
                         $('.modal-alert').addClass("alert-success");
                         getTicket();
+                        getPosts();
                         setTimeout("$('#set-contacts-modal').modal('hide')",500);
                     }
                     else {
@@ -79,6 +91,7 @@
             });
         }
 
+        // Set Ticket Satisfaction Rating
         function setSatisfactionRating(satisfaction_rating) {
             function onSuccessCallback(result) {
                 if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
@@ -100,6 +113,7 @@
             });
         }
 
+        // Fetch Ticket Posts
         function getPosts() {
             $("#posts-list").html("");
 
@@ -107,31 +121,55 @@
                 if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
                     if(result.success == 1) {
                         for(x in result.data.posts) {
-                            var attachment = '<div class="col-md-6 pull-right text-right">';
-                            if(result.data.posts[x].attachment) {
-                                attachment = attachment + '<small>Attachment: <a href="'+result.data.posts[x].attachment.url+'">'+result.data.posts[x].attachment.name+' ('+result.data.posts[x].attachment.size+'b)</a></small>';
+                            // Post alignment
+                            var direction = "left";
+                            if(result.data.posts[x].author_is_staff != {{ user.is_staff|to_int }}) {
+                                direction = "right";
                             }
-                            {% if user.is_staff %}
-                                attachment = attachment + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#" class="toggle-visibility"><i class="fa fa-eye"></i></a>';
-                            {% endif %}
-                            attachment = attachment + '</div>';
 
+                            // Attachment
+                            var attachment = ""
+                            if(result.data.posts[x].attachment) {
+                                attachment = ' \
+                                    <div class=""> \
+                                        <a href="'+result.data.posts[x].attachment.url+'" alt="Download attachment">'+result.data.posts[x].attachment.name+'</a> \
+                                        &nbsp;<small>('+result.data.posts[x].attachment.size+'b)</small> \
+                                    </div>';
+                            }
+
+                            // Staff controls
                             var visibility = "";
+                            var controls = ""
                             {% if user.is_staff %}
+                                if(result.data.posts[x].author_is_staff==1) {
+                                    controls = ' \
+                                        <div class="col-md-6 pull-right text-right"> \
+                                            <a href="#" class="toggle-visibility" alt="Toggle Visibility"><i class="fa fa-eye" style="color:orange"></i></a> \
+                                            <a href="#" class="mark-post-as-poor" alt="Set Post Rating as Poor"><i class="fa fa-thumbs-down" style="color:red"></i></a> \
+                                            <a href="#" class="mark-post-as-great" alt="Set Post Rating as Great"><i class="fa fa-thumbs-up" style="color:green"></i></a> \
+                                        </div>';
+                                }
+
                                 if(result.data.posts[x].visible==0) {
-                                    visibility = '<i class="fa fa-eye"></i>&nbsp;';
+                                    visibility = '<i class="fa fa-eye"></i>';
                                 }
                             {% endif %}
 
                             $("#posts-list").append(' \
                                 <li data-id="'+result.data.posts[x].id+'"> \
-                                    <div class="panel"> \
-                                        <div class="panel-heading row" style="border-bottom: 1px solid #ddd"> \
-                                            '+attachment+visibility+' \
-                                            <div class="col-md-6"><h3 style="display: inline" class="panel-title"><a href="#" class="name">'+result.data.posts[x].author+'</a></h3> \
-                                            <small>@ '+result.data.posts[x].date+'</small></div> \
+                                    <div class="panel panel-primary"> \
+                                        <div class="panel-heading" style="border-bottom: 1px solid #ddd"> \
+                                            <div class="row">'+controls+' \
+                                                <div class="col-md-6">'
+                                                    +visibility+
+                                                    '<h3 style="display: inline" class="panel-title"> \
+                                                        <a href="#" class="name">'+result.data.posts[x].author+'</a> \
+                                                    </h3> \
+                                                    <small>@ '+result.data.posts[x].date+'</small> \
+                                                </div> \
+                                            </div> \
                                         </div> \
-                                        <div class="panel-body" style="margin: 0 10px 0 10px; font-size: 12px">'+result.data.posts[x].contents+'</div> \
+                                        <div class="panel-body" style="margin: 0 10px 0 10px; font-size: 12px">'+result.data.posts[x].contents+attachment+'</div> \
                                     </div> \
                                 </li>'
                             );
@@ -148,6 +186,7 @@
             });
         }
 
+        // Fetch Ticket
         function getTicket() {
             $("#contacts-list").html("");
             $("#id_ticket_contacts").html("");
@@ -190,22 +229,32 @@
         }
 
         {% if user.is_staff %}
+            // Set Post Rating
+            function setPostRating(post_id, rating) {
+                function onSuccessCallback(result) {
+                    if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
+                        if(result.success == 1) {
+                            getPosts();
+                        }
+                    }
+                }
+
+                $.ajax({
+                    url: "{% url 'tickets:setpostrating' 0 %}".replace(0, post_id),
+                    data: {"rating": rating},
+                    type: "POST",
+                    success: onSuccessCallback,
+                    error: defaultErrorCallback
+                });
+            }
+
+            // Set Post Visibility
             function togglePostVisibility(post_id) {
                 function onSuccessCallback(result) {
                     if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
-                        $('.modal-alert').fadeIn();
-                        $('.modal-alert').html(result.message);
-
                         if(result.success == 1) {
-                            $('.modal-alert').addClass("alert-success");
                             getPosts();
                         }
-                        else {
-                            $('.modal-alert').addClass("alert-danger");
-                        }
-
-                        setTimeout("$('.modal-alert').fadeOut()",2000);
-                        $('.modal-alert').removeClass().addClass('modal-alert');
                     }
                 }
 
@@ -217,6 +266,7 @@
                 });
             }
 
+            // Set Ticket
             function setTicket() {
                 function onSuccessCallback(result) {
                     if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
@@ -252,6 +302,7 @@
                 });
             }
 
+            // Set Pacro Macro
             function setMacro() {
                 function onSuccessCallback(result) {
                     if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
@@ -288,6 +339,7 @@
             }
 
             var macros;
+            // Fetch Post Macros
             function getMacros() {
                 $("#reply-macro-select").html("");
 
@@ -310,7 +362,7 @@
                 });
             }
 
-            // Appends selected Macro body to ticket reply textarea
+            // Use Post Macro
             function useMacro() {
                 for(x in macros) {
                       if($('#reply-macro-select').val()==macros[x].id) {
@@ -320,7 +372,8 @@
                 }
             }
 
-            function setMacro() {
+            // Edit Post Macro
+            function populateSetMacroForm() {
                 createMacro();
                 for(x in macros) {
                       if($('#reply-macro-select').val()==macros[x].id) {
@@ -334,6 +387,7 @@
                 return false;
             }
 
+            // Delete Post Macro
             function deleteMacro() {
                 $("#del-macro-form #macro_id").val($('#reply-macro-select').val());
 
@@ -365,9 +419,48 @@
                 });
             }
 
+            // Reset and Show Post Macro Form
             function createMacro() {
+                $("#set-macro-form #macro_id").val("0");
                 $("#set-macro-form").trigger('reset');
                 $("#set-macro-modal").modal('show');
+            }
+
+            // Set Post
+            function setReply() {
+                function onSuccessCallback(result) {
+                    if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
+                        $('#flash-message').fadeIn();
+                        $('#flash-message').html(result.message);
+
+                        if(result.success == 1) {
+                            getPosts();
+                            $('#flash-message').addClass("alert alert-success");
+                            CKEDITOR.instances['id_contents'].setData("")
+                            setTimeout("scrollToAnchor('last-post')",1000);
+                        }
+                        else {
+                            $('#flash-message').addClass("alert alert-danger");
+                            if(result.hasOwnProperty('errors')) {
+                                $.each(result.errors, function(k,v) {
+                                    $("#id_"+k).parents('tr').addClass("has-error");
+                                    $("#"+k+"-help").html(v);
+                                });
+                            }
+                        }
+
+                        setTimeout("$('#flash-message').fadeOut()",2000);
+                        $('#flash-message').removeClass().addClass('modal-alert');
+                    }
+                }
+
+                $.ajax({
+                    url: "{% url 'tickets:setpost' ticket_id %}",
+                    data: {"contents": CKEDITOR.instances['id_contents'].getData()},
+                    type: "POST",
+                    success: onSuccessCallback,
+                    error: defaultErrorCallback
+                });
             }
         {% endif %}
     </script>
@@ -376,18 +469,45 @@
 {% block jquery_document_ready %}
     getTicket();
     getPosts();
+    CKEDITOR.replace('id_contents');
 
-    {% if user.is_staff %}
-        getMacros();
-
-        $(document)
-            .on('click', 'a.star', function (e) {
-                e.preventDefault();
-                setSatisfactionRating($(this).data('value'));
-            })
+    $(document)
+        .on('click', 'a.reply-reset', function (e) {
+            e.preventDefault();
+            $('#reply-form').trigger('reset');
+        })
+        .on('click', 'a.toggle-ticket-contacts', function (e) {
+            e.preventDefault();
+            $('#set-contacts-modal').modal('show');
+        })
+        .on('click', 'a.set-contacts-modal-submit', function (e) {
+            e.preventDefault();
+            setContacts();
+        })
+        .on('click', 'a.attachment-form-submit', function (e) {
+            e.preventDefault();
+            if(validateFileExtension()) {
+                $("#attachment-form").submit();
+            }
+            else {
+                $("#attachment-response-alert").fadeIn();
+                $("#attachment-response-alert").html("<strong>Unsupported file extension.</strong>");
+                $("#attachment-response-alert").delay(3000).fadeOut();
+            }
+        })
+        .on('click', 'a.reply-form-submit', function (e) {
+            e.preventDefault();
+            setReply();
+        })
+        .on('click', 'a.star', function (e) {
+            e.preventDefault();
+            setSatisfactionRating($(this).data('value'));
+        }){% if user.is_staff %}
             .on('click', 'a.toggle-visibility', function (e) {
-                e.preventDefault();
-                togglePostVisibility($(this).closest('li').data('id'));
+                if($(this).closest('li').data('id')) {
+                    e.preventDefault();
+                    togglePostVisibility($(this).closest('li').data('id'));
+                }
             })
             .on('click', 'a.set-ticket-modal-submit', function (e) {
                 e.preventDefault();
@@ -402,21 +522,9 @@
                 e.preventDefault();
                 setMacro();
             })
-            .on('click', 'a.set-contacts-modal-submit', function (e) {
-                e.preventDefault();
-                setContacts();
-            })
             .on('click', 'a.edit-ticket', function (e) {
                 e.preventDefault();
                 $("#set-ticket-modal").modal('show');
-            })
-            .on('click', 'a.reply-reset', function (e) {
-                e.preventDefault();
-                $('#reply-form').trigger('reset');
-            })
-            .on('click', 'a.toggle-ticket-contacts', function (e) {
-                e.preventDefault();
-                $('#set-contacts-modal').modal('show');
             })
             .on('click', 'a.macro-use', function (e) {
                 e.preventDefault();
@@ -424,7 +532,7 @@
             })
             .on('click', 'a.macro-set', function (e) {
                 e.preventDefault();
-                setMacro();
+                populateSetMacroForm();
             })
             .on('click', 'a.macro-delete', function (e) {
                 e.preventDefault();
@@ -433,15 +541,27 @@
             .on('click', 'a.macro-create', function (e) {
                 e.preventDefault();
                 createMacro();
+            })
+            .on('click', 'a.mark-post-as-great', function (e) {
+                if($(this).closest('li').data('id')) {
+                    e.preventDefault();
+                    setPostRating($(this).closest('li').data('id'), 2);
+                }
+            })
+            .on('click', 'a.mark-post-as-poor', function (e) {
+                if($(this).closest('li').data('id')) {
+                    e.preventDefault();
+                    setPostRating($(this).closest('li').data('id'), 1);
+                }
             });
-    {% endif %}
+
+        getMacros();
+        {% else  %};
+        {% endif %}
 {% endblock %}
 
 {% block content %}
  <!-- BEGIN TICKETS DETAIL CONTENT -->
-
-     <div id="flash-message" class="alert" role="alert"></div>
-
      <!-- BEGIN CONTENT HEADER -->
     <div class="row page-head">
         <div class="col-md-6"><h3>Ticket #{{ ticket_id }}</h3></div>
@@ -520,7 +640,9 @@
     <div id="posts-container">
            <div class="row">
             <!-- BEGIN POSTS LIST -->
+            <a name="first-post"></a>
             <ul id="posts-list" class="list-unstyled ol-offset-md-2 col-md-12"></ul>
+            <a name="last-post"></a>
             <!-- END POSTS LIST -->
         </div>
 
@@ -530,11 +652,11 @@
                 <div class="highlight col-md-offset-2 col-md-8 col-md-offset-2">
                     <label class="">How satisfied are you with the support you are receiving?</label>
                     <span class="rating pull-right">
-                      <a data-value=1 class="star" style="text-decoration:none"></a>
-                      <a data-value=2 class="star" style="text-decoration:none"></a>
-                      <a data-value=3 class="star" style="text-decoration:none"></a>
-                      <a data-value=4 class="star" style="text-decoration:none"></a>
-                      <a data-value=5 class="star" style="text-decoration:none"></a>
+                      <a data-value=1 class="star"></a>
+                      <a data-value=2 class="star"></a>
+                      <a data-value=3 class="star"></a>
+                      <a data-value=4 class="star"></a>
+                      <a data-value=5 class="star"></a>
                     </span>
                     <div id="satisfaction-response-alert" class="text-center"></div>
                 </div>
@@ -544,6 +666,7 @@
 
         <!-- BEGIN FILE UPLOAD -->
         <div class="row">
+            <div id="attachment-response-alert" class="text-center"></div>
             <div class="highlight col-md-offset-2 col-md-8 col-md-offset-2">
                 <div class="row">
                     <div class="col-md-5">
@@ -552,16 +675,17 @@
                     </div>
                     <div class="col-md-5">
                         <!-- BEGIN FILE ATTACHMENT FORM -->
-                        <form role="form" class="form-horizontal" id="reply-form" action="{% url 'tickets:setpost' ticket_id %}" method="POST" enctype="multipart/form-data">
+                        <form role="form" class="form-horizontal" id="attachment-form" action="{% url 'tickets:setpost' ticket_id %}" method="POST" enctype="multipart/form-data">
                             {% csrf_token %}
-                            <div class="fileupload fileupload-new" data-provides="fileupload">
-                                <input type="file" name="attachment" />
+                            <input type="hidden" name="contents" value="Uploaded attachment." />
+                            <div class="fileupload fileupload-new" id="file-upload-container" data-provides="fileupload">
+                                <input type="file" name="attachment" id="attachment" />
                             </div>
                         </form>
                         <!-- END FILE ATTACHMENT FORM -->
                     </div>
                     <div class="col-md-2 text-right">
-                        <a type="submit" class="btn-sm btn-primary" role="button"><i class="fa fa-arrow-up"></i>&nbsp;Upload</a>
+                        <a href="#" type="submit" class="btn-sm btn-primary attachment-form-submit" role="button"><i class="fa fa-arrow-up"></i>&nbsp;Upload</a>
                     </div>
                 </div>
             </div>
@@ -592,6 +716,7 @@
         {% endif %}
 
         <div class="row">
+            <div class="#flash-message"></div>
             <!-- BEGIN TICKET REPLY FORM -->
             <form role="form" class="form" id="reply-form">
                 <div class="form-group">
@@ -600,7 +725,7 @@
 
                 <div class="row form-actions">
                     <div class="col-md-offset-2 col-md-8">
-                        <a type="submit" class="btn btn-primary" role="button"><i class="fa fa-check"></i>&nbsp;Submit</a>
+                        <a type="submit" class="btn btn-primary reply-form-submit" role="button"><i class="fa fa-check"></i>&nbsp;Submit</a>
                         <a type="button" class="btn btn-danger reply-reset" role="button"><i class="fa fa-refresh"></i>&nbsp;Reset</a>
                     </div>
                 </div>
@@ -659,8 +784,8 @@
                     <div class="modal-body">
                       <div class="modal-alert"></div>
                       <!-- BEGIN SET MACRO FORM -->
-                      <form class="form" role="form form-vertical" id="set-macro-form">
-                        <input type="hidden" name="macro_id" id="macro_id" value=0 />
+                      <form class="form form-vertical" role="form" id="set-macro-form">
+                        <input type="hidden" name="macro_id" id="macro_id" value="0" />
                         <table class="table table-hover" id="set-macro-form-table">
                             {% for field in macroform %}
                                 <tr class="form-group">

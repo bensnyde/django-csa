@@ -20,15 +20,17 @@
 
     <script type="text/javascript">
         function defaultSuccessCallback(result) {
-            if(!jQuery.isEmptyObject(result)) {
-                $('#flash-message').fadeIn();
+            if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success')) {
+                $('.modal-alert').html(result.message);
+                $('.modal-alert').fadeIn();
+
                 if(result.success == 1) {
-                    $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+                    $('.modal-alert').addClass('alert alert-success');
                     getZones();
-                    setTimeout("$('.modal.in').modal('hide')",2000);
+                    setTimeout("$('.modal.in').modal('hide')",500);
                 }
                 else {
-                    $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+                    $('.modal-alert').addClass('alert alert-danger');
                     if(result.hasOwnProperty('errors')) {
                         $.each(result.errors, function(k,v) {
                             $("#id_"+k).parents('div').addClass("has-error");
@@ -36,11 +38,12 @@
                         });
                     }
                 }
-                setTimeout("$('#flash-message').fadeOut()",2000);
+
+                setTimeout("$('.modal-alert').fadeOut()",2000);
+                $('.modal-alert').removeClass().addClass('modal-alert');
             }
         }
 
-        // Makes AJAX call to supplied resource with supplied data
         function sendPost(url, data, onsuccess, onerror) {
             $.ajax({
                 url: url,
@@ -51,13 +54,12 @@
             });
         }
 
-        // Retrieve listing of DNS zones belonging to account
         function getZones() {
             $("#dns-zones-table").dataTable().fnDestroy();
             $("#zones-tbody").html("");
 
             function successCallback(result) {
-                if(!jQuery.isEmptyObject(result)) {
+                if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success') && result.hasOwnProperty('data')) {
                     if(result.success == 1) {
                         for(x in result.data.zones) {
                             $("#zones-tbody").append(' \
@@ -71,10 +73,16 @@
                             );
                         }
 
-                        $("#dns-zones-table").dataTable({"aoColumnDefs": [], "aaSorting": [[0, 'asc']]});
+                        $("#dns-zones-table").dataTable({
+                                    "aaSorting": [[0, 'asc']],
+                                    "aoColumnDefs": [
+                                        {'bSortable': false, 'aTargets': [1]},
+                                        {'bSearchable': false, 'aTargets': [1]}
+                                    ]
+                                });
                     }
                     else {
-                        $("#zones-tbody").html("<tr><td colspan=2>There was an error retrieving DNS zones.</td></tr>");
+                        $("#zones-tbody").html("<tr class='has-error'><td colspan=2><em>"+result.message+"</em></td></tr>");
                     }
                 }
             }
@@ -92,17 +100,30 @@
 {% block jquery_document_ready %}
     getZones();
 
-    // DNS Zones event bindings
-    $('#zones-tbody')
-        .on('click', 'a.del-domain', function (e) {
+    $(document)
+        .on('click', 'a.show-set-domain-modal', function (e) {
             e.preventDefault();
-            $("#dns-del-record-form #zone").val($(this).closest('tr').data('domain'));
-            $("#del-dom-modal").modal('show');
+            showAddRecordForm();
+        })
+        .on('click', 'a.del-domain-form-submit', function (e) {
+            e.preventDefault();
+            sendPost("{% url 'dns:deletezone' service_id %}", $("#dns-del-record-form").serialize(), defaultSuccessCallback, defaultErrorCallback);
+        })
+        .on('click', 'a.set-domain-form-submit', function (e) {
+            e.preventDefault();
+            sendPost("{% url 'dns:createzone' service_id %}", $("#dns-add-zone-form").serialize(), defaultSuccessCallback, defaultErrorCallback);
+        })
+        .on('click', 'a.del-domain', function (e) {
+            if($(this).closest('tr').data('domain')) {
+                e.preventDefault();
+                $("#dns-del-record-form #zone").val($(this).closest('tr').data('domain'));
+                $("#del-dom-modal").modal('show');
+            }
         })
         .on('click', 'a.edit-domain', function (e) {
             e.preventDefault();
             window.location = "{%url 'dns:index' service_id %}detail/"+$(this).closest('tr').data('domain');
-        })
+        });
 {% endblock %}
 
 {% block content %}
@@ -113,16 +134,15 @@
         <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>Domains</h3></div>
         <div class="col-md-6 text-right">
             <div class="btn-group">
-                <a onclick="showAddRecordForm()" role="button" class="badge" data-toggle="modal">Add Domain <i class="fa fa-plus"></i></a>
+                <a role="button" class="badge show-set-domain-modal" data-toggle="modal" alt="Create Domain">Add Domain <i class="fa fa-plus"></i></a>
             </div>
         </div>
     </div>
     <!-- END CONTENT HEADER -->
 
     <!-- BEGIN DNS ZONES CONTAINER -->
-    <div class="row">
         <!-- BEGIN ZONES TABLE -->
-        <table class="table table-striped table-bordered table-hover col-md-12" id="dns-zones-table">
+        <table class="table table-hover" id="dns-zones-table">
             <thead class="row">
                 <tr>
                     <th class="col-md-10">Domain</th>
@@ -132,7 +152,6 @@
             <tbody id="zones-tbody"></tbody>
         </table>
         <!-- END ZONES TABLE -->
-    </div>
     <!-- END DNS ZONES CONTAINER -->
 
     <!-- BEGIN ADD DOMAIN MODAL -->
@@ -141,44 +160,42 @@
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <h3 id="mlabel">Add Domain</h3>
+                    <h3>Add Domain</h3>
                 </div>
                 <!-- END MODAL HEADER -->
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
-                    <div id="flash-message"></div>
-                    <div id="mbody" class="well">
-                        <!-- BEGIN ADD ZONE FORM -->
-                        <form class="form" role="form" id="dns-add-zone-form">
-                            <table class="table table-bordered table-hover" id="add-dns-zone-table">
-                                <tr class="form-group">
-                                    <td><label class="control-label">Domain</label></td>
-                                    <td>
-                                        <div class="controls">
-                                            <input type="text" name="domain" id="id_domain" class="form-control" />
-                                            <span id="domain-help" class="help-block"></span>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr class="form-group">
-                                    <td><label class="control-label">IP Address</label></td>
-                                    <td>
-                                        <div class="controls">
-                                            <input type="text" name="ip" id="id_ip" class="form-control" />
-                                            <span id="ip-help" class="help-block"></span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </table>
-                        </form>
-                        <!-- END ADD ZONE FORM -->
-                    </div>
+                    <div class="modal-alert"></div>
+                    <!-- BEGIN ADD ZONE FORM -->
+                    <form class="form" role="form" id="dns-add-zone-form">
+                        <table class="table table-hover" id="add-dns-zone-table">
+                            <tr class="form-group">
+                                <td><label class="control-label">Domain</label></td>
+                                <td>
+                                    <div class="controls">
+                                        <input type="text" name="domain" id="id_domain" class="form-control" />
+                                        <span id="domain-help" class="help-block"></span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="form-group">
+                                <td><label class="control-label">IP Address</label></td>
+                                <td>
+                                    <div class="controls">
+                                        <input type="text" name="ip" id="id_ip" class="form-control" />
+                                        <span id="ip-help" class="help-block"></span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                    </form>
+                    <!-- END ADD ZONE FORM -->
                 </div>
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
-                <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="msave" class="btn btn-primary" onclick='sendPost("{% url 'dns:createzone' service_id %}", $("#dns-add-zone-form").serialize(), defaultSuccessCallback, defaultErrorCallback)'>Ok</button>
+                <div class="modal-footer">
+                    <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-primary set-domain-form-submit">Ok</a>
                 </div>
                 <!-- END MODAL FOOTER -->
             </div>
@@ -192,24 +209,22 @@
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <h3 id="mlabel">Delete Domain</h3>
+                    <h3>Delete Domain</h3>
                 </div>
                 <!-- END MODAL HEADER -->
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
-                    <div id="flash-message"></div>
-                    <div id="mbody" class="well">
-                        <span>Are you sure you want to delete the domain?</span>
-                        <form id="dns-del-record-form">
-                            <input type="hidden" name="zone" id="zone" value="" />
-                        </form>
-                    </div>
+                    <div class="modal-alert"></div>
+                    <span>Are you sure you want to delete the domain?</span>
+                    <form id="dns-del-record-form" role="form" class="form">
+                        <input type="hidden" name="zone" id="zone" value="0" />
+                    </form>
                 </div>
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
                 <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="msave" class="btn btn-primary" onclick='sendPost("{% url 'dns:deletezone' service_id %}", $("#dns-del-record-form").serialize(), defaultSuccessCallback, defaultErrorCallback)'>Ok</button>
+                    <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-primary del-domain-form-submit">Ok</a>
                 </div>
                 <!-- END MODAL FOOTER -->
             </div>

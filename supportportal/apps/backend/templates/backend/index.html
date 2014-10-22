@@ -39,6 +39,7 @@
           }
 
           setTimeout("$('.modal-alert').fadeOut()",2000);
+          $('.modal-alert').removeClass().addClass('modal-alert');
         }
       }
 
@@ -67,6 +68,7 @@
           }
 
           setTimeout("$('.modal-alert').fadeOut()",2000);
+          $('.modal-alert').removeClass().addClass('modal-alert');
         }
       }
 
@@ -301,7 +303,7 @@
                   <div class="modal-alert"></div>
                   <!-- BEGIN ANNOUNCEMENTS FORM -->
                   <form role="form" class="form form-vertical" id="set-announcements-form">
-                    <input type="hidden" name="announcement_id" id="announcement_id" value="" />
+                    <input type="hidden" name="announcement_id" id="announcement_id" value="0" />
                     <table class="table table-hover" id="announcement-form-table">
                       {% for field in announcementform %}
                         <tr class="form-group">
@@ -346,7 +348,7 @@
                   <span>Are you sure you want to delete the specified announcement?</span>
                   <!-- BEGIN ANNOUNCEMENTS FORM -->
                   <form role="form" class="form" id="del-announcements-form">
-                    <input type="hidden" name="announcement_id" id="announcement_id" value="" />
+                    <input type="hidden" name="announcement_id" id="announcement_id" value="0" />
                   </form>
                   <!-- END ANNOUNCEMENTS FORM -->
               </div>

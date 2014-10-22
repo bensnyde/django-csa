@@ -22,15 +22,17 @@
 		var accounts = [];	// Local storage for retrieve FTP accounts
 
         function defaultSuccessCallback(result) {
-            if(!jQuery.isEmptyObject(result)) {
-                $('#flash-message').fadeIn();
+            if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success')) {
+                $('.modal-alert').html(result.message);
+                $('.modal-alert').fadeIn();
+
                 if(result.success == 1) {
-                    $('#flash-message').html('<div class="alert alert-success">'+result.message+'</div>');
+                    $('.modal-alert').addClass('alert alert-success');
                     getAccounts();
-                    setTimeout("$('.modal.in').modal('hide')",2000);
+                    setTimeout("$('.modal.in').modal('hide')",500);
                 }
                 else {
-                    $('#flash-message').html('<div class="alert alert-danger">'+result.message+'</div>');
+                    $('.modal-alert').addClass('alert alert-danger');
                     if(result.hasOwnProperty('errors')) {
                         $.each(result.errors, function(k,v) {
                             $("#id_"+k).parents('tr').addClass("has-error");
@@ -38,18 +40,20 @@
                         });
                     }
                 }
+
+                setTimeout("$('.modal-alert').fadeOut()",2000);
+                $('.modal-alert').removeClass().addClass('modal-alert');
             }
         }
 
-        // Retrieve active FTP sessions
 		function getSessions() {
 			$("#ftp-sessions-tbody").html("");
 
 			function onSuccessCallback(result) {
-				if(!jQuery.isEmptyObject(result)) {
+				if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success') && result.hasOwnProperty('data')) {
 					if(result.success == 1) {
 						if(result.data.sessions.length == 0) {
-							$("#ftp-sessions-tbody").html('<tr><td colspan=7>No active sessions.</td></tr>');
+							$("#ftp-sessions-tbody").html('<tr><td colspan=7><em>No active sessions.</em></td></tr>');
 						}
 						else {
 							for(session in result.data.sessions) {
@@ -76,13 +80,12 @@
             });
 		}
 
-		// Retrieve FTP accounts
 		function getAccounts() {
 			$("#ftp-accounts-table").dataTable().fnDestroy();
 			$("#ftp-accounts-tbody").html("");
 
 			function onSuccessCallback(result) {
-				if(!jQuery.isEmptyObject(result)) {
+				if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('message') && result.hasOwnProperty('success') && result.hasOwnProperty('data')) {
 					if(result.success == 1) {
 						accounts = result.data.accounts;   // Save accounts for as local variable for showAcctDetails()
 						for(account in result.data.accounts) {
@@ -99,12 +102,12 @@
 
 							$("#ftp-accounts-tbody").append(' \
 								<tr data-account="'+ result.data.accounts[account].login + '"> \
-									<td><a class="acctdetail-modal" role="button" data-toggle="modal">'+ result.data.accounts[account].login + '</a></td> \
+									<td><a class="acctdetail-modal" role="button" data-toggle="modal" alt="Account Details">'+ result.data.accounts[account].login + '</a></td> \
 									<td>'+ result.data.accounts[account].accttype + '</td> \
 									<td>'+ result.data.accounts[account].dir + '</td> \
 									<td>'+ result.data.accounts[account].diskquota + '</td> \
 									<td>'+ result.data.accounts[account].humandiskused + '</td> \
-									<td style="text-align: center">'+ rowctrl + '</td> \
+									<td class="text-center">'+ rowctrl + '</td> \
 								</tr>'
 							);
 						}
@@ -122,7 +125,6 @@
             });
 		}
 
-		// Function to build Account Details modal from previously retrieved FTP Accounts
 		function showAcctDetails(account) {
 			var output = "Account not found.";
 			$.each(accounts, function( key, value ) {
@@ -153,7 +155,6 @@
 			$("#account-details-modal").modal('show');
 		}
 
-		// Makes AJAX call to supplied resource with supplied data
 		function sendPost(url, data) {
 			$.ajax({
                 url: url,
@@ -175,26 +176,55 @@
 	getAccounts();
 	getSessions();
 
-    // FTP Accounts event bindings
+    $(document)
+        .on('click', 'a.show-set-account-modal', function (e) {
+            e.preventDefault();
+            showAddAccountModal();
+        })
+        .on('click', 'a.set-account-form-submit', function (e) {
+            e.preventDefault();
+            sendPost("{% url 'ftp:addacct' service_id %}", $("#add-account-form").serialize());
+        })
+        .on('click', 'a.delete-account-form-submit', function (e) {
+            e.preventDefault();
+            sendPost("{% url 'ftp:delacct' service_id %}", $("#del-account-form").serialize());
+        })
+        .on('click', 'a.set-quota-form-submit', function (e) {
+            e.preventDefault();
+            sendPost("{% url 'ftp:setquota' service_id %}", $("#set-quota-form").serialize());
+        })
+        .on('click', 'a.chpw-form-submit', function (e) {
+            e.preventDefault();
+            sendPost("{% url 'ftp:chpw' service_id %}", $("#chpw-form").serialize());
+        });
+
     $('#ftp-accounts-tbody')
     	.on('click', 'a.chpw-modal', function (e) {
-        	e.preventDefault();
-	        $("#chpw-form #username").val($(this).closest('tr').data('account'));
-	        $("#chpw-modal").modal('show');
+    		if($(this).closest('tr').data('account')) {
+	        	e.preventDefault();
+		        $("#chpw-form #username").val($(this).closest('tr').data('account'));
+		        $("#chpw-modal").modal('show');
+	        }
     	})
     	.on('click', 'a.quota-modal', function (e) {
-	        e.preventDefault();
-	        $("#set-quota-form #username").val($(this).closest('tr').data('account'));
-	        $("#set-quota-modal").modal('show');
+    		if($(this).closest('tr').data('account')) {
+		        e.preventDefault();
+		        $("#set-quota-form #username").val($(this).closest('tr').data('account'));
+		        $("#set-quota-modal").modal('show');
+		    }
     	})
 		.on('click', 'a.del-modal', function (e) {
-	        e.preventDefault();
-	        $("#del-account-form #username").val($(this).closest('tr').data('account'));
-	        $("#del-account-modal").modal('show');
+			if($(this).closest('tr').data('account')) {
+		        e.preventDefault();
+		        $("#del-account-form #username").val($(this).closest('tr').data('account'));
+		        $("#del-account-modal").modal('show');
+	        }
     	})
     	.on('click', 'a.acctdetail-modal', function (e) {
-	        e.preventDefault();
-	        showAcctDetails($(this).closest('tr').data('account'));
+    		if($(this).closest('tr').data('account')) {
+	        	e.preventDefault();
+	        	showAcctDetails($(this).closest('tr').data('account'));
+	        }
     	});
 {% endblock %}
 
@@ -206,16 +236,15 @@
         <div class="col-md-6"><i class="fa fa-edit"></i>&nbsp;<h3>FTP Accounts</h3></div>
         <div class="col-md-6 text-right">
             <div class="btn-group">
-                <a onclick="showAddAccountModal()" role="button" class="badge" data-toggle="modal">Add Account <i class="fa fa-plus"></i></a>
+                <a role="button" class="badge show-set-account-modal" data-toggle="modal" alt="Create Account">Add Account <i class="fa fa-plus"></i></a>
             </div>
         </div>
     </div>
     <!-- END CONTENT HEADER -->
 
     <!-- BEGIN FTP ACCOUNTS CONTAINER -->
-    <div class="row">
 		<!-- BEGIN FTP ACCOUNTS TABLE -->
-		<table class="table table-striped table-bordered table-hover col-md-12" id="ftp-accounts-table">
+		<table class="table table-hover" id="ftp-accounts-table">
 			<thead class="row">
 				<tr>
 					<th class="col-md-2">User</th>
@@ -229,7 +258,6 @@
 			<tbody id="ftp-accounts-tbody"></tbody>
 		</table>
 		<!-- END FTP ACCOUNTS TABLE -->
-	</div>
 	<!-- END FTP ACCOUNTS CONTAINER -->
 
     <!-- BEGIN CONTENT HEADER -->
@@ -239,22 +267,20 @@
     <!-- END CONTENT HEADER -->
 
     <!-- BEGIN FTP SESSIONS CONTAINER -->
-    <div class="row">
 		<!-- BEGIN FTP SESSIONS TABLE -->
-		<table class="table table-striped table-bordered table-hover" id="ftp-sessions-table">
-			<thead>
+		<table class="table table-hover" id="ftp-sessions-table">
+			<thead class="row">
 				<tr>
-					<th>User</th>
-					<th>File</th>
-					<th>Login</th>
-					<th>Host</th>
-					<th>Status</th>
+					<th class="col-md-3">User</th>
+					<th class="col-md-3">File</th>
+					<th class="col-md-2">Login</th>
+					<th class="col-md-2">Host</th>
+					<th class="col-md-2">Status</th>
 				</tr>
 			</thead>
 			<tbody id="ftp-sessions-tbody"></tbody>
 		</table>
 		<!-- END FTP SESSIONS TABLE -->
-	</div>
 	<!-- END FTP SESSIONS CONTAINER -->
 
     <!-- BEGIN ACCOUNT DETAILS MODAL -->
@@ -263,19 +289,18 @@
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <h3 id="mlabel">Account Details</h3>
+                    <h3>Account Details</h3>
                 </div>
                 <!-- END MODAL HEADER -->
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
-                    <div id="flash-message"></div>
-                    <div id="mbody" class="well"></div>
+                    <div class="modal-alert"></div>
                 </div>
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
-                <div class="modal-footer" id="modalfooter">
+                <div class="modal-footer">
                     <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="msave" class="btn btn-primary" data-dismiss="modal">Ok</button>
+                    <button class="btn btn-primary" data-dismiss="modal">Ok</button>
                 </div>
                 <!-- END MODAL FOOTER -->
             </div>
@@ -289,46 +314,44 @@
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <h3 id="mlabel">Add Account</h3>
+                    <h3>Add Account</h3>
                 </div>
                 <!-- END MODAL HEADER -->
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
-                    <div id="flash-message"></div>
-                    <div id="mbody" class="well">
-                    	<!-- BEGIN ADD ACCOUNT FORM -->
-						<form id="add-account-form" role="form" class="form">
-							<table class="table table-striped table-bordered table-hover" id="add-ftp-form-table">
-								<tr class="form-group">
-									<td><label class="control-label" for="username">Username: </label></td>
-									<td><input type="text" name="username" id="id_username" class="form-control" /><span id="username-help" class="help-block"></span></td>
-								</tr>
-								<tr class="form-group">
-									<td><label class="control-label" for="password">Password: </label></td>
-									<td><input type="password" name="password" id="id_password" class="form-control" /><span id="password-help" class="help-block"></span></td>
-								</tr>
-								<tr class="form-group">
-									<td><label class="control-label" for="password_confirm">Confirm Password: </label></td>
-									<td><input type="password" class="form-control" name="password_confirm" id="id_password_confirm" /><span id="password_confirm-help" class="help-block"></span></td>
-								</tr>
-								<tr class="form-group">
-									<td><label class="control-label" for="quota">Quota: </label></td>
-									<td><input type="text" name="quota" class="form-control" value="0" id="id_quota" /><span id="quota-help" class="help-block"></span></td>
-								</tr>
-								<tr class="form-group">
-									<td><label class="control-label" for="homedir">Homedir: </label></td>
-									<td><input type="text" class="form-control" name="homedir" id="id_homedir" /><span id="homedir-help" class="help-block"></span></td>
-								</tr>
-							</table>
-						</form>
-						<!-- END ADD ACCOUNT FORM -->
-                    </div>
+                    <div class="modal-alert"></div>
+                	<!-- BEGIN ADD ACCOUNT FORM -->
+					<form id="add-account-form" role="form" class="form form-vertical">
+						<table class="table table-hover" id="add-ftp-form-table">
+							<tr class="form-group">
+								<td><label class="control-label" for="username">Username: </label></td>
+								<td><input type="text" name="username" id="id_username" class="form-control" /><span id="username-help" class="help-block"></span></td>
+							</tr>
+							<tr class="form-group">
+								<td><label class="control-label" for="password">Password: </label></td>
+								<td><input type="password" name="password" id="id_password" class="form-control" /><span id="password-help" class="help-block"></span></td>
+							</tr>
+							<tr class="form-group">
+								<td><label class="control-label" for="password_confirm">Confirm Password: </label></td>
+								<td><input type="password" class="form-control" name="password_confirm" id="id_password_confirm" /><span id="password_confirm-help" class="help-block"></span></td>
+							</tr>
+							<tr class="form-group">
+								<td><label class="control-label" for="quota">Quota: </label></td>
+								<td><input type="text" name="quota" class="form-control" value="0" id="id_quota" /><span id="quota-help" class="help-block"></span></td>
+							</tr>
+							<tr class="form-group">
+								<td><label class="control-label" for="homedir">Homedir: </label></td>
+								<td><input type="text" class="form-control" name="homedir" id="id_homedir" /><span id="homedir-help" class="help-block"></span></td>
+							</tr>
+						</table>
+					</form>
+					<!-- END ADD ACCOUNT FORM -->
                 </div>
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
-                <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="msave" class="btn btn-primary" onclick='sendPost("{% url 'ftp:addacct' service_id %}", $("#add-account-form").serialize())'>Ok</button>
+                <div class="modal-footer">
+                    <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-primary set-account-form-submit">Ok</a>
                 </div>
                 <!-- END MODAL FOOTER -->
             </div>
@@ -342,25 +365,23 @@
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <h3 id="mlabel">Delete Account</h3>
+                    <h3>Delete Account</h3>
                 </div>
                 <!-- END MODAL HEADER -->
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
-                    <div id="flash-message"></div>
-                    <div id="mbody" class="well">
-                    	<span>Are you sure you want to delete this account?</span>
-                    	<form id="del-account-form">
-                    		<input type="hidden" name="username" id="username" value="" />
-                    		<input type="hidden" name="destroy" value=0 />
-                    	</form>
-                    </div>
+                    <div class="modal-alert"></div>
+                	<span>Are you sure you want to delete this account?</span>
+                	<form id="del-account-form" role="form" class="form">
+                		<input type="hidden" name="username" id="username" value="0" />
+                		<input type="hidden" name="destroy" value="0" />
+                	</form>
                 </div>
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
-                <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="msave" class="btn btn-primary" onclick='sendPost("{% url 'ftp:delacct' service_id %}", $("#del-account-form").serialize())'>Ok</button>
+                <div class="modal-footer">
+                    <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-primary delete-account-form-submit">Ok</a>
                 </div>
                 <!-- END MODAL FOOTER -->
             </div>
@@ -374,31 +395,29 @@
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <h3 id="mlabel">Set Quota</h3>
+                    <h3>Set Quota</h3>
                 </div>
                 <!-- END MODAL HEADER -->
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
-                    <div id="flash-message"></div>
-                    <div id="mbody" class="well">
-                    	<!-- BEGIN SET QUOTA FORM -->
-						<form id="set-quota-form" role="form" class="form">
-							<input type="hidden" id="username" name="username" value="" />
-							<table class="table table-striped table-bordered table-hover" id="chpw-form-table">
-								<tr class="form-group">
-									<td><label class="control-label" for="quota">Set Quota (Mb): </label></td>
-									<td><input type="text" name="quota" id="id_quota" value="0" class="form-control" /><span id="quota-help" class="help-block">Use 0 for unlimited.</span></td>
-								</tr>
-							</table>
-						</form>
-						<!-- END SET QUOTA FORM -->
-                    </div>
+                    <div class="modal-alert"></div>
+                	<!-- BEGIN SET QUOTA FORM -->
+					<form id="set-quota-form" role="form" class="form form-vertical">
+						<input type="hidden" id="username" name="username" value="0" />
+						<table class="table table-hover" id="chpw-form-table">
+							<tr class="form-group">
+								<td><label class="control-label" for="quota">Set Quota (Mb): </label></td>
+								<td><input type="text" name="quota" id="id_quota" value="0" class="form-control" /><span id="quota-help" class="help-block">Use 0 for unlimited.</span></td>
+							</tr>
+						</table>
+					</form>
+					<!-- END SET QUOTA FORM -->
                 </div>
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
-                <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="msave" class="btn btn-primary" onclick='sendPost("{% url 'ftp:setquota' service_id %}", $("#set-quota-form").serialize())'>Ok</button>
+                <div class="modal-footer">
+                    <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-primary set-quota-form-submit">Ok</a>
                 </div>
                 <!-- END MODAL FOOTER -->
             </div>
@@ -412,35 +431,33 @@
             <div class="modal-content">
                 <!-- BEGIN MODAL HEADER -->
                 <div class="modal-header">
-                    <h3 id="mlabel">Change Password</h3>
+                    <h3>Change Password</h3>
                 </div>
                 <!-- END MODAL HEADER -->
                 <!-- BEGIN MODAL BODY -->
                 <div class="modal-body">
-                    <div id="flash-message"></div>
-                    <div id="mbody" class="well">
-                    	<!-- BEGIN CHPW FORM -->
-						<form id="chpw-form" role="form" class="form">
-							<input type="hidden" name="username" value="" id="username" />
-							<table class="table table-striped table-bordered table-hover" id="chpw-form-table">
-								<tr class="form-group">
-									<td><label class="control-label" for="password">Password: </label></td>
-									<td><input type="password" name="password" id="id_password" class="form-control" /><span id="password-help" class="help-block"></span></td>
-								</tr>
-								<tr class="form-group">
-									<td><label class="control-label" for="password_confirm">Confirm Password: </label></td>
-									<td><input type="password" name="password_confirm" id="id_password_confirm" class="form-control" /><span id="password_confirm-help" class="help-block"></span></td>
-								</tr>
-							</table>
-						</form>
-						<!-- END CHPW FORM -->
-                    </div>
+                    <div class="modal-alert"></div>
+                	<!-- BEGIN CHPW FORM -->
+					<form id="chpw-form" role="form" class="form form-vertical">
+						<input type="hidden" name="username" value="0" id="username" />
+						<table class="table table-hover" id="chpw-form-table">
+							<tr class="form-group">
+								<td><label class="control-label" for="password">Password: </label></td>
+								<td><input type="password" name="password" id="id_password" class="form-control" /><span id="password-help" class="help-block"></span></td>
+							</tr>
+							<tr class="form-group">
+								<td><label class="control-label" for="password_confirm">Confirm Password: </label></td>
+								<td><input type="password" name="password_confirm" id="id_password_confirm" class="form-control" /><span id="password_confirm-help" class="help-block"></span></td>
+							</tr>
+						</table>
+					</form>
+					<!-- END CHPW FORM -->
                 </div>
                 <!-- END MODAL BODY -->
                 <!-- BEGIN MODAL FOOTER -->
-                <div class="modal-footer" id="modalfooter">
-                    <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="msave" class="btn btn-primary" onclick='sendPost("{% url 'ftp:chpw' service_id %}", $("#chpw-form").serialize())'>Ok</button>
+                <div class="modal-footer">
+                    <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-primary chpw-form-submit">Ok</a>
                 </div>
                 <!-- END MODAL FOOTER -->
             </div>

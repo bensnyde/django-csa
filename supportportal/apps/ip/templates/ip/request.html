@@ -4,14 +4,16 @@
 {% block heading %}Services <small>IP Space</small>{% endblock %}
 
 {% block breadcrumbs %}
-    <li>Request IP Space</li>
+    <li><a href="{% url 'ip:index' %}">IP Space</a></li>
+    <li>Request Allocation</li>
 {% endblock %}
 
 {% block js %}
     <script type="text/javascript">
-        function sendRequest() {
+        function submitIPRequest() {
             var data = {
                 'contacts': [{{ request.uesr.id }}],
+                'queue': 1,
                 'attachment': null,
                 'description': 'IP Allocation Request',
                 'contents': ' \
@@ -22,9 +24,9 @@
             }
 
             function onSuccessCallback(result) {
-                if(!jQuery.isEmptyObject(result)) {
+                if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
                     if(result.success == 1) {
-                        window.location = "{% url 'tickets:index' %}"+result.data.ticket_id;
+                        window.location = "{% url 'tickets:detail' 0 %}".replace(0, result.data.ticket_id);
                     }
                 }
                 else {
@@ -41,6 +43,14 @@
             });
         }
     </script>
+{% endblock %}
+
+{% block jquery_document_ready %}
+    $(document)
+        .on('click', 'a.request-ip-form-submit', function (e) {
+            e.preventDefault();
+            submitIPRequest();
+        });
 {% endblock %}
 
 {% block content %}
@@ -62,7 +72,7 @@
         </div><br />
 
         <!-- BEGIN IP REQUEST FORM -->
-        <form role="form" class="form" id="ipreq-form">
+        <form role="form" class="form form-vertical" id="ipreq-form">
             <div class="form-group">
                 <label for="ipreq_cidr" class="control-label col-md-3">CIDR</label>
                 <div class="controls col-md-9">
@@ -97,7 +107,7 @@
 
             <div class="form-actions">
                 <div class="col-md-offset-3 col-md-9">
-                    <button class="btn blue" id="ipreq_submit" onclick="sendRequest()"> Request Space <i class="icon-plus"></i></button>
+                    <a role="button" class="btn btn-primary request-ip-form-submit">Request Space&nbsp;<i class="icon-plus"></i></a>
                 </div>
             </div>
         </form>

@@ -6,7 +6,7 @@ from django.shortcuts import render
 def index(request):
     """Contact Base View
 
-        Displays contact information and form.
+        Displays contact information.
 
     Middleware
         See SETTINGS for active Middleware.
@@ -17,6 +17,5 @@ def index(request):
         request: HttpRequest
     Returns
         HttpResponse (contact/index.html)
-            contact_form: Form contact form
     """
     return render(request, 'contact/index.html')

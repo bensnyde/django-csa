@@ -1,13 +1,9 @@
 from django.conf.urls import patterns, include, url
 from django.conf import settings
-from django.contrib import admin
-
-admin.autodiscover()
 
 urlpatterns = patterns('',
      # General
      url(r'^$', 'apps.dashboard.views.index', name='dashboard'),
-     url(r'^admin/', include(admin.site.urls)),
      url(r'^search/', include('apps.search.urls', namespace="search")),
      # Support
      url(r'^support/tickets/', include('apps.support.tickets.urls', namespace="tickets")),
@@ -32,6 +28,8 @@ urlpatterns = patterns('',
      # Backend
      url(r'^root/', include('apps.backend.urls', namespace="backend")),
      url(r'^announcements/', include('apps.announcements.urls', namespace="announcements")),
+     url(r'^reports/', include('apps.reports.urls', namespace="reports")),
+     url(r'^affiliates/', include('apps.affiliates.urls', namespace="affiliates")),
 )
 
 if settings.DEBUG:

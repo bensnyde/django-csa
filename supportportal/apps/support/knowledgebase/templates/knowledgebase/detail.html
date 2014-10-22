@@ -10,6 +10,7 @@
 
 {% block js %}
 	<script type="text/javascript">
+		// Fetches Knowledgebase Articlediv
 		function getArticle() {
 			$("#article-stats").html("");
 
@@ -18,23 +19,41 @@
 					if(result.success == 1) {
 						$("#article-title").html(result.data.article.title);
 						$("#article-content").html(result.data.article.contents);
-						$("#breadcrumbs").append('<li><a href="{% url 'knowledgebase:index' %}">'+result.data.article.category+'</a></li>')
+						$("#breadcrumbs").append('<li><a href="'+"{% url 'knowledgebase:index' 0 %}".replace(0, result.data.article.category_id)+'">'+result.data.article.category+'</a></li>')
 						$("#breadcrumbs").append('<li>'+result.data.article.title+'</li>')
 
 						var tags = "";
-						for(x in result.data.article.tags) {
-							tags += '<li><a href="#"><i class="fa fa-tags"></i> '+result.data.article.tags[x].title+'</a></li>';
+						if(result.data.article.tags.length) {
+							for(x in result.data.article.tags) {
+								tags += '<li><a href="'+"{% url 'knowledgebase:index' 0 9 %}".replace(9, result.data.article.tags[x].id)+'">'+result.data.article.tags[x].title+'</a></li>';
+							}
 						}
 
 						$("#article-stats").append(' \
-							<dt>Author</dt><dd>'+result.data.article.author+'</dd> \
-							<dt>Category</dt><dd>'+result.data.article.category+'</dd> \
-							<dt>Created</dt><dd>'+result.data.article.created+'</dd> \
-							<dt>Update</dt><dd>'+result.data.article.modified+'</dd> \
-							<dt>Tags</dt> \
-							<dd> \
-								<ul class="list-unstyled">'+tags+'</ul> \
-							</dd>'
+							<div class="row"> \
+								<label class="col-md-4">Author</label> \
+								<span class="col-md-8">'+result.data.article.author+'</span> \
+							</div> \
+							<div class="row"> \
+								<label class="col-md-4">Category</label> \
+								<span class="col-md-8"> \
+									<a href="'+"{% url 'knowledgebase:index' 0 %}".replace(0, result.data.article.category_id)+'">'+result.data.article.category+'</a> \
+								</span> \
+							</div> \
+							<div class="row"> \
+								<label class="col-md-4">Created</label> \
+								<span class="col-md-8">'+result.data.article.created+'</span> \
+							</div> \
+							<div class="row"> \
+								<label class="col-md-4">Update</label> \
+								<span class="col-md-8">'+result.data.article.modified+'</span> \
+							</div> \
+							<div class="row"> \
+								<label class="col-md-4">Tags</label> \
+								<span class="col-md-8"> \
+									<ul class="list-inline">'+tags+'</ul> \
+								</span> \
+							</div>'
 						);
 					}
 					else {
@@ -76,7 +95,7 @@
 		<!-- BEGIN RIGHT COLUMN -->
 		<div class="col-md-4">
 			<!-- BEGIN ARTICLE STATS -->
-			<dl id="article-stats"></dl>
+			<div id="article-stats" class="well row"></div>
 			<!-- END ARTICLE STATS -->
 		</div>
 		<!-- END RIGHT COLUMN -->

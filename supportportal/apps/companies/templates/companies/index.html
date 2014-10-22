@@ -40,7 +40,7 @@
                         $("#companies-index-table").dataTable({"aoColumnDefs": [],"aaSorting": [[0, 'asc']]});
                     }
                     else {
-                      $("#companies-index-tbody").html("<tr><td colspan=4>"+result.message+"</td></tr>");
+                      $("#companies-index-tbody").html("<tr class='has-error'><td colspan=4><em>"+result.message+"</em></td></tr>");
                     }
                 }
             }
@@ -57,7 +57,7 @@
           function onSuccessCallback(result) {
               if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message')) {
                   $('.modal-alert').html(result.message);
-                  ('.modal-alert').fadeIn();
+                  $('.modal-alert').fadeIn();
 
                   if(result.success == 1) {
                     $('.modal-alert').addClass('alert alert-success');
@@ -75,6 +75,7 @@
                   }
 
                   setTimeout("$('.modal-alert').fadeOut()",2000);
+                  $('.modal-alert').removeClass().addClass('modal-alert');
               }
           }
 
@@ -122,8 +123,8 @@
         <div class="col-md-6"><h3>Companies</h3></div>
         <div class="col-md-6 text-right">
             <div class="btn-group">
-                <a href="#" role="button" class="refresh-companies"><i class="fa fa-refresh"></i></a>
-                <a href="#" role="button" class="show-create-company-modal" data-toggle="modal"><i class="fa fa-plus"></i></a>
+                <a href="#" role="button" class="refresh-companies" alt="Refresh Companies"><i class="fa fa-refresh"></i></a>
+                <a href="#" role="button" class="show-create-company-modal" data-toggle="modal" alt="Create Company"><i class="fa fa-plus"></i></a>
             </div>
         </div>
     </div>
@@ -176,8 +177,8 @@
                     <!-- END MODAL BODY -->
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button class="btn btn-primary set-company-form-submit">Ok</button>
+                    <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-primary set-company-form-submit">Ok</a>
                 </div>
             </div>
         </div>

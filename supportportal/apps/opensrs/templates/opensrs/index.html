@@ -14,19 +14,19 @@
             var url = "{% url 'domain:price' %}";
             var data = {'domain': $("#domainname").val()}
 
-            $.post(url, data, function(result) { 
+            $.post(url, data, function(result) {
                 if(!jQuery.isEmptyObject(result)) {
-                    if(result.is_success == 1) 
+                    if(result.is_success == 1)
                         $("#dom-price").html("$"+result.attributes.price);
                 }
-            });    
-        }    
-            
+            });
+        }
+
         function suggestNames() {
             var url = "{% url 'domain:suggest' %}";
             var data = {'domain': $("#domainname").val()}
 
-            $.post(url, data, function(result) { 
+            $.post(url, data, function(result) {
                 if(!jQuery.isEmptyObject(result)) {
                     if(result.is_success == 1) {
                         // taken domains
@@ -39,52 +39,52 @@
                             }
                             $("#dom-available").append(outp);
                         }
-                            
+
 
                         // available domains
                         for(x in result.attributes.suggestion.items)
-                            $("#dom-suggested").append(result.attributes.suggestion.items[x].domain+'&nbsp;<a href="#mmodal" role="button" data-toggle="modal">Register</a><br />');    
+                            $("#dom-suggested").append(result.attributes.suggestion.items[x].domain+'&nbsp;<a href="#mmodal" role="button" data-toggle="modal">Register</a><br />');
                     }
                 }
-            });    
-        }        
+            });
+        }
 
         function checkTransfer() {
             var url = "{% url 'domain:transfer' %}";
             var data = {'domain': $("#domainname").val()}
 
-            $.post(url, data, function(result) { 
+            $.post(url, data, function(result) {
                 if(!jQuery.isEmptyObject(result)) {
                     if(result.is_success == 1) {
                         $("#dom-xfer").html(result.attributes.transferrable)
                         $("#dom-xfer-msg").html(result.attributes.reason);
                     }
                 }
-            });    
-        }            
+            });
+        }
 
         function getBalance() {
             var url = "{% url 'domain:balance' %}";
 
-            $.post(url, {}, function(result) { 
+            $.post(url, {}, function(result) {
                 if(!jQuery.isEmptyObject(result)) {
-                    if(result.is_success == 1) 
+                    if(result.is_success == 1)
                         $("#flash-message").html("Hold Balance: "+result.attributes.hold_balance+"<br />Total Balance: "+result.attributes.balance);
                 }
-            });    
-        }            
+            });
+        }
 
         function registerDomain() {
             var url = "{% url 'domain:register' %}";
             var data = {'domain': $("#domainname").val()}
 
-            $.post(url, data, function(result) { 
+            $.post(url, data, function(result) {
                 if(!jQuery.isEmptyObject(result)) {
-                    if(result.is_success == 1) 
+                    if(result.is_success == 1)
                         console.log(result);
                 }
-            });    
-        }    
+            });
+        }
 
         function redir() {
             window.location = $("#domainname").val(); // PLEASE HACK ME!!!!!!!!!
@@ -101,57 +101,42 @@
 
 {% block content %}
 
-
-<div class="portlet box light-grey">
-    <div class="portlet-title">
-        <div class="caption"><i class="icon-globe"></i>Domain Registration</div>
-        <div class="tools">
-            <a class="collapse" href="javascript:;"></a>
-            <a class="config" data-toggle="modal" href="#portlet-config"></a>
-            <a class="reload" href="javascript:;"></a>
-            <a class="remove" href="javascript:;"></a>
+<div class="row">
+	<div class="col-md-6">
+        <div class="input-group">
+            <input type="text" name="domainname" class="form-control" id="domainname" value="{{ domain }}" />
+            <span class="input-group-btn">
+                <a class="btn green" id="domainregsubmit" onclick="redir()"><i class="fa fa-check"></i> Check</a>
+            </span>
         </div>
+        <br /><br />
+        <table class="table table-bordered table-hover">
+            <tr><td>Price:</td><td id="dom-price"></td>
+            <tr><td>Transferrable:</td><td id="dom-xfer"></td>
+            <tr><td>&nbsp;</td><td id="dom-xfer-msg"></td>
+            <tr><td>Matches:</td><td id="dom-available"></td>
+            <tr><td>Suggestions:</td><td id="dom-suggested"></td>
+        </table>
     </div>
-    <div class="portlet-body">
-    	<div class="row">
-    		<div class="col-md-6">
-		        <div class="input-group">
-		            <input type="text" name="domainname" class="form-control" id="domainname" value="{{ domain }}" />
-		            <span class="input-group-btn">
-		                <a class="btn green" id="domainregsubmit" data-original-title="" title="" onclick="redir()"><i class="fa fa-check"></i> Check</a>
-		            </span>
-		        </div>
-		        <br /><br />
-	            <table class="table table-striped table-bordered table-hover">
-	                <tr><td>Price:</td><td id="dom-price"></td>
-	                <tr><td>Transferrable:</td><td id="dom-xfer"></td>                         
-	                <tr><td>&nbsp;</td><td id="dom-xfer-msg"></td>
-	                <tr><td>Matches:</td><td id="dom-available"></td>
-	                <tr><td>Suggestions:</td><td id="dom-suggested"></td>                         
-	            </table>
-		    </div>
-		    <div class="col-md-6">
-		    	<h2 style="padding-top: 0; margin-top: 0">Domain Registration</h2>
-		    	<p>Description goes here</p>
-		    </div>		    
-	    </div>
+    <div class="col-md-6">
+    	<h2 style="padding-top: 0; margin-top: 0">Domain Registration</h2>
+    	<p>Description goes here</p>
     </div>
 </div>
 
+
 <!-- BEGIN MODAL -->
-<div id="mmodal" class="modal fade in" role="dialog" aria-labelledby="model-label" aria-hidden="true">
+<div id="register-domain-modal" class="modal fade in" role="dialog">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
-                <h3 id="mlabel">Register Domain</h3>
+                <h3>Register Domain</h3>
             </div>
-            <div class="modal-body form">
+            <div class="modal-body">
                 <!-- BEGIN MODAL BODY -->
-                <div id="flash-message"></div>
-                <div id="mbody" class="well">
+                <div class="modal-alert"></div>
                     <h4 id="reg-dom-name"></h4>
-                    <table class="table table-striped table-bordered table-hover form">
+                    <table class="table table-hover">
                         <tr>
                         	<td>Domain Contact</td>
                         	<td><input type="text" name="contact" class="form-control" id="domaincontact" /></td>
@@ -163,7 +148,7 @@
                         			<option value=1>1yr</option>
                         			<option value=2>2yr</option>
                         			<option value=3>3yr</option>
-                        			<option value=4>4yr
+                        			<option value=4>4yr</option>
                         		</select>
                         	</td>
                         </tr>
@@ -172,12 +157,11 @@
                         	<td><input type="checkbox" class="form-control" name="autorenew" id="autorenew" CHECKED=1 /></td>
                         </tr>
                     </table>
-                </div>
                 <!-- END MODAL BODY -->
             </div>
             <div class="modal-footer" id="modalfooter">
-                <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Close</button>
-                <button id="msave" class="btn btn-primary" onclick="registerDomain()">Ok</button>
+                <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                <a role="button" id="msave" class="btn btn-primary register-domain-form-submit" onclick="registerDomain()">Ok</a>
             </div>
         </div>
     </div>

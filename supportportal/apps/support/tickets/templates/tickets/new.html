@@ -12,8 +12,16 @@
     <li>Create Ticket</li>
 {% endblock %}
 
+{% block css %}
+    <style type="text/css">
+        #form-controls-container { background-color: #f5f5f5; }
+        #form-controls-container a { text-decoration: none; }
+    </style>
+{% endblock %}
+
 {% block js %}
     <script type="text/javascript">
+        // Fetch Companies
         function getCompanies() {
             function onSuccessCallback(result) {
                 if(!jQuery.isEmptyObject(result)  && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
@@ -33,6 +41,7 @@
             });
         }
 
+        // Fetch Company's Contacts
         function getCompanyContacts(company_id) {
             $("#id_author").html("");
 
@@ -55,37 +64,21 @@
                 error: defaultErrorCallback
             });
         }
-
-        function getQueues() {
-            function onSuccessCallback(result) {
-                if(!jQuery.isEmptyObject(result) && result.hasOwnProperty('success') && result.hasOwnProperty('message') && result.hasOwnProperty('data')) {
-                    if(result.success == 1) {
-                        for(x in result.data.queues) {
-                            $("#id_queue").append('<OPTION value="'+result.data.queues[x].id+'">'+result.data.queues[x].title+'</OPTION>');
-                        }
-                    }
-                }
-            }
-
-            $.ajax({
-                url: "{% url 'tickets:getqueue' %}",
-                type: "POST",
-                success: onSuccessCallback,
-                error: defaultErrorCallback
-            });
-        }
     </script>
 {% endblock %}
 
 {% block jquery_document_ready %}
     getCompanies();
-    getQueues();
 
     $('#id_company').on('change', function () {
         getCompanyContacts($(this).val());
     });
 
     $(document)
+        .on('click', 'a.ticket-form-submit', function (e) {
+            e.preventDefault();
+            $("#create-ticket-form").submit();
+        })
         .on('click', 'a.reset-form', function (e) {
             e.preventDefault();
             $("#create-ticket-form").trigger('reset');
@@ -110,6 +103,11 @@
         <form role="form" id="create-ticket-form" class="form form-vertical" enctype="multipart/form-data" method="POST" action="{% url 'tickets:create_ticket' %}">
             {% csrf_token %}
             <table class="table table-hover" id="company-profile-form-table">
+                <tr class="form-group">
+                    <td><label class="control-label">Company</label></td>
+                    <td><select class="form-control" name="company" id="id_company" autocomplete="off"></select></td>
+                </tr>
+
                 {% for field in ticketform %}
                     <tr class="form-group">
                         <td><label class="control-label">{{ field.label_tag }}</label></td>
@@ -121,6 +119,7 @@
                         </td>
                     </tr>
                 {% endfor %}
+
                 {% for field in postform %}
                     <tr class="form-group">
                         <td><label class="control-label">{{ field.label_tag }}</label></td>
@@ -137,11 +136,11 @@
                     </tr>
                 {% endfor %}
 
-                <tr style="background-color: #f5f5f5">
+                <tr id="form-controls-container" class="form-actions">
                     <td>&nbsp;</td>
                     <td>
-                        <a type="submit" class="btn btn-primary" role="button" style="text-decoration: none"><i class="fa fa-check"></i>&nbsp;Submit</a>
-                        <a type="button" class="btn btn-danger reset-form" role="button" style="text-decoration: none"><i class="fa fa-refresh"></i>&nbsp;Reset</a>
+                        <a type="submit" class="btn btn-primary ticket-form-submit" role="button"><i class="fa fa-check"></i>&nbsp;Submit</a>
+                        <a type="button" class="btn btn-danger reset-form" role="button"><i class="fa fa-refresh"></i>&nbsp;Reset</a>
                     </td>
                 </tr>
             </table>
