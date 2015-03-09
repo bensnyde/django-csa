@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+{% load common_tags %}
+
+{% block sitetitle %}| Dashboard{% endblock %}
+{% block heading %}Staff <small>Dashboard</small>{% endblock %}
+
+{% block breadcrumbs %}
+  <li>Dashboard</li>
+{% endblock %}
+
+{% block css %}
+    <!-- BEGIN PAGE LEVEL STYLES -->
+    <link rel="stylesheet" href="{% static 'plugins/datatables/plugins/bootstrap/dataTables.bootstrap.css' %}" />
+    <!-- END PAGE LEVEL STYLES -->
+{% endblock %}
+
+{% block js %}
+    <!-- BEGIN PAGE LEVEL PLUGINS -->
+    <script type="text/javascript" src="{% static 'plugins/datatables/media/js/jquery.dataTables.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'plugins/datatables/plugins/bootstrap/dataTables.bootstrap.js' %}"></script>
+    <!-- END PAGE LEVEL PLUGINS -->
+{% endblock %}
+
+{% block inline_js %}
+    // Fetch Announcements Index
+    function getAnnouncements() {
+        $("#announcements-list").html("");
+
+        $.ajax({
+            url: "/api/announcements/?format=json",
+            type: "GET",
+        })
+        .done(function(result) {
+            if(result.count) {
+              for(x in result.results) {
+                var content = ' \
+                  <!-- BEGIN POSTING --> \
+                  <div data-id="'+result.results[x].id+'" style="margin-bottom: 10px; border-bottom: 1px solid #f1f4f7"> \
+                    <div class="row" style="margin-bottom: 10px"> \
+                      <span class="col-md-6"><h4 style="padding: 0; margin: 0">'+result.results[x].title+'</h4></span> \
+                      <span class="col-md-6 text-right"> \
+                        <small><a href="'+"{% url 'contacts:detail' 0 %}".replace(0, result.results[x].author)+'">'+result.results[x].author_name+'</a> @ '+result.results[x].created+'</small> \
+                      </span> \
+                    </div> \
+                    <div class="text-justify">'+result.results[x].body+'</div> \
+                    <p></p> \
+                  </div> \
+                  <!-- END POSTING -->';
+
+                $("#announcements-scroller-all").append(content);
+
+                if(result.results[x].public) {
+                  $("#announcements-scroller-public").append(content);
+                }
+                else {
+                  $("#announcements-scroller-private").append(content);
+                }
+              }
+
+              $('.scroller').slimScroll({height: $("#announcements-scroller-all").height()});
+            }
+        })
+        .fail(function(jqXHR, textStatus, errorThrown) {
+            console.log("Failed to getAnnouncements(): " + textStatus);
+            $("#announcements-list").html('<div class="alert alert-danger text-center"><em>There was an error fetching the announcements index.</em>.</div>');
+        });
+    }
+
+    function getTickets() {
+      $("#tickets-table").dataTable().fnDestroy();
+      $("#tickets-tbody").html("");
+
+      $.ajax({
+        url: "/api/support/tickets/?format=json",
+        type: "GET",
+      })
+      .done(function(result) {
+          for(x in result.results) {
+            $("#tickets-tbody").append(' \
+                <tr data-id="'+result.results[x].id+'" data-flagged="'+result.results[x].flagged+'" role="row"> \
+                    <td><input type="checkbox" value="1" class="group-checkable checkboxes"></td> \
+                    <td><a href="'+"{% url 'tickets:detail' 0 %}".replace('0', result.results[x].id)+'">'+result.results[x].tid+'</a></td> \
+                    <td>'+result.results[x].description+'</td> \
+                    <td><a href="'+"{% url 'contacts:detail' 0 %}".replace('0', result.results[x].author)+'">'+result.results[x].author_name+'</a></td> \
+                </tr>'
+            );
+          }
+
+          initTicketsTable();
+      })
+      .fail(function(jqXHR, textStatus, errorThrown) {
+          console.log("Failed to getTickets(): " + textStatus);
+          $("#tickets-tbody").html('<tr class="has-error"><td colspan=4><em>There was an error fetching the tickets index.</em>.</td></tr>');
+      });
+    }
+
+    {% if user.is_staff %}
+      function setPost(data) {
+          $.ajax({
+              url: "/api/support/posts/",
+              type: "POST",
+              data: data,
+          })
+          .done(function(result) {
+              console.log("Post set successfuly.");
+              $('.modal-alert').fadeIn();
+              $('.modal-alert').html('<div class="alert alert-success">Reply posted successfully.</div>');
+              getTickets();
+              setTimeout("$('.modal.in').modal('hide')",500);
+          })
+          .fail(function(jqXHR, textStatus, errorThrown) {
+              console.log("Failed to setPost(): "+textStatus);
+              $('.modal-alert').fadeIn();
+              $('.modal-alert').html('<div class="alert alert-danger">Failed to set Post.</div>');
+          });
+      }
+
+      function setTicket(data) {
+          $("#tickets-tbody input[type=checkbox]:checked").each(function() {
+            console.log(!$(this).closest('tr').data('flagged'));
+
+            $.ajax({
+                url: "/api/support/tickets/"+$(this).val()+"/",
+                type: "PATCH",
+                data: data,
+            })
+            .done(function(result) {
+                console.log("Ticket {{ ticket_id }} set successfuly.");
+                $('.modal-alert').fadeIn();
+                $('.modal-alert').html('<div class="alert alert-success">Ticket updated successfully.</div>');
+                getTickets();
+                setTimeout("$('.modal.in').modal('hide')",500);
+            })
+            .fail(function(jqXHR, textStatus, errorThrown) {
+                console.log("Failed to setTicket({{ ticket_id }}): "+textStatus);
+                $('.modal-alert').fadeIn();
+                $('.modal-alert').html('<div class="alert alert-danger">Failed to update Ticket.</div>');
+            });
+          });
+      }
+    {% endif %}
+
+    var initTicketsTable = function () {
+
+        var table = $('#tickets-table');
+
+        table.dataTable({
+
+            // Internationalisation. For more info refer to http://datatables.net/manual/i18n
+            "language": {
+                "aria": {
+                    "sortAscending": ": activate to sort column ascending",
+                    "sortDescending": ": activate to sort column descending"
+                },
+                "emptyTable": "No data available in table",
+                "info": "Showing _START_ to _END_ of _TOTAL_ entries",
+                "infoEmpty": "No entries found",
+                "infoFiltered": "(filtered1 from _MAX_ total entries)",
+                "lengthMenu": "Show _MENU_ entries",
+                "search": "Search:",
+                "zeroRecords": "No matching records found"
+            },
+
+            "bDestroy": true,
+            "bStateSave": true, // save datatable state(pagination, sort, etc) in cookie.
+
+            "lengthMenu": [
+                [10, 20, -1],
+                [10, 20, "All"] // change per page values here
+            ],
+            // set the initial value
+            "pageLength": 10,
+            "language": {
+                "lengthMenu": " _MENU_ records",
+                "paging": {
+                    "previous": "Prev",
+                    "next": "Next"
+                }
+            },
+            "columnDefs": [{  // set default column settings
+                'orderable': false,
+                'targets': [0]
+            }, {
+                "searchable": false,
+                "targets": [0]
+            }],
+            "order": [
+                [1, "asc"]
+            ] // set first column as a default sort by asc
+        });
+    }
+{% endblock %}
+
+{% block jquery_document_ready %}
+  getAnnouncements();
+  getTickets();
+
+  $("#checkall").on('click', function() {
+      if(this.checked) {
+          $('.checkboxes').each(function() {
+              this.checked = true;
+          });
+      } else {
+          $('.checkboxes').each(function() {
+              this.checked = false;
+          });
+      }
+  });
+
+  {% if user.is_staff %}
+    $(document)
+        .on('click', 'a.quick-reply', function (e) {
+            e.preventDefault();
+            resetModalForm("quick-reply");
+        })
+        .on('click', 'a.quick-reply-modal-submit', function (e) {
+            e.preventDefault();
+            $("#tickets-tbody input[type=checkbox]:checked").each(function() {
+              setPost({
+                "ticket": $(this).closest('tr').data('id'),
+                "author": {{ user.id }},
+                "contents": $("#quick-reply-contents").val()
+              });
+            });
+        })
+        .on('click', 'a.toggle-flag', function (e) {
+            e.preventDefault();
+            $("#tickets-tbody input[type=checkbox]:checked").each(function() {
+              setTicket({"flagged": !$(this).closest('tr').data('flagged')});
+            });
+        })
+        .on('click', 'a.take-ownership', function (e) {
+            e.preventDefault();
+            $("#tickets-tbody input[type=checkbox]:checked").each(function() {
+              setTicket({"owner": {{ user.id}}});
+            });
+        });
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<!-- BEGIN BACKEND CONTENT -->
+  <div class="row">
+    <!-- BEGIN ANNOUNCEMENTS CONTAINER -->
+    <div class="col-md-6">
+      <div class="portlet light bordered" id="announcements-portlet" style="min-height: 268px; max-height: 650px">
+        <div class="portlet-title tabbable-line">
+          <div class="caption">
+            <i class="icon-pin font-green-sharp"></i><span class="caption-subject bold font-green-sharp uppercase">Announcements</span>
+          </div>
+          <ul class="nav nav-tabs">
+            <li class="active"><a data-toggle="tab" href="#announcements-tab-all" aria-expanded="true">All</a></li>
+            <li class=""><a data-toggle="tab" href="#announcements-tab-public" aria-expanded="false">Public</a></li>
+            <li class=""><a data-toggle="tab" href="#announcements-tab-private" aria-expanded="false">Private</a></li>
+          </ul>
+        </div>
+        <div class="portlet-body">
+          <div class="tab-content">
+            <div id="announcements-tab-all" class="tab-pane active">
+              <div class="scroller" data-initialized="1" id="announcements-scroller-all"></div>
+            </div>
+            <div id="announcements-tab-public" class="tab-pane">
+              <div class="scroller" data-initialized="1" id="announcements-scroller-public"></div>
+            </div>
+            <div id="announcements-tab-private" class="tab-pane">
+              <div class="scroller" data-initialized="1" id="announcements-scroller-private"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- END ANNOUNCEMENTS CONTAINER -->
+    <!-- BEGIN TICKETS CONTAINER -->
+    <div class="col-md-6">
+      <div class="portlet light" id="tickets-portlet" style="max-height: 650px">
+        <div class="portlet-title">
+          <div class="caption">
+            <i class="fa fa-cogs font-green-sharp"></i>
+            <span class="caption-subject font-green-sharp bold uppercase">Open Tickets</span>
+          </div>
+          <div class="actions btn-set">
+            <a class="btn green-haze btn-circle" href="{% url 'tickets:new' %}"><i class="fa fa-check"></i> Add</a>
+            {% if user.is_staff %}
+            <div class="btn-group">
+              <a data-toggle="dropdown" href="javascript:;" class="btn yellow btn-circle" aria-expanded="false">
+              <i class="fa fa-check-circle"></i> Edit <i class="fa fa-angle-down"></i>
+              </a>
+              <ul class="dropdown-menu pull-right">
+                <li><a href="javascript:;" class="toggle-flag"> Toggle Flag </a></li>
+                <li><a href="javascript:;" class="take-ownership"> Take Ownership </a></li>
+                <li><a href="javascript:;" class="quick-reply"> Quick Reply </a></li>
+              </ul>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        <div class="portlet-body">
+          <table id="tickets-table" class="table table-striped table-bordered table-hover dataTable no-footer" role="grid" aria-describedby="tickets-table_info">
+            <thead>
+              <tr role="row">
+                <th class="table-checkbox sorting_disabled" rowspan="1" colspan="1" style="width: 24px;" aria-label="">
+                  <input type="checkbox" data-set="#tickets-table .checkboxes" id="checkall">
+                </th>
+                <th class="sorting_asc" tabindex="0" aria-controls="tickets-table" rowspan="1" colspan="1" aria-sort="ascending" aria-label="Ticket ID">TID</th>
+                <th class="sorting" tabindex="0" aria-controls="tickets-table" rowspan="1" colspan="1" aria-label="Description">Description</th>
+                <th class="sorting" tabindex="0" aria-controls="tickets-table" rowspan="1" colspan="1" aria-label="Author">Author</th>
+              </tr>
+            </thead>
+            <tbody id="tickets-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <!-- END TICKETS CONTAINER -->
+
+    {% if user.is_staff %}
+    <!-- BEGIN QUICK REPLY MODAL -->
+    <div id="quick-reply-modal" class="modal fade in" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <!-- BEGIN MODAL HEADER -->
+                <div class="modal-header">
+                    <h3>Quick Reply</h3>
+                </div>
+                <!-- END MODAL HEADER -->
+                <!-- BEGIN MODAL BODY -->
+                <div class="modal-body">
+                  <div class="modal-alert"></div>
+                  <!-- BEGIN QUICK REPLY FORM -->
+                  <form class="form" role="form" id="quick-reply-form">
+                      <textarea class="form-control" id="quick-reply-contents" rows="10"></textarea>
+                  </form>
+                  <!-- END QUICK REPLY FORM -->
+                </div>
+                <!-- END MODAL BODY -->
+                <!-- BEGIN MODAL FOOTER -->
+                <div class="modal-footer">
+                    <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-primary quick-reply-modal-submit">Ok</a>
+                </div>
+                <!-- END MODAL FOOTER -->
+            </div>
+        </div>
+    </div>
+    <!-- END QUICK REPLY MODAL -->
+    {% endif %}
+{% endblock %}

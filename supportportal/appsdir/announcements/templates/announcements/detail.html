@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+{% load common_tags %}
+
+{% block sitetitle %}| Announcements{% endblock %}
+{% block heading %}Announcements <small>Detail</small>{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a{% if user.is_staff %} href="{% url 'announcements:index' %}"{% endif %}>Announcements</a><i class="fa fa-circle"></i></li>
+	<li class="announcement-title"></li>
+{% endblock %}
+
+{% block inline_js %}
+    // Fetch Annoucement Detail
+    function getAnnouncement() {
+      $.ajax({
+        url: "/api/announcements/"+{{ announcement_id }}+"/?format=json",
+        type: "GET",
+      })
+      .done(function(result) {
+        $(".announcement-title").html(result["title"]);
+        $("#announcement-body").html(result["body"]);
+        $("#announcement-byline").html('<a href="'+"{% url 'contacts:detail' 0 %}".replace(0, result["author"])+'">'+result["author_name"]+"</a> @ "+result["created"]);
+      })
+      .fail(function(jqXHR, textStatus, errorThrown) {
+        console.log("Failed to getAnnouncement(" + {{ announcement_id }} + "): " + textStatus);
+        $('.modal-alert').fadeIn();
+        $('.modal-alert').html('<div class="alert alert-danger">There was an error fetching the Announcement details.</div>');
+      });
+    }
+{% endblock %}
+
+{% block jquery_document_ready %}
+	getAnnouncement();
+{% endblock %}
+
+{% block content %}
+      <div class="portlet light bordered">
+        <div class="portlet-title">
+          <div class="caption col-md-6">
+            <i class="icon-pin font-green-sharp"></i><span class="caption-subject bold font-green-sharp uppercase announcement-title"></span>
+          </div>
+          <div class="col-md-6 text-right"><small id="announcement-byline"></small></div>
+        </div>
+        <div class="portlet-body">
+          <div id="announcement-body" style="margin: 20px"></div>
+        </div>
+      </div>
+{% endblock %}

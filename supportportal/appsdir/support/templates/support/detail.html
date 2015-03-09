@@ -1,0 +1,867 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+{% load common_tags %}
+
+{% block sitetitle %}| Support{% endblock %}
+{% block heading %}Support <small>Tickets</small>{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a>Support</a><i class="fa fa-circle"></i></li>
+    <li><a href="{% url 'tickets:index' %}">Tickets</a><i class="fa fa-circle"></i></li>
+    <li class="ticket_id"></li>
+{% endblock %}
+
+{% block css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'plugins/jquery-raty/jquery.raty.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'plugins/bootstrap-datetimepicker/css/bootstrap-datetimepicker.min.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'plugins/bootstrap-summernote/summernote.css' %}">
+    <link type="text/css" rel="stylesheet" href="{% static 'plugins/jQuery-File-Upload/uploadfile.css' %}" />
+    <style type="text/css">
+        .highlight {
+            padding:9px 14px;
+            margin-bottom:14px;
+            background-color:#f7f7f9;
+            border:1px solid #e1e1e8;
+            border-radius:4px;
+        }
+    </style>
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="{% static 'plugins/jquery-raty/jquery.raty.js' %}"></script>
+    <script type="text/javascript" src="{% static 'plugins/bootstrap-datetimepicker/js/bootstrap-datetimepicker.min.js' %}"></script>
+    <script src="{% static 'plugins/jQuery-File-Upload/jquery.uploadfile.min.js' %}"></script>
+    <script src="{% static 'plugins/bootstrap-summernote/summernote.min.js' %}" type="text/javascript"></script>
+{% endblock %}
+
+{% block inline_js %}
+        // Validates File Extension
+        function validateFileExtension() {
+            var re = /(\.jpg|\.jpeg|\.bmp|\.gif|\.png|\.txt|\.pdf)$/i;
+            if(re.exec($("#attachment-form #attachment").val())) {
+                return true;
+            }
+        }
+
+        // Fetch Ticket Posts
+        function getPosts() {
+            $("#posts-list").html("");
+
+          $.ajax({
+              url: "/api/support/posts/?ticket={{ ticket_id }}&format=json&limit=100",
+              type: "GET",
+          })
+          .done(function(result) {
+                for(x in result.results) {
+                    var panelClass = "panel-primary";
+                    if(result.results[x].author_is_staff == "True") {
+                        if(result.results[x].visible==0) {
+                            panelClass = "panel-warning";
+                        }
+                        else {
+                            panelClass = "panel-success";
+                        }
+                    }
+
+                    // Attachment
+                    var attachment = ""
+                    if(result.results[x].attachment) {
+                        attachment = ' \
+                            <div class="text-right" style="margin-top: 20px"> \
+                                <em>Attachment&nbsp;<a href="'+result.results[x].attachment+'" alt="Download attachment">'+result.results[x].attachment+'</a></em> \
+                            </div>';
+                    }
+
+                    // Staff controls
+                    var controls = ""
+                    {% if user.is_staff %}
+                        controls = ' \
+                            <div class="col-md-6 pull-right text-right"> \
+                                <div class="btn-group"> \
+                                    <button data-toggle="dropdown" class="btn blue dropdown-toggle" type="button" aria-expanded="false"><i class="fa fa-angle-down"></i></button> \
+                                    <ul role="menu" class="dropdown-menu"> \
+                                        <li><a href="" class="toggle-visibility" alt="Toggle Visibility">Toggle Visibility</a></li> \
+                                    </ul> \
+                                </div> \
+                            </div>';
+                    {% endif %}
+
+                    $("#posts-list").append(' \
+                        <a name="POST-'+result.results[x].id+'" /> \
+                        <li data-id="'+result.results[x].id+'" data-visibility="'+result.results[x].visible+'"> \
+                            <div class="panel '+panelClass+'"> \
+                                <div class="panel-heading" style="border-bottom: 1px solid #ddd"> \
+                                    <div class="row">'+controls+' \
+                                        <div class="col-md-6"> \
+                                            <h3 style="display: inline" class="panel-title"> \
+                                                <a href="'+"{% url 'contacts:detail' 0 %}".replace(0, result.results[x].author)+'" class="name">'+result.results[x].author_name+'</a> \
+                                            </h3> \
+                                            <small>@ '+result.results[x].created+'</small> \
+                                        </div> \
+                                    </div> \
+                                </div> \
+                                <div class="panel-body" style="margin: 0 10px 0 10px; font-size: 12px">'+result.results[x].contents+attachment+'</div> \
+                            </div> \
+                        </li>'
+                    );
+                }
+          })
+          .fail(function(jqXHR, textStatus, errorThrown) {
+              console.log("Failed to getPosts(): " + textStatus);
+              $("#articles-table-tbody").html('<tr class="has-error"><td colspan=7><em>There was an error fetching the articles index.</em></td></tr>');
+          });
+        }
+
+        // Fetch Company Contacts
+        function getCompanyContacts() {
+            $("#id_ticket_contacts").html("");
+
+            if(!ticket_company) {
+                console.log("Ticket's company not set.");
+                return false;
+            }
+
+          $.ajax({
+              url: "/api/contacts/?company="+ticket_company+"&format=json",
+              type: "GET",
+          })
+          .done(function(result) {
+                for(x in result.results) {
+                    $("#id_ticket_contacts").append('<OPTION value="'+result.results[x].id+'">'+result.results[x].first_name+' '+result.results[x].last_name+' ('+result.results[x].email+')</OPTION>');
+                }
+
+                $("#id_ticket_contacts").val(ticket_contacts);
+          })
+          .fail(function(jqXHR, textStatus, errorThrown) {
+              console.log("Failed to getCompanyContacts(): " + textStatus);
+          });
+        }
+
+        // Set Ticket
+        function setTicketContacts() {
+            $.ajax({
+                url: "/api/support/tickets/{{ ticket_id }}/contacts/?format=json",
+                type: "PATCH",
+                data: $("#set-contacts-form").serialize(),
+            })
+            .done(function(result) {
+                console.log("Ticket {{ ticket_id }} contacts set successfuly.");
+                $('.modal-alert').fadeIn();
+                $('.modal-alert').html('<div class="alert alert-success">Ticket contacts updated successfully.</div>');
+                ticket_contacts = []
+                getTicket();
+                setTimeout("$('.modal.in').modal('hide')",500);
+            })
+            .fail(function(jqXHR, textStatus, errorThrown) {
+                console.log("Failed to setTicketContacts({{ ticket_id }}): "+textStatus);
+                $('.modal-alert').fadeIn();
+                $('.modal-alert').html('<div class="alert alert-danger">Failed to update Ticket.</div>');
+            });
+        }
+
+        // Fetch Ticket
+        var ticket_company = null;
+        var ticket_contacts = [];
+        function getTicket() {
+            $("#contacts-list").html("");
+            $("#id_ticket_contacts").html("");
+
+            $.ajax({
+                url: "/api/support/tickets/{{ ticket_id }}/?format=json",
+                type: "GET",
+            })
+            .done(function(result) {
+                ticket_company = result.company
+
+                for(x in result.contacts) {
+                    ticket_contacts.push(result.contacts[x]["id"]);
+                    $("#contacts-list").append(result.contacts[x]["first_name"]+" "+result.contacts[x]["last_name"]+" ("+result.contacts[x]["email"]+")<br />");
+                }
+
+                $.each(result, function(x,y) {
+                    $("#id_"+x).val(y);
+                });
+
+                $(".ticket_id").html(result.tid);
+                $("#ticket-description").html(result.description);
+                $("#ticket-priority").html(result.priority);
+                $("#ticket-queue").html(result.queue_name);
+                if(result.status) {
+                    $("#ticket-status").html("Open");
+                }
+                else {
+                    $("#ticket-status").html("Closed");
+                }
+
+                $("#raty").raty({
+                    path: '{% static 'plugins/jquery-raty/images' %}',
+                    score: result.satisfaction_rating,
+                    click: function(score, evt) {
+                        setTicket({"satisfaction_rating": score});
+                    }
+                });
+
+                {% if user.is_staff %}
+                    $("#ticket-difficulty").html(result.difficulty_rating);
+                    if(result.staff_summary) {
+                        $("#ticket-summary-container").removeClass('hidden');
+                        $("#ticket-summary").html(result.staff_summary);
+                    }
+                {% endif %}
+            })
+            .fail(function(jqXHR, textStatus, errorThrown) {
+                console.log("Failed to getTicket("+article_id+"): " + textStatus);
+                $('.modal-alert').html('<div class="alert alert-danger">There was an error retrieving the ticket details.</div>');
+            });
+        }
+
+            // Set Ticket
+            function setTicket(data) {
+                data['ticket'] = {{ ticket_id }};
+
+                $.ajax({
+                    url: "/api/support/tickets/{{ ticket_id }}/",
+                    type: "PATCH",
+                    data: data,
+                })
+                .done(function(result) {
+                    console.log("Ticket {{ ticket_id }} set successfuly.");
+                    $('.modal-alert').fadeIn();
+                    $('.modal-alert').html('<div class="alert alert-success">Ticket updated successfully.</div>');
+                    getTicket();
+                    setTimeout("$('.modal.in').modal('hide')",500);
+                })
+                .fail(function(jqXHR, textStatus, errorThrown) {
+                    console.log("Failed to setTicket({{ ticket_id }}): "+textStatus);
+                    $('.modal-alert').fadeIn();
+                    $('.modal-alert').html('<div class="alert alert-danger">Failed to update Ticket.</div>');
+
+                    $.each(jqXHR["responseJSON"], function(key, value) {
+                        $("#set-ticket-form #id_"+key).closest('tr').addClass("has-error");
+                        $("#set-ticket-form #"+key+"-help").html(value);
+                    });
+                });
+            }
+
+        {% if user.is_staff %}
+            // Use Post Macro
+            function useMacro(macro_id) {
+                for(x in macros) {
+                    if(macros[x].id==macro_id) {
+                        $('#id_contents').code($('#id_contents').code()+macros[x].body);
+                        break;
+                    }
+                }
+            }
+
+            // Set Post
+            function setPost(post_id, data) {
+                var http_verb = "POST";
+                var http_url = "/api/support/posts/";
+                data["ticket"] = {{ ticket_id }};
+
+                if(post_id > 0) {
+                    http_verb = "PATCH";
+                    http_url += post_id + "/";
+                }
+
+                $.ajax({
+                    url: http_url,
+                    type: http_verb,
+                    data: data,
+                })
+                .done(function(result) {
+                    console.log("Post set successfuly.");
+                    getPosts();
+                    setTimeout("scrollToAnchor('last-post')",1000);
+                    if(data.hasOwnProperty("contents")) {
+                        CKEDITOR.instances.id_contents.setData('');
+                    }
+                })
+                .fail(function(jqXHR, textStatus, errorThrown) {
+                    console.log("Failed to setPost(): "+textStatus);
+                    $('.modal-alert').fadeIn();
+                    $('.modal-alert').html('<div class="alert alert-danger">Failed to set Post.</div>');
+                });
+            }
+
+            // Fetch Reply Macro
+            function getMacro(macro_id) {
+                $.ajax({
+                    url: "/api/support/macros/"+macro_id+"/?format=json",
+                    type: "GET",
+                })
+                .done(function(result) {
+                    $("#set-macro-form #macro_id").val(result.id);
+                    $.each(result, function(x,y) {
+                        $("#set-macro-form #id_"+x).val(y);
+                    })
+                })
+                .fail(function(jqXHR, textStatus, errorThrown) {
+                    console.log("Failed to getMacro("+macro_id+"): " + textStatus);
+                    $('.modal-alert').html('<div class="alert alert-danger">There was an error retrieving the macro details.</div>');
+                });
+            }
+
+            // Fetch Reply Macros
+            var macros;
+            function getMacros() {
+                $("#reply-macro-select").html("");
+
+                $.ajax({
+                    url: "/api/support/macros/?format=json",
+                    type: "GET",
+                })
+                .done(function(result) {
+                    macros = result.results;
+                    for(x in result.results) {
+                        $("#reply-macro-select").append('<OPTION value="'+result.results[x].id+'">'+result.results[x].name+'</OPTION>')
+                    }
+                })
+                .fail(function(jqXHR, textStatus, errorThrown) {
+                    console.log("Failed to getMacros(): " + textStatus);
+                });
+            }
+
+            // Create or update Macro
+            function setMacro() {
+                var macro_id = $("#set-macro-form #macro_id").val();
+
+                var http_verb = "POST";
+                var http_url = "/api/support/macros/";
+
+                if(macro_id > 0) {
+                    http_verb = "PATCH";
+                    http_url += macro_id + "/";
+                }
+
+                $.ajax({
+                    url: http_url,
+                    type: http_verb,
+                    data: $("#set-macro-form").serialize(),
+                })
+                .done(function(result) {
+                    console.log("Macro " + macro_id + " set successfuly.");
+                    $('.modal-alert').fadeIn();
+                    $('.modal-alert').html('<div class="alert alert-success">Macro updated successfully.</div>');
+                    getMacros();
+                    setTimeout("$('.modal.in').modal('hide')",500);
+                })
+                .fail(function(jqXHR, textStatus, errorThrown) {
+                    console.log("Failed to setMacro("+macro_id+"): "+textStatus);
+                    $('.modal-alert').fadeIn();
+                    $('.modal-alert').html('<div class="alert alert-danger">Failed to update Macro.</div>');
+
+                    $.each(jqXHR["responseJSON"], function(key, value) {
+                        $("#set-macro-form #id_"+key).closest('tr').addClass("has-error");
+                        $("#set-macro-form #"+key+"-help").html(value);
+                    });
+                });
+            }
+
+            // Delete Macro
+            function deleteMacro(macro_id) {
+                $.ajax({
+                    url: "/api/support/macros/"+macro_id+"/?format=json",
+                    type: "DELETE",
+                })
+                .done(function(result) {
+                    console.log("Macro " + macro_id + " deleted successfuly.");
+                    $('.modal-alert').fadeIn();
+                    $('.modal-alert').html('<div class="alert alert-success">Macro deleted successfully.</div>');
+                    getMacros();
+                    setTimeout("$('.modal.in').modal('hide')",500);
+                })
+                .fail(function(jqXHR, textStatus, errorThrown) {
+                    console.log("Failed to deleteMacro("+macro_id+"): " + textStatus);
+                    $('.modal-alert').fadeIn();
+                    $('.modal-alert').html('<div class="alert alert-danger">Failed to delete Macro.</div>');
+                });
+
+                $('.modal-alert').fadeOut();
+            }
+        {% endif %}
+{% endblock %}
+
+{% block jquery_document_ready %}
+    getTicket();
+    getPosts();
+    $('#id_contents').summernote({height: 300});
+
+    $.ajaxSetup({
+        headers: {
+            'X-CSRFToken': csrftoken
+        }
+    });
+
+    $("#fileupload").uploadFile({
+        autoUpload: true,
+        url: "/api/support/posts/",
+        fileName: "attachment",
+        formData: {
+            "ticket": {{ ticket_id }},
+            "contents": "Uploaded attachment.",
+            "visible": 1,
+        },
+        onSuccess: function(files,data,xhr) {
+            getPosts();
+        }
+    });
+
+    $(document)
+        .on('click', 'a.reply-reset', function (e) {
+            e.preventDefault();
+            $('#id_contents').code('');
+        })
+        .on('click', 'a.toggle-ticket-contacts', function (e) {
+            e.preventDefault();
+            resetModalForm("set-contacts");
+            getCompanyContacts();
+        })
+        .on('click', 'a.set-contacts-modal-submit', function (e) {
+            e.preventDefault();
+            setTicketContacts();
+        })
+        .on('click', 'a.attachment-form-submit', function (e) {
+            e.preventDefault();
+            if(validateFileExtension()) {
+                $("#attachment-form").submit();
+            }
+            else {
+                $("#attachment-response-alert").fadeIn();
+                $("#attachment-response-alert").html("<strong>Unsupported file extension.</strong>");
+                $("#attachment-response-alert").delay(3000).fadeOut();
+            }
+        })
+        .on('click', 'a.reply-form-submit', function (e) {
+            e.preventDefault();
+
+            var post_visibility = 0;
+            if($("#post-visible").is(':checked')) {
+                post_visibility = 1;
+            }
+
+            var post_email = 0;
+            if($("#post-email").is(':checked')) {
+                post_email = 1;
+            }
+
+            var data = {
+                "author": {{ user.id }},
+                "contents": $('#id_contents').code(),
+                "visible": post_visibility,
+                "email-notify": post_email,
+            }
+
+            setPost(0, data);
+
+            $('#id_contents').code('');
+        }){% if user.is_staff %}
+            .on('click', 'a.toggle-visibility', function (e) {
+                if($(this).parents('ul').closest('li').data('id')) {
+                    e.preventDefault();
+                    setPost($(this).parents('ul').closest('li').data('id'), {'visible': !$(this).parents('ul').closest('li').data('visibility')});
+                }
+            })
+            .on('click', 'a.set-ticket-modal-submit', function (e) {
+                e.preventDefault();
+                setTicket($("#set-ticket-form").serialize());
+            })
+            .on('click', 'a.del-macro-modal-submit', function (e) {
+                e.preventDefault();
+                deleteMacro($("#del-macro-form #macro_id").val());
+            })
+            .on('click', 'a.set-macro-modal-submit', function (e) {
+                e.preventDefault();
+                setMacro();
+            })
+            .on('click', 'a.edit-ticket', function (e) {
+                e.preventDefault();
+                resetModalForm("set-ticket")
+                $("#set-ticket-modal").modal('show');
+            })
+            .on('click', 'a.macro-use', function (e) {
+                e.preventDefault();
+                if($("#reply-macro-select").val()) {
+                    useMacro($("#reply-macro-select").val());
+                }
+            })
+            .on('click', 'a.macro-set', function (e) {
+                e.preventDefault();
+                if($("#reply-macro-select").val()) {
+                    resetModalForm("set-macro", "macro_id");
+                    getMacro($("#reply-macro-select").val());
+                }
+            })
+            .on('click', 'a.macro-delete', function (e) {
+                e.preventDefault();
+                if($("#reply-macro-select").val()) {
+                    resetModalForm("del-macro", "macro_id");
+                    $("#del-macro-form #macro_id").val($("#reply-macro-select").val());
+                }
+            })
+            .on('click', 'a.macro-create', function (e) {
+                e.preventDefault();
+                resetModalForm("set-macro", "macro_id");
+            })
+            .on('click', 'a.mark-post-as-great', function (e) {
+                if($(this).closest('li').data('id')) {
+                    e.preventDefault();
+                    setPost($(this).closest('li').data('id'), {'rating': 2});
+                }
+            })
+            .on('click', 'a.mark-post-as-poor', function (e) {
+                if($(this).closest('li').data('id')) {
+                    e.preventDefault();
+                    setPost($(this).closest('li').data('id'), {'rating': 1});
+                }
+            });
+
+        getMacros();
+
+        $('#id_due_date').datetimepicker({
+          format: 'Y-m-d G:h'
+        });
+        {% else  %};
+        {% endif %}
+{% endblock %}
+
+{% block content %}
+    <!-- BEGIN TICKET PORTLET -->
+    <div class="portlet light form-fit">
+        <div class="portlet-title">
+          <div class="caption">
+            <i class="fa fa-cogs font-green-sharp"></i>
+            <span class="caption-subject font-green-sharp bold uppercase ticket_id"></span>
+          </div>
+          {% if user.is_staff %}
+          <div class="actions btn-set">
+            <a href="javascript:;" class="btn yellow btn-circle edit-ticket"><i class="fa fa-check-circle"></i> Edit </a>
+          </div>
+          {% endif %}
+        </div>
+        <div class="portlet-body form">
+            <!-- BEGIN FORM-->
+            <form class="form-horizontal form-bordered" action="javascript:;">
+                <div class="form-body form">
+                    <div class="form-group">
+                        <label class="control-label col-md-3">Description</label>
+                        <div class="col-md-3" id="ticket-description"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-md-3">Contacts</label>
+                        <div class="col-md-3" id="contacts-list"></div>
+                        <span><a class="toggle-ticket-contacts">+</a></span>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-md-3">Queue</label>
+                        <div class="col-md-3" id="ticket-queue"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-md-3">Priority</label>
+                        <div class="col-md-3" id="ticket-priority"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-md-3">Status</label>
+                        <div class="col-md-3" id="ticket-status"></div>
+                    </div>
+                </div>
+                {% if user.is_staff %}
+                <div class="form-actions hidden" id="ticket-summary-container">
+                    <div class="col-md-offset-3 col-md-6 col-md-offset-3" style="border-bottom: 1px solid orange; margin-bottom: 0">
+                        <h4>Ticket Summary</h4>
+                    </div>
+                    <div class="col-md-offset-3 col-md-6 col-md-offset-3" style='margin-top: 10px'>
+                        <div id="ticket-summary" class="text-justify"></div>
+                    </div>
+                </div>
+                {% endif %}
+            </form>
+            <!-- END FORM-->
+        </div>
+    </div>
+    <!-- END TICKET PORTLET -->
+
+
+    {% if user.is_staff %}
+        <!-- BEGIN TICKET SUMMARY CONTAINER -->
+        <div id="ticket-summary-container" class="row hidden">
+            <div class="col-md-offset-3 col-md-6">
+                <div class="row" style="border-bottom: 1px solid orange; margin-bottom: 0">
+                    <div class="col-md-6">
+                        <h3 class="panel-title">Ticket Summary</h3>
+                    </div>
+                    <div class="col-md-6 text-right hidden">
+                        <a href="#"><i class="fa fa-plus"></i></a>
+                    </div>
+                </div>
+                <div class="panel-body" id="ticket-summary"></div>
+            </div>
+        </div>
+        <p></p>
+        <!-- END TICKET SUMMARY CONTAINER -->
+    {% endif %}
+
+    <!-- BEGIN POSTS CONTAINER -->
+    <div id="posts-container">
+           <div class="row">
+            <!-- BEGIN POSTS LIST -->
+            <a name="first-post"></a>
+            <ul id="posts-list" class="list-unstyled ol-offset-md-2 col-md-12"></ul>
+            <a name="last-post"></a>
+            <!-- END POSTS LIST -->
+        </div>
+
+        {% if not user.is_staff %}
+            <!-- BEGIN CUSTOMER SATISFACTION -->
+            <div class="row">
+                <div class="highlight col-md-offset-2 col-md-8 col-md-offset-2">
+                    <div class="row">
+                        <label class="col-md-8">How satisfied are you with the support you are receiving?</label>
+                        <div class="col-md-4 text-right" id="raty" style="padding-right: 20px"></div>
+                        <div id="satisfaction-response-alert" class="text-center"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- END CUSTOMER SATISFACTION -->
+        {% endif %}
+
+        <!-- BEGIN FILE UPLOAD -->
+        <div class="row">
+            <div id="attachment-response-alert" class="text-center"></div>
+            <div class="highlight col-md-offset-2 col-md-8 col-md-offset-2">
+                <div class="row">
+                    <div class="col-md-5">
+                        <label>Would you like to upload a file?</label><br />
+                        <div><em>(.png,.jpg,.pdf only)</em></div>
+                    </div>
+                    <div class="col-md-5">
+                        <!-- BEGIN FILE ATTACHMENT FORM -->
+                        <div id="fileupload">Upload</div>
+                        <!-- END FILE ATTACHMENT FORM -->
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <!-- END FILE UPLOAD -->
+
+        {% if user.is_staff %}
+            <!-- BEGIN MACROS CONTAINER -->
+            <div class="row">
+                <div class="highlight col-md-offset-2 col-md-8 col-md-offset-2">
+                    <div class="row"  id="reply-macros-container">
+                        <div class="col-md-5">
+                            <label>How about an automated response?</label>
+                        </div>
+                        <div class="col-md-5">
+                            <select id="reply-macro-select" class="form-control" autocomplete="off"></select>
+                        </div>
+                        <div class="col-md-2 text-right">
+                            <a href="javascript:;" class="macro-use" alt="Use Macro"><i class="fa fa-arrow-down"></i></a>
+                            <a href="javascript:;" class="macro-set" alt="Edit Macro"><i class="fa fa-edit green"></i></a>
+                            <a href="javascript:;" class="macro-delete" alt="Delete Macro"><i class="fa fa-trash-o"></i></a>
+                            <a href="javascript:;" class="macro-create" alt="Create Macro"><i class="fa fa-plus"></i></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- END MACROS CONTAINER -->
+
+            <!-- BEGIN POST OPTIONS CONTAINER -->
+            <div class="row">
+                <div class="highlight col-md-offset-2 col-md-8 col-md-offset-2">
+                    <div class="row" id="reply-options-container">
+                        <div class="col-md-offset-2 col-md-4">
+                            <input type="checkbox" name="post-visible" id="post-visible" checked="true" />
+                            <label>Visible to customer?</label>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="checkbox" name="post-email" id="post-email" checked="true" />
+                            <label>Email customer?</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- END POST OPTIONS CONTAINER -->
+        {% endif %}
+
+        <div class="row">
+            <div class="#flash-message"></div>
+            <!-- BEGIN TICKET REPLY FORM -->
+            <form role="form" class="form" id="reply-form">
+                <div class="summernote" id="id_contents" name="contents"></div><div class="form-group"></div>
+
+                <div class="row form-actions">
+                    <div class="col-md-offset-2 col-md-8">
+                        <a type="submit" class="btn btn-primary reply-form-submit" role="button"><i class="fa fa-check"></i>&nbsp;Submit</a>
+                        <a type="button" class="btn btn-danger reply-reset" role="button"><i class="fa fa-refresh"></i>&nbsp;Reset</a>
+                    </div>
+                </div>
+            </form>
+            <!-- END TICKET REPLY FORM -->
+        </div>
+    </div>
+    <!-- END POSTS CONTAINER -->
+
+    <!-- BEGIN CONTACTS MODAL -->
+    <div id="set-contacts-modal" class="modal fade in" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <!-- BEGIN MODAL HEADER -->
+                <div class="modal-header">
+                    <h3>Ticket Contacts</h3>
+                </div>
+                <!-- END MODAL HEADER -->
+                <!-- BEGIN MODAL BODY -->
+                <div class="modal-body">
+                    <div class="modal-alert"></div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <span>Selected contacts will notified on updates.</span>
+                        </div>
+                        <div class="col-md-6">
+                            <form role="form" class="form" id="set-contacts-form">
+                                <select multiple="multiple" class="multi-select col-md-12 form-control" id="id_ticket_contacts" name="contacts"></select>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <!-- END MODAL BODY -->
+                <!-- BEGIN MODAL FOOTER -->
+                <div class="modal-footer">
+                    <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-primary set-contacts-modal-submit">Ok</a>
+                </div>
+                <!-- END MODAL FOOTER -->
+            </div>
+        </div>
+    </div>
+    <!-- END CONTACTS MODAL -->
+
+    {% if user.is_staff %}
+        <!-- BEGIN SET MACRO MODAL -->
+        <div id="set-macro-modal" class="modal fade in" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <!-- BEGIN MODAL HEADER -->
+                    <div class="modal-header">
+                        <h3>Set Macro</h3>
+                    </div>
+                    <!-- END MODAL HEADER -->
+                    <!-- BEGIN MODAL BODY -->
+                    <div class="modal-body">
+                      <div class="modal-alert"></div>
+                      <!-- BEGIN SET MACRO FORM -->
+                      <form class="form form-vertical" role="form" id="set-macro-form">
+                        <input type="hidden" name="macro_id" id="macro_id" value="0" />
+                        <table class="table table-hover" id="set-macro-form-table">
+                            {% for field in macroform %}
+                                <tr class="form-group">
+                                    <td><label class="control-label">{{ field.label_tag }}</label></td>
+                                    <td>
+                                        <div class="controls">
+                                            {{ field|addcss:"form-control" }}
+                                            <span id="{{ field.html_name }}-help" class="help-inline"></span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </table>
+                      </form>
+                      <!-- END SET MACRO FORM -->
+                    </div>
+                    <!-- END MODAL BODY -->
+                    <!-- BEGIN MODAL FOOTER -->
+                    <div class="modal-footer">
+                        <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                        <a role="button" class="btn btn-primary set-macro-modal-submit">Ok</a>
+                    </div>
+                    <!-- END MODAL FOOTER -->
+                </div>
+            </div>
+        </div>
+        <!-- END SET MACRO MODAL -->
+
+        <!-- BEGIN DELETE MACRO MODAL -->
+        <div id="del-macro-modal" class="modal fade in" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <!-- BEGIN MODAL HEADER -->
+                    <div class="modal-header">
+                        <h3>Delete Macro</h3>
+                    </div>
+                    <!-- END MODAL HEADER -->
+                    <!-- BEGIN MODAL BODY -->
+                    <div class="modal-body">
+                      <div class="modal-alert"></div>
+                      <span>Are you sure you want to delete the selected macro?</span>
+                      <!-- BEGIN DELETE MACRO FORM -->
+                      <form class="form" role="form" id="del-macro-form">
+                          <input type="hidden" name="macro_id" id="macro_id" />
+                      </form>
+                      <!-- END DELETE MACRO FORM -->
+                    </div>
+                    <!-- END MODAL BODY -->
+                    <!-- BEGIN MODAL FOOTER -->
+                    <div class="modal-footer">
+                        <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                        <a role="button" class="btn btn-primary del-macro-modal-submit">Ok</a>
+                    </div>
+                    <!-- END MODAL FOOTER -->
+                </div>
+            </div>
+        </div>
+        <!-- END DELETE MACRO MODAL -->
+
+        <!-- BEGIN SET TICKET MODAL -->
+        <div id="set-ticket-modal" class="modal fade in" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <!-- BEGIN MODAL HEADER -->
+                    <div class="modal-header">
+                        <h3>Edit Ticket</h3>
+                    </div>
+                    <!-- END MODAL HEADER -->
+                    <!-- BEGIN MODAL BODY -->
+                    <div class="modal-body">
+                        <div class="modal-alert"></div>
+                        <!-- BEGIN EDIT TICKET FORM -->
+                        <form role="form" class="form form-vertical" id="set-ticket-form">
+                            <input type="hidden" name="queue_id" id="queue_id" value="" />
+                            <table class="table table-hover" id="company-profile-form-table">
+                                {% for field in ticketform %}
+                                    <tr class="form-group">
+                                        <td><label class="control-label">{{ field.label_tag }}</label></td>
+                                        <td>
+                                            <div class="controls">
+                                                {% if field.html_name == 'due_date' %}
+                                                    {{ field|addcss:"form-control datepicker" }}
+                                                {% else %}
+                                                    {{ field|addcss:"form-control" }}
+                                                {% endif %}
+                                                <span id="{{ field.html_name }}-help" class="help-inline"></span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </table>
+                        </form>
+                        <!-- END EDIT TICKET FORM -->
+                    </div>
+                    <!-- END MODAL BODY -->
+                    <!-- BEGIN MODAL FOOTER -->
+                    <div class="modal-footer">
+                        <a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+                        <a role="button" class="btn btn-primary set-ticket-modal-submit">Ok</a>
+                    </div>
+                    <!-- END MODAL FOOTER -->
+                </div>
+            </div>
+        </div>
+        <!-- END SET TICKET MODAL -->
+    {% endif %}
+
+ <!-- END TICKETS DETAIL CONTENT -->
+{% endblock %}

@@ -1,0 +1,8 @@
+SECRET_KEY = 'areallylongandcomplexstring'
+
+EMAIL_HOST = "smtp.example.com"
+EMAIL_PORT = 25
+EMAIL_HOST_USER = "support@example.com"
+EMAIL_HOST_PASSWORD = "astrongpassword"
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = False

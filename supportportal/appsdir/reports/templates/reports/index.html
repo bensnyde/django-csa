@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+
+{% block sitetitle %}| Reports{% endblock %}
+{% block heading %}Reports <small>Administration</small>{% endblock %}
+
+{% block breadcrumbs %}
+    <li>Reports</li>
+{% endblock %}
+
+{% block css %}
+  <!-- BEGIN PAGE LEVEL STYLES -->
+  <link rel="stylesheet" href="{% static 'plugins/datatables/plugins/bootstrap/dataTables.bootstrap.css' %}" />
+  <link rel="stylesheet" type="text/css" href="{% static 'plugins/bootstrap-datepicker/css/datepicker3.css' %}" />
+  <!-- END PAGE LEVEL STYLES -->
+{% endblock %}
+
+{% block js %}
+  <!-- BEGIN PAGE LEVEL PLUGINS -->
+  <script type="text/javascript" src="{% static 'plugins/datatables/media/js/jquery.dataTables.min.js' %}"></script>
+  <script type="text/javascript" src="{% static 'plugins/datatables/plugins/bootstrap/dataTables.bootstrap.js' %}"></script>
+  <script type="text/javascript" src="{% static 'plugins/bootstrap-datepicker/js/bootstrap-datepicker.js' %}"></script>
+  <!-- END PAGE LEVEL PLUGINS -->
+{% endblock %}
+
+{% block inline_js %}
+    function getAnnouncements() {
+        $("#announcements-table").dataTable().fnDestroy();
+        $("#announcements-table-tbody").html("");
+
+        $.ajax({
+            url: "/api/announcements/?author={{ user.pk }}&start_date="+$("#startdate").val()+"&end_date="+$("#enddate").val()+"&format=json",
+            type: "GET",
+        })
+        .done(function(result) {
+          for(x in result.results) {
+              $("#announcements-table-tbody").append(' \
+                  <tr data-id="'+result.results[x].id+'"> \
+                      <td><a href="'+"{% url 'announcements:detail' 0 %}".replace('0', result.results[x].id)+'">'+result.results[x].title+'</a></td> \
+                      <td><a href="'+"{% url 'contacts:detail' 0 %}".replace('0', result.results[x].author)+'">'+result.results[x].author_name+'</a></td> \
+                      <td>'+result.results[x].created+'</td> \
+                      <td>'+result.results[x].public+'</td> \
+                  </tr>'
+              );
+          }
+
+          $("#announcements-table").dataTable({"bDestroy": true, "aaSorting": [[0, 'desc']]});
+        })
+        .fail(function(jqXHR, textStatus, errorThrown) {
+            console.log("Failed to getAnnouncements(): " + textStatus);
+            $("#announcements-table-tbody").html('<tr class="has-error"><td colspan=5><em>There was an error fetching the announcements index.</em></td></tr>');
+        });
+    }
+
+    function getKbArticleStats() {
+        $("#articles-table").dataTable().fnDestroy();
+        $("#articles-table-tbody").html("");
+
+        $.ajax({
+            url: "/api/knowledgebase/articles/?author={{ user.pk }}&start_date="+$("#startdate").val()+"&end_date="+$("#enddate").val()+"&format=json",
+            type: "GET",
+        })
+        .done(function(result) {
+            for(x in result.results) {
+                $("#articles-table-tbody").append(' \
+                    <tr data-id="'+result.results[x].id+'"> \
+                        <td><a href="'+"{% url 'knowledgebase:detail' 0 %}".replace(0, result.results[x].id)+'">'+result.results[x].title+'</td> \
+                        <td><a href="'+"{% url 'contacts:detail' 0 %}".replace(0, result.results[x].author)+'">'+result.results[x].author_name+'</a></td> \
+                        <td>'+result.results[x].created+'</td> \
+                    </tr>'
+                );
+            }
+
+            $("#articles-table").dataTable({"bDestroy": true, "aaSorting": [[0, 'desc']]});
+        })
+        .fail(function(jqXHR, textStatus, errorThrown) {
+            console.log("Failed to getKbArticleStats(): " + textStatus);
+        });
+    }
+
+    function getPostStats() {
+        $("#posts-table").dataTable().fnDestroy();
+        $("#posts-table-tbody").html("");
+
+        $.ajax({
+            url: "/api/support/posts/?author={{ user.pk }}&start_date="+$("#startdate").val()+"&end_date="+$("#enddate").val()+"&format=json",
+            type: "GET",
+        })
+        .done(function(result) {
+            for(x in result.results) {
+                $("#posts-table-tbody").append(' \
+                    <tr data-id="'+result.results[x].id+'" data-ticket="'+result.results[x].ticket+'"> \
+                        <td><a href="'+"{% url 'contacts:detail' 0 %}".replace(0, result.results[x].author)+'">'+result.results[x].author_name+'</a></td> \
+                        <td><a href="'+"{% url 'tickets:detail' 0 %}".replace(0, result.results[x].ticket)+'">'+result.results[x].tid+'</a></td> \
+                        <td>'+result.results[x].contents+'</td> \
+                        <td>'+result.results[x].created+'</td> \
+                    </tr>'
+                );
+            }
+
+            $("#posts-table").dataTable({"bDestroy": true, "aaSorting": [[3, 'desc']]});
+        })
+        .fail(function(jqXHR, textStatus, errorThrown) {
+            console.log("Failed to getPostStats(): " + textStatus);
+        });
+    }
+
+    function getTicketStats() {
+        $("#tickets-table").dataTable().fnDestroy();
+        $("#tickets-table-tbody").html("");
+
+        $.ajax({
+            url: "/api/support/tickets/?owner={{ user.pk }}&start_date="+$("#startdate").val()+"&end_date="+$("#enddate").val()+"&format=json",
+            type: "GET",
+        })
+        .done(function(result) {
+            for(x in result.results) {
+                $("#tickets-table-tbody").append(' \
+                    <tr data-id="'+result.results[x].id+'"> \
+                        <td><a href="'+"{% url 'tickets:detail' 0 %}".replace(0, result.results[x].id)+'">'+result.results[x].tid+'</a></td> \
+                        <td>'+result.results[x].description+'</td> \
+                        <td><a href="'+"{% url 'contacts:detail' 0 %}".replace(0, result.results[x].owner)+'">'+result.results[x].owner_name+'</a></td> \
+                        <td>'+result.results[x].created+'</td> \
+                    </tr>'
+                );
+            }
+
+            $("#tickets-table").dataTable({"bDestroy": true, "aaSorting": [[2, 'desc']]});
+        })
+        .fail(function(jqXHR, textStatus, errorThrown) {
+            console.log("Failed to getTicketStats(): " + textStatus);
+        });
+    }
+{% endblock %}
+
+{% block jquery_document_ready %}
+    var date = new Date();
+    var firstDay = new Date(date.getFullYear(), date.getMonth(), 1).toLocaleFormat('%Y-%m-%d');
+    var lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).toLocaleFormat('%Y-%m-%d');
+
+    $('#startdate').val(firstDay);
+    $('#enddate').val(lastDay);
+
+    $('#startdate').datepicker({
+      defaultDate: firstDay,
+      format: 'yyyy-mm-dd'
+    });
+
+    $('#enddate').datepicker({
+      defaultDate: lastDay,
+      format: 'yyyy-mm-dd',
+    });
+
+    getKbArticleStats();
+    getTicketStats();
+    getPostStats();
+    getAnnouncements();
+
+    $(document)
+        .on('click', 'a.date-picker-submit', function (e) {
+            e.preventDefault();
+            getKbArticleStats();
+            getTicketStats();
+            getPostStats();
+        });
+
+    $('#kb-articles-table').on('click', 'tr', function (e) {
+        e.preventDefault();
+        if($(this).data('id')) {
+            window.location = "{% url 'knowledgebase:detail' 0 %}".replace('0', $(this).data('id'));
+        }
+    });
+
+    $('#tickets-table').on('click', 'tr', function (e) {
+        e.preventDefault();
+        if($(this).data('id')) {
+            window.location = "{% url 'tickets:detail' 0 %}".replace('0', $(this).data('id'));
+        }
+    });
+
+    $('#posts-table').on('click', 'tr', function (e) {
+        e.preventDefault();
+        if($(this).data('ticket')) {
+            window.location = "{% url 'tickets:detail' 0 %}".replace('0', $(this).data('ticket'))+"#POST-"+$(this).data('id');
+        }
+    });
+{% endblock %}
+
+{% block content %}
+
+    <!-- BEGIN CONTENT HEADER -->
+    <div class="row" style="margin-bottom: 6px">
+        <div class="col-md-12 text-right">
+            <form class="form form-horizontal" role="form" id="date-picker-form">
+                <label>From</label>&nbsp;<input type="text" name="startdate" id="startdate" class="datepicker" />
+                <label>to</label>&nbsp;<input type="text" name="enddate" id="enddate" class="datepicker" />
+                <a href="" role="button" type="button" class="date-picker-submit" alt="Go"><icon class="fa fa-arrow-right"></icon></a>
+            </form>
+        </div>
+    </div>
+    <!-- END CONTENT HEADER -->
+    <!-- BEGIN TICKETS PORTLET -->
+    <div class="portlet light">
+        <div class="portlet-title">
+          <div class="caption">
+            <i class="fa fa-cogs font-green-sharp"></i>
+            <span class="caption-subject font-green-sharp bold uppercase">Tickets Owned</span>
+          </div>
+        </div>
+        <div class="portlet-body">
+          <table id="tickets-table" class="table table-striped table-bordered table-hover dataTable no-footer" role="grid">
+            <thead>
+              <tr role="row">
+                <th class="sorting_desc" tabindex="0" aria-controls="tickets-table" rowspan="1" colspan="1" aria-sort="descending" aria-label="Ticket ID">TID</th>
+                <th class="sorting" tabindex="0" aria-controls="tickets-table" rowspan="1" colspan="1" aria-label="Subject">Subject</th>
+                <th class="sorting" tabindex="0" aria-controls="tickets-table" rowspan="1" colspan="1" aria-label="Owner">Owner</th>
+                <th class="sorting" tabindex="0" aria-controls="tickets-table" rowspan="1" colspan="1" aria-label="Created">Created</th>
+              </tr>
+            </thead>
+            <tbody id="tickets-table-tbody"></tbody>
+          </table>
+        </div>
+    </div>
+    <!-- END TICKETS PORTLET -->
+
+    <!-- BEGIN POSTS PORTLET -->
+    <div class="portlet light">
+        <div class="portlet-title">
+          <div class="caption">
+            <i class="fa fa-cogs font-green-sharp"></i>
+            <span class="caption-subject font-green-sharp bold uppercase">Posts Authored</span>
+          </div>
+        </div>
+        <div class="portlet-body">
+          <table id="posts-table" class="table table-striped table-bordered table-hover dataTable no-footer" role="grid">
+            <thead>
+              <tr role="row">
+                <th class="sorting_desc" tabindex="0" aria-controls="posts-table" rowspan="1" colspan="1" aria-sort="descending" aria-label="Ticket ID">Author</th>
+                <th class="sorting" tabindex="0" aria-controls="posts-table" rowspan="1" colspan="1" aria-label="Subject">TID</th>
+                <th class="sorting" tabindex="0" aria-controls="posts-table" rowspan="1" colspan="1" aria-label="Owner">Description</th>
+                <th class="sorting" tabindex="0" aria-controls="posts-table" rowspan="1" colspan="1" aria-label="Created">Created</th>
+              </tr>
+            </thead>
+            <tbody id="posts-table-tbody"></tbody>
+          </table>
+        </div>
+    </div>
+    <!-- END POSTS PORTLET -->
+
+    <!-- BEGIN ARTICLES PORTLET -->
+    <div class="portlet light">
+        <div class="portlet-title">
+          <div class="caption">
+            <i class="fa fa-cogs font-green-sharp"></i>
+            <span class="caption-subject font-green-sharp bold uppercase">Articles Authored</span>
+          </div>
+        </div>
+        <div class="portlet-body">
+          <table id="articles-table" class="table table-striped table-bordered table-hover dataTable no-footer" role="grid">
+            <thead>
+              <tr role="row">
+                <th class="sorting_desc" tabindex="0" aria-controls="articles-table" rowspan="1" colspan="1" aria-sort="descending" aria-label="Ticket ID">Title</th>
+                <th class="sorting" tabindex="0" aria-controls="articles-table" rowspan="1" colspan="1" aria-label="Subject">Author</th>
+                <th class="sorting" tabindex="0" aria-controls="articles-table" rowspan="1" colspan="1" aria-label="Created">Created</th>
+              </tr>
+            </thead>
+            <tbody id="articles-table-tbody"></tbody>
+          </table>
+        </div>
+    </div>
+    <!-- END ARTICLES PORTLET -->
+
+    <!-- BEGIN ANNOUNCEMENTS PORTLET -->
+    <div class="portlet light">
+        <div class="portlet-title">
+          <div class="caption">
+            <i class="fa fa-cogs font-green-sharp"></i>
+            <span class="caption-subject font-green-sharp bold uppercase">Announcements Authored</span>
+          </div>
+        </div>
+        <div class="portlet-body">
+          <table id="announcements-table" class="table table-striped table-bordered table-hover dataTable no-footer" role="grid">
+            <thead>
+              <tr role="row">
+                <th class="sorting_desc" tabindex="0" aria-controls="announcements-table" rowspan="1" colspan="1" aria-sort="descending" aria-label="Name">Title</th>
+                <th class="sorting" tabindex="0" aria-controls="announcements-table" rowspan="1" colspan="1" aria-label="Email">Author</th>
+                <th class="sorting" tabindex="0" aria-controls="announcements-table" rowspan="1" colspan="1" aria-label="Company">Created</th>
+                <th class="sorting" tabindex="0" aria-controls="announcements-table" rowspan="1" colspan="1" aria-label="Status">Public</th>
+              </tr>
+            </thead>
+            <tbody id="announcements-table-tbody"></tbody>
+          </table>
+        </div>
+    </div>
+    <!-- END ANNOUNCEMENTS PORTLET -->
+{% endblock %}

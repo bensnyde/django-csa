@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+{% load common_tags %}
+
+{% block sitetitle %}| Accounts{% endblock %}
+{% block heading %}Contact <small class="contact-name"></small>{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a>Accounts</a><i class="fa fa-circle"></i></li>
+    <li><a href="{% url 'contacts:index' %}">Contacts</a><i class="fa fa-circle"></i></li>
+    <li class="contact-name"></li>
+{% endblock %}
+
+{% block css %}
+	<style type="text/css">
+		.tab-content {
+			min-height: 250px;
+			overflow: auto;
+			border-left: 1px solid #ddd;
+			border-right: 1px solid #ddd;
+			border-bottom: 1px solid #ddd;
+			padding: 10px 20px 0 20px;
+		}
+	</style>
+{% endblock %}
+
+{% block inline_js %}
+	    // Create Contact
+	    function setContact() {
+	        $.ajax({
+	            url: "/api/contacts/{{ contact_id }}/",
+	            type: "PATCH",
+	            data: $('#set-contact-form').serialize(),
+	        })
+	        .done(function(result) {
+	            console.log("Contact set successfuly.");
+	            $('.modal-alert').fadeIn();
+	            $('.modal-alert').html('<div class="alert alert-success">Contact created successfully.</div>');
+	            getContact();
+	            setTimeout("$('.modal.in').modal('hide')",500);
+	        })
+	        .fail(function(jqXHR, textStatus, errorThrown) {
+	            console.log("Failed to setContact(): "+textStatus);
+	            $('.modal-alert').fadeIn();
+	            $('.modal-alert').html('<div class="alert alert-danger">Failed to create Contact.</div>');
+
+	            $.each(jqXHR["responseJSON"], function(key, value) {
+	                $("#set-contact-form #id_"+key).closest('tr').addClass("has-error");
+	                $("#set-contact-form #"+key+"-help").html(value);
+	            });
+	        });
+	    }
+
+		function getContact() {
+			$("#profile-table").html("");
+
+	        $.ajax({
+	            url: "/api/contacts/{{ contact_id }}/?format=json",
+	            type: "GET",
+	        })
+	        .done(function(result) {
+	        	$(".contact-name").html(result.first_name+' '+result.last_name);
+	        	$.each(result, function(x,y) {
+	        		if(y) {
+		        		$("#id_"+x).val(y);
+		        		$("#profile-table").append("<tr><td>"+x+"</td><td>"+y+"</td></tr>");
+	        		}
+	        	});
+
+	        	$(".tab-content").height($("#profile-table").height()+10);
+	        })
+	        .fail(function(jqXHR, textStatus, errorThrown) {
+	            console.log("Failed to getContact(): "+textStatus);
+	        });
+		}
+
+		function getAuthentications() {
+			$("#authentications-feed").html("");
+
+	        $.ajax({
+	            url: "/api/contacts/{{ contact_id }}/authentications/?limit=10&format=json",
+	            type: "GET",
+	        })
+	        .done(function(result) {
+	        	if(!result.count) {
+	        		$("#authentications-feed").html(' \
+						<li> \
+							<div> \
+								<div class="label label-sm label-danger"> \
+									<i class="fa fa-bullhorn"></i> \
+								</div> \
+								<span>&nbsp;No authentications defined.</span> \
+							</div> \
+						</li>');
+	        	}
+	        	else {
+					for(x in result.results) {
+						var labelClass = "";
+						if (result.results[x].action == "LOGOUT") {
+							labelClass = "label-success";
+						} else if (result.results[x].action == "LOGIN") {
+							labelClass = "label-primary";
+						}
+
+						$("#authentications-feed").append(' \
+							<li> \
+								<div class="date pull-right">'+result.results[x].created+'</div> \
+								<div> \
+									<div class="label label-sm '+labelClass+'"> \
+										<i class="fa fa-bullhorn"></i> \
+									</div> \
+									<span>&nbsp;'+result.results[x].action+' from '+result.results[x].ip+'</span> \
+								</div> \
+							</li>');
+					}
+				}
+	        })
+	        .fail(function(jqXHR, textStatus, errorThrown) {
+	            console.log("Failed to getAuthentications(): "+textStatus);
+        		$("#authentications-feed").html(' \
+					<li> \
+						<div> \
+							<div class="label label-sm label-danger"> \
+								<i class="fa fa-bullhorn"></i> \
+							</div> \
+							<span>&nbsp;There was an error fetching the authentications feed.</span> \
+						</div> \
+					</li>');
+	        });
+  	    }
+
+		function getActions() {
+			$("#activities-feed").html("");
+
+	        $.ajax({
+	            url: "/api/contacts/{{ contact_id }}/actions/?limit=10&format=json",
+	            type: "GET",
+	        })
+	        .done(function(result) {
+	        	if(!result.count) {
+	        		$("#activities-feed").html(' \
+						<li> \
+							<div> \
+								<div class="label label-sm label-danger"> \
+									<i class="fa fa-bullhorn"></i> \
+								</div> \
+								<span>&nbsp;No activities defined.</span> \
+							</div> \
+						</li>');
+	        	}
+	        	else {
+					for(x in result.results) {
+						var labelClass = "label-warning";
+						switch(result.results[x].verb) {
+							case 'created':
+								labelClass = "label-primary";
+								break;
+							case 'deleted':
+								labelClass = "label-danger";
+								break;
+							case 'modified':
+								labelClass = "label-success";
+						}
+
+						var actorInfo = "";
+						if(result.results[x].hasOwnProperty('actor_url')) {
+							actorInfo = '<a href="'+result.results[x].actor_url+'">'+result.results[x].actor_content_type+' '+result.results[x].actor_object_id+'</a> ';
+						} else {
+							actorInfo = result.results[x].actor_content_type+' '+result.results[x].actor_object_id+'&nbsp;';
+						}
+
+						var targetInfo = "";
+						if(result.results[x].hasOwnProperty('target_url')) {
+							targetInfo = '&nbsp;<a href="'+result.results[x].target_url+'">'+result.results[x].target_content_type+' '+result.results[x].target_object_id+'</a>';
+						}
+
+						$("#activities-feed").append(' \
+							<li> \
+								<div class="date pull-right">'+result.results[x].timestamp+'</div> \
+								<div> \
+									<div class="label label-sm '+labelClass+'"> \
+										<i class="fa fa-bullhorn"></i> \
+									</div> \
+									<span>&nbsp;'+actorInfo+result.results[x].verb+targetInfo+'</span> \
+								</div> \
+							</li>');
+					}
+				}
+	        })
+	        .fail(function(jqXHR, textStatus, errorThrown) {
+	            console.log("Failed to getActions(): "+textStatus);
+        		$("#activities-feed").html(' \
+					<li> \
+						<div> \
+							<div class="label label-sm label-danger"> \
+								<i class="fa fa-bullhorn"></i> \
+							</div> \
+							<span>&nbsp;There was an error fetching the actions feed.</span> \
+						</div> \
+					</li>');
+	        });
+  	    }
+{% endblock %}
+
+{% block jquery_document_ready %}
+	getContact();
+	getActions();
+	getAuthentications();
+
+	$(document)
+        .on('click', 'a.set-contact-form-submit', function (e) {
+            e.preventDefault();
+            setContact();
+        })
+        .on('click', 'a.show-set-contact-modal', function (e) {
+            e.preventDefault();
+            resetModalForm("set-contact", "contact_id");
+            getContact();
+        });
+{% endblock %}
+
+{% block content %}
+	<div class="row">
+		<div class="col-md-6">
+			<!-- BEGIN PROFILE PORTLET -->
+			<div class="portlet light">
+				<div class="portlet-title">
+				  <div class="caption">
+				    <i class="fa fa-cogs font-green-sharp"></i>
+				    <span class="caption-subject font-green-sharp bold uppercase contact-name"></span>
+				  </div>
+				  <div class="actions btn-set">
+				    <a href="javascript:;" class="btn yellow btn-circle show-set-contact-modal"><i class="fa fa-check-circle"></i> Edit</a>
+				  </div>
+				</div>
+				<div class="portlet-body">
+				  <table id="profile-table" class="table table-striped table-bordered table-hover no-footer" role="grid" aria-describedby="company-contacts-table_info"></table>
+				</div>
+			</div>
+			<!-- END PROFILE PORTLET -->
+		</div>
+		<div class="col-md-6">
+			<!-- BEGIN HISTORY PORTLET -->
+			<div class="portlet light bordered">
+				<div class="portlet-title tabbable-line">
+				  <div class="caption">
+				    <i class="icon-pin font-green-sharp"></i><span class="caption-subject bold font-green-sharp uppercase">History</span>
+				  </div>
+				  <ul class="nav nav-tabs">
+				    <li class="active"><a data-toggle="tab" href="#activities-tab" aria-expanded="true">Activities</a></li>
+				    <li class=""><a data-toggle="tab" href="#authentications-tab" aria-expanded="false">Authentications</a></li>
+				  </ul>
+				</div>
+				<div class="portlet-body">
+				  <div class="tab-content" style="min-height: 184px">
+				    <div id="activities-tab" class="tab-pane active">
+				      <div class="scroller" data-initialized="1" id="activities-tab-scroller">
+				      	<ul class="feeds" id="activities-feed"></ul>
+				      </div>
+				    </div>
+				    <div id="authentications-tab" class="tab-pane">
+				      <div class="scroller" data-initialized="1" id="authentications-tab-scroller">
+				      	<ul class="feeds" id="authentications-feed"></ul>
+				      </div>
+				    </div>
+				  </div>
+				</div>
+			</div>
+			<!-- END HISTORY PORTLET -->
+		</div>
+	</div>
+
+	<!-- BEGIN MODAL -->
+	<div id="set-contact-modal" class="modal fade in" role="dialog">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h3>Contact Profile</h3>
+				</div>
+				<div class="modal-body">
+					<div class="modal-alert"></div>
+					<!-- BEGIN CONTACT FORM -->
+					<form id="set-contact-form" class="form form-vertical" role="form">
+					    <input type="hidden" name="user_id" id="user_id" value="{{ contact_id }}" />
+                    	<table class="table table-hover" id="set-contact-form-table">
+                      		{% for field in contactform %}
+	                            <tr class="form-group">
+	                              <td><label class="control-label">{{ field.label_tag }}</label></td>
+	                              <td>
+	                                <div class="controls{% if field.errors %} error{% endif %}">
+	                                  {{ field|addcss:"form-control" }}
+	                                  <span class="help-inline" id="{{ field.html_name }}-help"></span>
+	                                </div>
+	                              </td>
+	                            </tr>
+                        	{% endfor %}
+                        </table>
+					</form>
+					<!-- END CONTACT FORM -->
+				</div>
+				<div class="modal-footer">
+					<a role="button" class="btn btn-default" data-dismiss="modal">Close</a>
+					<a role="button" class="btn btn-primary set-contact-form-submit">Ok</a>
+				</div>
+			</div>
+		</div>
+	</div>
+	<!-- END MODAL -->
+
+ <!-- END CONTACT CONTENT -->
+{% endblock %}

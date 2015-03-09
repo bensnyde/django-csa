@@ -1,0 +1,11 @@
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'dcsadb1',
+        'USER': 'dcsdbuser1',
+        'PASSWORD': 'astrongpassword',
+        'HOST': 'localhost',
+        'PORT': '',
+    }
+}
+

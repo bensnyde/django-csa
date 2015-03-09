@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+{% load common_tags %}
+
+{% block sitetitle %}| Support{% endblock %}
+{% block heading %}Support <small>Trouble Tickets</small>{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a>Support</a><i class="fa fa-circle"></i></li>
+    <li><a href="{% url 'tickets:index' %}">Tickets</a><i class="fa fa-circle"></i></li>
+    <li>Create Ticket</li>
+{% endblock %}
+
+{% block css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'plugins/bootstrap-datetimepicker/css/bootstrap-datetimepicker.min.css' %}" />
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="{% static 'plugins/bootstrap-datetimepicker/js/bootstrap-datetimepicker.min.js' %}"></script>
+{% endblock %}
+
+{% block inline_js %}
+        {% if user.is_staff %}
+            // Fetch Companies
+            function getCompanies() {
+                $.ajax({
+                    url: "/api/companies/?format=json",
+                    type: "GET",
+                })
+                .done(function(result) {
+                    for(x in result.results) {
+                        $("#id_company").append('<OPTION value="'+result.results[x].id+'">'+result.results[x].name+'</OPTION>');
+                    }
+
+                    getCompanyContacts($("#id_company").val());
+                })
+                .fail(function(jqXHR, textStatus, errorThrown) {
+                    console.log("Failed to getCompanies(): " + textStatus);
+                });
+            }
+
+            // Fetch Company's Contacts
+            function getCompanyContacts(company_id) {
+                $("#id_author").html("");
+
+                $.ajax({
+                    url: "/api/contacts/?company="+company_id+"&format=json",
+                    type: "GET",
+                })
+                .done(function(result) {
+                    for(x in result.results) {
+                        $("#id_author").append('<OPTION value="'+result.results[x].id+'">'+result.results[x].first_name+' '+result.results[x].last_name+' ('+result.results[x].email+')</OPTION>');
+                    }
+                })
+                .fail(function(jqXHR, textStatus, errorThrown) {
+                    console.log("Failed to getCompanyContacts("+company_id+"): " + textStatus);
+                });
+            }
+        {% endif %}
+
+        function submitTicket() {
+            var data = $("#create-ticket-form").serialize();
+
+            $.ajax({
+                url: "/api/support/tickets/",
+                type: "POST",
+                data: data,
+            })
+            .done(function(result) {
+                submitPost(result.id);
+            })
+            .fail(function(jqXHR, textStatus, errorThrown) {
+                console.log("Failed to submitTicket(): " + textStatus);
+            });
+        }
+
+        function submitPost(ticket_id) {
+            $("#post-form-ticket").val(ticket_id);
+
+            {% if user.is_staff %}
+                $("#post-form-author").val($("#create-ticket-form #id_author").val());
+            {% else %}
+                $("#post-form-author").val({{ user.id }});
+            {% endif %}
+
+            $.ajax({
+                url: "/api/support/posts/",
+                type: "POST",
+                data: $("#create-post-form").serialize(),
+            })
+            .done(function(result) {
+                window.location = "{% url 'tickets:detail' 0 %}".replace(0, ticket_id);
+            })
+            .fail(function(jqXHR, textStatus, errorThrown) {
+                console.log("Failed to submitPost(): " + textStatus);
+            });
+        }
+{% endblock %}
+
+{% block jquery_document_ready %}
+    {% if user.is_staff %}
+        getCompanies();
+        $('#id_company').on('change', function () {
+            getCompanyContacts($(this).val());
+        });
+    {% else %}
+        $("#id_contacts option").each(function(x,y) {
+            if($(this).val()=={{ user.id }}) {
+                $(this).prop('selected', true);
+            }
+        });
+    {% endif %}
+
+    $('#id_due_date').datetimepicker();
+
+    $(document)
+        .on('click', 'a.ticket-form-submit', function (e) {
+            e.preventDefault();
+            submitTicket();
+        })
+        .on('click', 'a.reset-form', function (e) {
+            e.preventDefault();
+            $("#create-ticket-form").trigger('reset');
+            $("#create-post-form").trigger('reset');
+        });
+{% endblock %}
+
+{% block content %}
+    <!-- BEGIN TICKET PORTLET -->
+    <div class="portlet light form-fit">
+        <div class="portlet-title">
+          <div class="caption">
+            <i class="fa fa-cogs font-green-sharp"></i>
+            <span class="caption-subject font-green-sharp bold uppercase">Create Ticket</span>
+          </div>
+        </div>
+        <div class="portlet-body form">
+            <div class="well" style="text-indent: 40px"><span>File attachments are allowed in the next screen.</span></div>
+
+            {% if form_errors %}
+                {{ form_errors }}
+            {% endif %}
+
+            <!-- BEGIN FORM-->
+            <form role="form" id="create-ticket-form" class="form-horizontal form-bordered" enctype="multipart/form-data" method="POST">
+                {% csrf_token %}
+                <table class="table table-hover" id="company-profile-form-table">
+                    {% if user.is_staff %}
+                    <tr class="form-group">
+                        <td><label class="control-label">Company</label></td>
+                        <td><select class="form-control" name="company" id="id_company" autocomplete="off"></select></td>
+                    </tr>
+                    {% else %}
+                        <input type="hidden" name="author" id="id_author" value={{ user.id }} />
+                    {% endif %}
+
+                    {% for field in ticketform %}
+                        <tr class="form-group">
+                            <td><label class="control-label">{{ field.label_tag }}</label></td>
+                            <td>
+                                <div class="controls">
+                                    {{ field|addcss:"form-control" }}
+                                    <span id="{{ field.html_name }}-help" class="help-inline"></span>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+            </form>
+            <form role="form" id="create-post-form" class="form form-vertical" enctype="multipart/form-data" method="POST">
+                    <input type="hidden" name="ticket" id="post-form-ticket" value="0" />
+                    <input type="hidden" name="author" id="post-form-author" value="0" />
+                    <input type="hidden" name="visible" id="id_visible" value=true />
+                    {% for field in postform %}
+                        <tr class="form-group">
+                            <td><label class="control-label">{{ field.label_tag }}</label></td>
+                            <td>
+                                <div class="controls">
+                                    {% if field.html_name != "attachment" %}
+                                        {{ field|addcss:"form-control" }}
+                                    {% else %}
+                                        {{ field }}
+                                    {% endif %}
+                                    <span id="{{ field.html_name }}-help" class="help-inline"></span>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+
+                    <tr id="form-controls-container" class="form-actions">
+                        <td>&nbsp;</td>
+                        <td>
+                            <a type="submit" class="btn btn-primary ticket-form-submit" role="button"><i class="fa fa-check"></i>&nbsp;Submit</a>
+                            <a type="button" class="btn btn-danger reset-form" role="button"><i class="fa fa-refresh"></i>&nbsp;Reset</a>
+                        </td>
+                    </tr>
+                </table>
+            </form>
+            <!-- END FORM-->
+        </div>
+    </div>
+    <!-- END TICKET PORTLET -->
+{% endblock %}

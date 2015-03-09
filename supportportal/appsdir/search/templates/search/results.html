@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block sitetitle %}| Search{% endblock %}
+{% block heading %}Search <small>For '{{ querystr }}'</small>{% endblock %}
+
+{% block breadcrumbs %}
+	<li><a>Search</a><i class="fa fa-circle"></i></li>
+	<li>{{ querystr }}</li>
+{% endblock %}
+
+{% block content %}
+    <!-- BEGIN SEARCH PORTLET -->
+    <div class="portlet light">
+        <div class="portlet-title">
+          <div class="caption">
+            <i class="fa fa-cogs font-green-sharp"></i>
+            <span class="caption-subject font-green-sharp bold uppercase">Search</span>
+          </div>
+        </div>
+        <div class="portlet-body" style="min-height: 400px">
+			{% if matches %}
+				{% for category in matches %}
+					{% for name, records in category.items %}
+						<h4>{{ name }}</h4>
+						{% for line in records %}
+					    <div class="list-group" style="margin-left: 20px; margin-bottom: 0">
+				    		<h4 class="list-group-item-heading"><a href="{{ line.url }}">{{ line.title }}</a> ({{ line.contenttype }})</h4>
+				    		<p class="list-group-item-text">{{ line.description }}</p>
+					    </div>
+					    {% endfor %}
+					{% endfor %}
+				{% endfor %}
+			{% else %}
+				<h4 class="text-center" style="padding-top: 100px">No matches for '{{ querystr }}'.</h4>
+			{% endif %}
+        </div>
+    </div>
+    <!-- END SEARCH PORTLET -->
+{% endblock %}
