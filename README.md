@@ -4,6 +4,12 @@ Django-CSA
 
 Client Services Automation software based on the popular Django Python web-framework. 
 
+Demo
+=======
+- url: http://hidden-savannah-2760.herokuapp.com/
+- default admin user: root@example.com
+- default password: password
+
 
 Overview
 =======
